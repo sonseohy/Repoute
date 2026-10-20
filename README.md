@@ -18,7 +18,7 @@
 | LLM 프레임워크 | LangChain (`langchain`, `langchain-core`, `langchain-openai`, `langchain-anthropic`, 선택: `langchain-ollama`) |
 | 에이전트 그래프 | LangGraph (`langgraph`, `langgraph-checkpoint-sqlite`) |
 | 트레이싱·평가 | LangSmith |
-| 정적 분석 | 표준 라이브러리 `ast`, `sqlite3`, `networkx` |
+| 정적 분석 | 표준 라이브러리 `ast`, `sqlite3`, `networkx` (+ `scipy`, PageRank용) |
 | API | FastAPI + SSE |
 | 프론트 | Vite + TypeScript |
 | 품질·CI | ruff, pytest, GitHub Actions |
