@@ -10,11 +10,12 @@ from repoute.graphs.reading_guide import (
     ModuleSummary,
     ReadingGuide,
     ReadingStep,
+    _citable,
     run_reading_guide,
     select_targets,
 )
 from repoute.indexing.index import build_index
-from repoute.prompts import reading_guide_v2
+from repoute.prompts import reading_guide_v2, reading_guide_v3
 from repoute.validation.citations import CodeRef
 
 # 원본 레포 파일: main 의 run() 이 util 의 helper() 를 부른다 (test_index 와 같은 구성)
@@ -145,11 +146,29 @@ def test_v2_prompt_happy_path(index):
     assert "1 이상의 정수" in prompt  # v2 에만 있는 규칙
 
 
+def test_citable_line1_only_without_symbols(index):
+    """심볼 있는 app/main.py 엔 줄 1 을 넣지 않고, 심볼 없는 app/__init__.py 엔 줄 1 만 준다."""
+    deps = Deps(None, None, index)
+    assert _citable(deps, "app/main.py") == "run:4"
+    assert _citable(deps, "app/__init__.py") == "1(모듈 시작)"
+
+
+def test_v3_prompt_happy_path(index):
+    """prompts=v3 로도 정상 흐름이 되고, 합성 프롬프트에 v3 규칙이 들어가고 v2 문구는 빠진다."""
+    deps = _deps(index, _target_count(index), [_guide(4)])
+    state = run_reading_guide(deps, prompts=reading_guide_v3)
+    assert state["validation_errors"] == []
+    assert state["retry_count"] == 0
+    prompt = deps.quality_llm.prompts[0]
+    assert "목록에 줄 1 이 없는 모듈에 줄 1 을 쓰지 말 것" in prompt  # v3 에만 있는 규칙
+    assert "심볼이 없는 모듈(import 만 있는" not in prompt  # v2 문구는 빠졌다
+
+
 def test_feedback_hint_lists_citable_lines(index):
-    """줄 범위 밖 인용(999)의 피드백에 "대신 쓸 줄"(1(모듈 시작), run:4) 힌트가 붙는다."""
+    """줄 범위 밖 인용(999)의 피드백에 "대신 쓸 줄"(run:4) 힌트가 붙는다 (줄 1 은 없음)."""
     deps = _deps(index, _target_count(index), [_guide(999), _guide(4)])
     run_reading_guide(deps)
-    hint = "app/main.py:999 — 파일은 5줄까지 → 이 파일에서 인용 가능한 줄: 1(모듈 시작), run:4"
+    hint = "app/main.py:999 — 파일은 5줄까지 → 이 파일에서 인용 가능한 줄: run:4"
     assert hint in deps.quality_llm.prompts[1]
     assert "run:4" not in deps.quality_llm.prompts[0]  # 요약 목록이 아니라 힌트에서 온 값
 

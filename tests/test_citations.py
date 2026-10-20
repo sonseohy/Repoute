@@ -4,7 +4,12 @@ import pytest
 
 from repoute.indexing.parser import parse_repo
 from repoute.indexing.symbols import SymbolDB
-from repoute.validation.citations import CodeRef, citation_validity, validate_citations
+from repoute.validation.citations import (
+    CodeRef,
+    citation_specificity,
+    citation_validity,
+    validate_citations,
+)
 
 APP_SOURCE = """\
 def create_app():
@@ -94,3 +99,44 @@ def test_partial_validity(repo):
         CodeRef(file=FILE, line=50),
     ]
     assert citation_validity(refs, db, root) == 0.75
+
+
+def test_specificity_all_in_symbols(repo):
+    """모든 인용이 심볼 범위(create_app 1~2, App.run 6~7) 안이면 구체성 1.0."""
+    db, root = repo
+    refs = [CodeRef(file=FILE, line=2), CodeRef(file=FILE, line=6, symbol="App.run")]
+    assert citation_specificity(refs, db, root) == 1.0
+
+
+@pytest.fixture
+def pkg(tmp_path):
+    """심볼 없는 pkg/__init__.py 와, 줄 1 이 심볼 밖(x = 1)이고 f() 가 4~5줄인 pkg/core.py."""
+    root = tmp_path / "pkg_repo"
+    (root / "pkg").mkdir(parents=True)
+    (root / "pkg/__init__.py").write_text("from pkg.core import x\n\n", encoding="utf-8")
+    (root / "pkg/core.py").write_text("x = 1\n\n\ndef f():\n    pass\n", encoding="utf-8")
+    db = SymbolDB()
+    db.build(parse_repo(root))
+    return db, root
+
+
+def test_specificity_line1_of_symbol_file(pkg):
+    """심볼(f)이 있는 파일의 줄 1 은 유효하지만 비구체적 → f 안(4줄)과 합쳐 0.5."""
+    db, root = pkg
+    refs = [CodeRef(file="pkg/core.py", line=1), CodeRef(file="pkg/core.py", line=4)]
+    assert citation_validity(refs, db, root) == 1.0
+    assert citation_specificity(refs, db, root) == 0.5
+
+
+def test_specificity_symbolless_file_and_invalid(pkg):
+    """심볼 없는 파일은 줄 1 만 구체적, 유효하지 않은 인용(99줄)은 비구체적, 빈 목록은 0.0."""
+    db, root = pkg
+    refs = [
+        CodeRef(file="./pkg/__init__.py", line=1),  # "./" 표기도 DB 경로와 맞춘다
+        CodeRef(file="pkg/__init__.py", line=2),  # 심볼 없는 파일이라도 줄 1 만 인정
+        CodeRef(file="pkg/core.py", line=99),
+        CodeRef(file="pkg/nope.py", line=1),
+    ]
+    assert citation_specificity(refs[:1], db, root) == 1.0
+    assert citation_specificity(refs, db, root) == 0.25
+    assert citation_specificity([], db, root) == 0.0

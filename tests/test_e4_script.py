@@ -27,6 +27,7 @@ def _row(repo: str, mode: str, valid: float, errors: int) -> dict:
         "targets": 13,
         "citations": 8,
         "valid": valid,
+        "specificity": valid / 2,  # 유효한 인용 중 절반만 심볼을 가리킨다고 가정
         "errors": errors,
         "retries": 0 if mode == "naive" else 1,
         "tokens": {"gpt-4o-mini": {"input_tokens": 1000, "output_tokens": 100}},
@@ -44,12 +45,14 @@ ROWS = [
 
 
 def test_render_markdown_has_sections():
-    """제목·레포별 표 헤더·모드별 평균 행(n=2)이 모두 들어간다."""
+    """제목·레포별 표 헤더(구체성 열 포함)·모드별 평균 행(n=2)이 모두 들어간다."""
     text = render_markdown(ROWS)
     assert text.startswith("# 03. 실험 E4 — 인용 검증 루프 유무 (Phase 2, ")
-    assert "| 레포 | 모드 | files | targets | 인용 수 | 유효 비율 | 오류 수 | 재생성 " in text
-    assert "| naive | n=2 | 62% | 6 | $0.0100 | 8.0s |" in text
-    assert "| validate | n=2 | 100% | 0 |" in text
+    assert "| 인용 수 | 유효 비율 | 구체성 | 오류 수 | 재생성 " in text
+    assert "| a/x@1234567 | naive | 20 | 13 | 8 | 75% | 38% | 2 |" in text
+    assert "| 모드 | n | 유효 비율 평균 | 구체성 평균 | 오류 합 |" in text
+    assert "| naive | n=2 | 62% | 31% | 6 | $0.0100 | 8.0s |" in text
+    assert "| validate | n=2 | 100% | 50% | 0 |" in text
     assert "1,000 / 100" in text
     assert "## 관찰" in text
 
@@ -85,3 +88,11 @@ def test_estimate_cost_unknown_model_is_none():
     """단가 모르는 모델이 섞이거나 토큰이 비면 0 이 아니라 None (측정 안 한 수치 금지)."""
     assert estimate_cost({"mystery-model": {"input_tokens": 10, "output_tokens": 10}}) is None
     assert estimate_cost({}) is None
+
+
+def test_render_markdown_old_rows_without_specificity():
+    """specificity 키가 없는 예전 row(03·04)는 구체성 칸이 '—' 로 찍힌다 (측정 안 한 수치 금지)."""
+    rows = [{k: v for k, v in r.items() if k != "specificity"} for r in ROWS]
+    text = render_markdown(rows)
+    assert "| 75% | — | 2 |" in text
+    assert "| naive | n=2 | 62% | — | 6 |" in text

@@ -67,9 +67,12 @@ def _symbols(deps: Deps, file: str) -> list[tuple[str, str, int]]:
 
 
 def _citable(deps: Deps, file: str, limit: int | None = None) -> str:
-    """인용 가능한 줄 목록. 심볼이 없는 모듈도 인용할 수 있게 줄 1(모듈 시작)을 항상 앞에 둔다."""
+    """인용 가능한 줄 목록. 심볼이 없는 모듈만 줄 1(모듈 시작)을 준다.
+
+    심볼이 있는 파일에도 줄 1 을 주면 모델이 안전한 줄 1 로 쏠린다 (E6, troubleshooting 14).
+    """
     symbols = _symbols(deps, file)[:limit]
-    return ", ".join(["1(모듈 시작)"] + [f"{n}:{line}" for n, _, line in symbols])
+    return ", ".join(f"{n}:{line}" for n, _, line in symbols) or "1(모듈 시작)"
 
 
 def select_targets(state: GuideState, deps: Deps) -> dict:

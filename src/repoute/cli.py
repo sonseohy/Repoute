@@ -58,7 +58,7 @@ def index(url: str, cache_dir: str) -> None:
     repo.db.close()
 
 
-def map_repo(url: str, cache_dir: str, validate: bool, prompt: str = "v2") -> None:
+def map_repo(url: str, cache_dir: str, validate: bool, prompt: str = "v3") -> None:
     """레포 읽기 지도(진입점 + 읽기 순서)를 만들어 출력한다. 실제 LLM 을 호출한다."""
     prompts = importlib.import_module(f"repoute.prompts.reading_guide_{prompt}")
     start = time.perf_counter()
@@ -107,7 +107,9 @@ def main() -> None:
     map_parser.add_argument("url", help="GitHub URL 또는 로컬 레포 경로")
     map_parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스 캐시")
     map_parser.add_argument("--no-validate", action="store_true", help="인용 검증 루프 끄기")
-    map_parser.add_argument("--prompt", choices=["v1", "v2"], default="v2", help="프롬프트 버전")
+    map_parser.add_argument(
+        "--prompt", choices=["v1", "v2", "v3"], default="v3", help="프롬프트 버전"
+    )
     args = parser.parse_args()
     if args.command == "check":
         check()
