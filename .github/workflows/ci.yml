@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: uv 설치
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+
+      # dev 그룹은 uv sync에 기본 포함된다
+      - name: 의존성 설치
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Format 검사
+        run: uv run ruff format --check .
+
+      - name: 테스트
+        run: uv run pytest
