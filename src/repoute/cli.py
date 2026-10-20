@@ -5,7 +5,9 @@ import os
 import sys
 import time
 
-from repoute.config import get_fast_llm, load_settings
+from repoute.config import get_fast_llm, get_quality_llm, load_settings
+from repoute.graphs.deps import Deps
+from repoute.graphs.reading_guide import run_reading_guide
 from repoute.indexing.imports import rank_modules
 from repoute.indexing.index import build_index
 
@@ -55,6 +57,35 @@ def index(url: str, cache_dir: str) -> None:
     repo.db.close()
 
 
+def map_repo(url: str, cache_dir: str, validate: bool) -> None:
+    """레포 읽기 지도(진입점 + 읽기 순서)를 만들어 출력한다. 실제 LLM 을 호출한다."""
+    start = time.perf_counter()
+    try:
+        repo = build_index(url, cache_dir)
+        deps = Deps(get_fast_llm(), get_quality_llm(), repo)
+        state = run_reading_guide(deps, validate=validate)
+    except Exception as e:  # URL·git·API 키·네트워크 오류는 한 줄로만 알린다
+        message = str(e).strip().splitlines()[0] if str(e).strip() else ""
+        print(f"오류: {type(e).__name__}: {message}")
+        sys.exit(1)
+    elapsed = time.perf_counter() - start
+
+    guide, errors = state["guide"], state.get("validation_errors") or []
+    print(f"repo: {repo.info.repo_id}")
+    print(f"개요: {guide.overview}")
+    print("진입점:")
+    for ref in guide.entrypoints:
+        print(f"  - {ref.file}:{ref.line}  {ref.symbol or ''}")
+    print("읽기 순서:")
+    for step in guide.reading_order:
+        print(f"  {step.order}. {step.ref.file}:{step.ref.line}   {step.reason}")
+    print(f"검증: 재시도 {state.get('retry_count', 0)}회, 남은 오류 {len(errors)}개")
+    for error in errors:
+        print(f"  - {error}")
+    print(f"시간: {elapsed:.1f}s   (LLM 비용은 LangSmith 'repoute-dev' 프로젝트에서 확인)")
+    repo.db.close()
+
+
 def main() -> None:
     """서브커맨드를 해석해 해당 함수를 실행한다."""
     parser = argparse.ArgumentParser(prog="repoute")
@@ -63,11 +94,17 @@ def main() -> None:
     index_parser = sub.add_parser("index", help="레포를 인덱싱하고 핵심 모듈을 보여준다")
     index_parser.add_argument("url", help="GitHub URL 또는 로컬 레포 경로")
     index_parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스 캐시")
+    map_parser = sub.add_parser("map", help="진입점과 추천 읽기 순서를 만든다 (LLM 호출)")
+    map_parser.add_argument("url", help="GitHub URL 또는 로컬 레포 경로")
+    map_parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스 캐시")
+    map_parser.add_argument("--no-validate", action="store_true", help="인용 검증 루프 끄기")
     args = parser.parse_args()
     if args.command == "check":
         check()
     elif args.command == "index":
         index(args.url, args.cache_dir)
+    elif args.command == "map":
+        map_repo(args.url, args.cache_dir, validate=not args.no_validate)
 
 
 if __name__ == "__main__":
