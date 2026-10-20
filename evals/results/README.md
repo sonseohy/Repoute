@@ -9,6 +9,7 @@
 | [03](03-e4-validation-loop.md) | e4-validation-loop | 인용 검증 루프 유무 (naive vs validate), 레포 5개 | citation_validity naive 97% → validate 97% (효과 없음), 비용 $0.021 → $0.029 | 5 | 최종 인용 사후 검증, 토큰 콜백, LangSmith 교차 확인 | 태그 `e4` | (커밋 후 기재) |
 | [04](04-e6-prompt-v2.md) | e6-prompt-v2 | 줄 1 인용 가능 입력 + 프롬프트 v2 (fastapi 재측정) | citation_validity 83% → 100%, 재생성 2→0, 비용 $0.043→$0.022. 단, citation_specificity 83% → 43% (구체성 하락) | 1 | 사후 검증 + LangSmith 트레이스 인용 목록 | 태그 `prompt-v1`/`prompt-v2` | (커밋 후 기재) |
 | [05](05-e6-prompt-v3.md) | e6-prompt-v3 | 심볼 있는 파일엔 줄 1 비허용 + 프롬프트 v3 (fastapi 재측정) | citation_validity 100% 유지, citation_specificity 43% → 100%, 재생성 0, $0.022 | 1 | 사후 검증 citation_validity·specificity, 토큰 콜백 | 태그 `prompt-v3` | (커밋 후 기재) |
+| [06](06-v3-regression.md) | v3-regression | 프롬프트 v3 기본값으로 레포 5개 회귀 측정 | citation_validity 100%, citation_specificity 100%, 재생성 0, 평균 $0.022·7.6s | 5 | 사후 검증 validity·specificity, 토큰 콜백 | 태그 `prompt-v3` | (커밋 후 기재) |
 
 ## 이름 규칙
 
