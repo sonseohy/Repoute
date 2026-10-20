@@ -1,0 +1,222 @@
+[
+  {
+    "repo": "psf/requests@611c616",
+    "mode": "naive",
+    "files": 20,
+    "targets": 13,
+    "citations": 8,
+    "valid": 1.0,
+    "errors": 0,
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 14933,
+        "output_tokens": 1027
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 3970,
+        "output_tokens": 498
+      }
+    },
+    "cost": 0.01776115,
+    "elapsed": 7.662101375171915
+  },
+  {
+    "repo": "psf/requests@611c616",
+    "mode": "validate",
+    "files": 20,
+    "targets": 13,
+    "citations": 7,
+    "valid": 1.0,
+    "errors": 0,
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 14933,
+        "output_tokens": 1037
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 3980,
+        "output_tokens": 453
+      }
+    },
+    "cost": 0.01734215,
+    "elapsed": 7.592939458088949
+  },
+  {
+    "repo": "encode/httpx@b5addb6",
+    "mode": "naive",
+    "files": 23,
+    "targets": 14,
+    "citations": 9,
+    "valid": 1.0,
+    "errors": 0,
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 17856,
+        "output_tokens": 1119
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4770,
+        "output_tokens": 558
+      }
+    },
+    "cost": 0.0208548,
+    "elapsed": 21.56369320792146
+  },
+  {
+    "repo": "encode/httpx@b5addb6",
+    "mode": "validate",
+    "files": 23,
+    "targets": 14,
+    "citations": 9,
+    "valid": 1.0,
+    "errors": 0,
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 17856,
+        "output_tokens": 1154
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4805,
+        "output_tokens": 563
+      }
+    },
+    "cost": 0.0210133,
+    "elapsed": 7.288488624850288
+  },
+  {
+    "repo": "fastapi/fastapi@6f28852",
+    "mode": "naive",
+    "files": 541,
+    "targets": 22,
+    "citations": 7,
+    "valid": 0.8571428571428571,
+    "errors": 1,
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 18063,
+        "output_tokens": 1912
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 5562,
+        "output_tokens": 398
+      }
+    },
+    "cost": 0.02174165,
+    "elapsed": 7.681382375070825
+  },
+  {
+    "repo": "fastapi/fastapi@6f28852",
+    "mode": "validate",
+    "files": 541,
+    "targets": 22,
+    "citations": 6,
+    "valid": 0.8333333333333334,
+    "errors": 1,
+    "retries": 2,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 18063,
+        "output_tokens": 1894
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 16658,
+        "output_tokens": 1104
+      }
+    },
+    "cost": 0.05653085,
+    "elapsed": 13.657272208016366
+  },
+  {
+    "repo": "pallets/click@2247b35",
+    "mode": "naive",
+    "files": 17,
+    "targets": 13,
+    "citations": 6,
+    "valid": 1.0,
+    "errors": 0,
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 19873,
+        "output_tokens": 1099
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 6470,
+        "output_tokens": 377
+      }
+    },
+    "cost": 0.02358535,
+    "elapsed": 6.999671291792765
+  },
+  {
+    "repo": "pallets/click@2247b35",
+    "mode": "validate",
+    "files": 17,
+    "targets": 13,
+    "citations": 11,
+    "valid": 1.0,
+    "errors": 0,
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 19873,
+        "output_tokens": 1104
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 6475,
+        "output_tokens": 599
+      }
+    },
+    "cost": 0.02582085,
+    "elapsed": 7.515278375009075
+  },
+  {
+    "repo": "Textualize/rich@9d8f9a3",
+    "mode": "naive",
+    "files": 109,
+    "targets": 15,
+    "citations": 11,
+    "valid": 1.0,
+    "errors": 0,
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 19610,
+        "output_tokens": 1177
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 5509,
+        "output_tokens": 514
+      }
+    },
+    "cost": 0.0225602,
+    "elapsed": 7.774576249998063
+  },
+  {
+    "repo": "Textualize/rich@9d8f9a3",
+    "mode": "validate",
+    "files": 109,
+    "targets": 15,
+    "citations": 9,
+    "valid": 1.0,
+    "errors": 0,
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 19610,
+        "output_tokens": 1198
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 5530,
+        "output_tokens": 468
+      }
+    },
+    "cost": 0.0221653,
+    "elapsed": 7.072241625050083
+  }
+]
