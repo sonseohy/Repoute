@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+dist/
+*.egg-info/
+
+# uv (uv.lock은 커밋한다)
+.venv/
+
+# 환경변수·로컬 데이터
+.env
+*.db
+.repoute_cache/
+.langgraph_api/
+
+# OS / 프론트엔드
+.DS_Store
+node_modules/
+
+# 로컬 작업 계획 (레포에 올리지 않음)
+docs/PLAN.md
