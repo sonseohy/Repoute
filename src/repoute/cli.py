@@ -71,14 +71,21 @@ def map_repo(url: str, cache_dir: str, validate: bool) -> None:
     elapsed = time.perf_counter() - start
 
     guide, errors = state["guide"], state.get("validation_errors") or []
+    # 검증 실패한 "파일:줄" 집합 — 근거가 틀린 설명은 그대로 두지 않고 표시한다 (설계 원칙 2)
+    bad = {e.split(" — ")[0] for e in errors}
+
+    def mark(ref) -> str:
+        where = f"{ref.file}:{ref.line}"
+        return f"{where}  [검증 실패]" if where in bad else where
+
     print(f"repo: {repo.info.repo_id}")
     print(f"개요: {guide.overview}")
     print("진입점:")
     for ref in guide.entrypoints:
-        print(f"  - {ref.file}:{ref.line}  {ref.symbol or ''}")
+        print(f"  - {mark(ref)}  {ref.symbol or ''}")
     print("읽기 순서:")
     for step in guide.reading_order:
-        print(f"  {step.order}. {step.ref.file}:{step.ref.line}   {step.reason}")
+        print(f"  {step.order}. {mark(step.ref)}   {step.reason}")
     print(f"검증: 재시도 {state.get('retry_count', 0)}회, 남은 오류 {len(errors)}개")
     for error in errors:
         print(f"  - {error}")

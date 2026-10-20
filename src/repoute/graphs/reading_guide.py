@@ -105,10 +105,13 @@ def synthesize(state: GuideState, deps: Deps) -> dict:
         f"  심볼: {', '.join(f'{n}:{line}' for n, _, line in _symbols(deps, s.file)) or '없음'}"
         for s in state.get("summaries", [])
     )
-    edges = "\n".join(f"- {a} → {b}" for a, b in list(index.graph.edges)[:MAX_EDGES]) or "없음"
+    ranked_scores = dict(rank_modules(index.graph))
+    # 중요한 모듈(PageRank 높은 쪽)로 들어가는 import 관계부터 상위 MAX_EDGES 개
+    top_edges = sorted(index.graph.edges, key=lambda e: -ranked_scores.get(e[1], 0))[:MAX_EDGES]
+    edges = "\n".join(f"- {a} → {b}" for a, b in top_edges) or "없음"
     entry = find_entrypoints(index.db, index.info.path)
     entrypoints = "\n".join(f"- {s.file}:{s.line_start} {s.name}" for s in entry) or "없음"
-    ranked = "\n".join(f"- {m} ({score:.3f})" for m, score in rank_modules(index.graph)[:10])
+    ranked = "\n".join(f"- {m} ({score:.3f})" for m, score in list(ranked_scores.items())[:10])
     prompt = SYNTHESIZE_GUIDE.format(
         repo_id=index.info.repo_id,
         summaries=summaries or "없음",
