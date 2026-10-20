@@ -13,6 +13,7 @@ dependencies = [
     "langsmith",
     "networkx",
     "python-dotenv",
+    "scipy>=1.17.1",
 ]
 
 [project.scripts]
@@ -34,6 +35,7 @@ packages = ["src/repoute"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = ["*.md"]  # 문서 안의 코드 블록은 설명용이라 포맷 검사 제외
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
