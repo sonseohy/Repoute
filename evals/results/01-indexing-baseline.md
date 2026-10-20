@@ -1,4 +1,4 @@
-# 20261021 — 인덱싱 베이스라인 (Phase 1)
+# 01. 인덱싱 베이스라인
 
 LLM 미사용 정적 분석 파이프라인(clone → ast 파싱 → SQLite → import 그래프 → PageRank)의 첫 측정.
 
