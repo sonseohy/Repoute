@@ -4,6 +4,7 @@
 """
 
 import argparse
+import importlib
 import json
 import time
 from datetime import date
@@ -41,14 +42,16 @@ def estimate_cost(usage: dict) -> float | None:
     return total
 
 
-def run_one(repo: str, validate: bool, cache_dir) -> dict:
-    """레포 하나를 한 모드로 돌리고, 결과 인용을 사후 검증해 지표 dict 를 돌려준다."""
+def run_one(repo: str, validate: bool, cache_dir, prompt: str = "v1") -> dict:
+    """레포 하나를 한 모드·프롬프트로 돌리고, 결과 인용을 사후 검증해 지표 dict 를 돌려준다."""
+    prompts = importlib.import_module(f"repoute.prompts.reading_guide_{prompt}")
     index = build_index(f"https://github.com/{repo}", cache_dir)
     try:
-        graph = build_reading_guide_graph(Deps(get_fast_llm(), get_quality_llm(), index), validate)
+        deps = Deps(get_fast_llm(), get_quality_llm(), index)
+        graph = build_reading_guide_graph(deps, validate, prompts=prompts)
         mode = "validate" if validate else "naive"
         cb = UsageMetadataCallbackHandler()  # 그래프 안 모든 LLM 호출의 토큰을 모델별로 합산
-        config = {"callbacks": [cb], "tags": ["e4", mode, repo]}
+        config = {"callbacks": [cb], "tags": ["e4", mode, repo, f"prompt-{prompt}"]}
         start = time.perf_counter()
         state = graph.invoke({"retry_count": 0, "validation_errors": []}, config=config)
         elapsed = time.perf_counter() - start
@@ -63,6 +66,7 @@ def run_one(repo: str, validate: bool, cache_dir) -> dict:
         return {
             "repo": index.info.repo_id,
             "mode": mode,
+            "prompt": prompt,
             "files": index.file_count,
             "targets": len(state.get("targets", [])),
             "citations": len(refs),
@@ -88,20 +92,28 @@ def _avg(values: list) -> float | None:
     return None if not values or None in values else sum(values) / len(values)
 
 
-def render_markdown(rows: list[dict]) -> str:
+DEFAULT_TITLE = "03. 실험 E4 — 인용 검증 루프 유무"
+
+
+def render_markdown(rows: list[dict], title: str = DEFAULT_TITLE) -> str:
     """raw 결과를 실험 기록 마크다운으로 만든다. '관찰' 은 사람이 채운다."""
     s = load_settings()
     ok = [r for r in rows if "error" not in r]
     n = len({r["repo"] for r in ok})
+    # 예전 결과(03 기록)에는 prompt 키가 없다 — 그때는 v1 만 있었다
+    versions = ", ".join(sorted({r.get("prompt", "v1") for r in rows}))
     lines = [
-        f"# 03. 실험 E4 — 인용 검증 루프 유무 (Phase 2, {date.today().isoformat()})",
+        f"# {title} (Phase 2, {date.today().isoformat()})",
         "",
         "## 방법",
         "",
         f"- **n = {n}** 레포, 모드 2개(naive=`validate=False`, validate=검증 루프, "
         f"재생성 상한 {MAX_RETRIES}회)",
         f"- **모델**: fast = {s.fast_model}, quality = {s.quality_model} ({s.provider}), "
-        "temperature 0. 프롬프트 v1.",
+        f"temperature 0. 프롬프트 {versions}.",
+        "- **합성 입력**: 모듈마다 `인용 가능한 줄: 1(모듈 시작), 이름:줄, ...` 목록과 "
+        "검증 오류별 힌트(`→ 인용 가능한 줄`·`비슷한 경로`)를 넣는다. 03 기록(E4) 이후 "
+        "v1·v2 공통으로 바뀐 입력이라, 03 의 v1 결과와는 프롬프트 외에 이 점도 다르다.",
         "- **인용 유효성**: 두 모드 모두 최종 guide 의 인용(진입점 + 각 단계 ref)을 "
         "`citation_validity`·`validate_citations` 로 사후 검증 (naive 는 루프 없이 결과만 채점).",
         "- **토큰**: `UsageMetadataCallbackHandler` 로 그래프 안 LLM 호출을 모델별 합산.",
@@ -155,7 +167,9 @@ def main() -> None:
     parser.add_argument("--repos", nargs="+", default=REPOS, help="owner/name 목록")
     parser.add_argument("--mode", choices=["naive", "validate", "both"], default="both")
     parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스 캐시")
+    parser.add_argument("--prompt", choices=["v1", "v2"], default="v1", help="프롬프트 버전")
     parser.add_argument("--out", default="evals/results/03-e4-validation-loop.md")
+    parser.add_argument("--title", default=DEFAULT_TITLE, help="결과 마크다운 제목 (번호. 실험명)")
     args = parser.parse_args()
     modes = {"naive": [False], "validate": [True], "both": [False, True]}[args.mode]
 
@@ -164,14 +178,15 @@ def main() -> None:
         for validate in modes:
             mode = "validate" if validate else "naive"
             try:
-                row = run_one(repo, validate, args.cache_dir)
+                row = run_one(repo, validate, args.cache_dir, args.prompt)
                 print(
                     f"[ok] {repo} {mode}: 유효 {row['valid']:.0%}, 재생성 {row['retries']}, "
                     f"{_money(row['cost'])}, {row['elapsed']:.1f}s"
                 )
             except Exception as e:  # 한 레포가 실패해도 나머지는 계속 잰다
                 message = str(e).strip().splitlines()[0] if str(e).strip() else ""
-                row = {"repo": repo, "mode": mode, "error": f"{type(e).__name__}: {message}"}
+                error = f"{type(e).__name__}: {message}"
+                row = {"repo": repo, "mode": mode, "prompt": args.prompt, "error": error}
                 print(f"[fail] {repo} {mode}: {row['error']}")
             rows.append(row)
 
@@ -180,7 +195,7 @@ def main() -> None:
     out.with_suffix(".json").write_text(
         json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    out.write_text(render_markdown(rows), encoding="utf-8")
+    out.write_text(render_markdown(rows, args.title), encoding="utf-8")
     print(f"저장: {out} , {out.with_suffix('.json')}")
 
 

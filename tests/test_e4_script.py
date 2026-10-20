@@ -62,6 +62,13 @@ def test_render_markdown_lists_failures():
     assert "| naive | n=2 |" in text
 
 
+def test_render_markdown_records_prompt_version():
+    """방법 절에 row 의 프롬프트 버전이 찍힌다. prompt 키가 없는 예전 row 는 v1 로 본다."""
+    assert "프롬프트 v1." in render_markdown(ROWS)
+    rows = [{**r, "prompt": "v2"} for r in ROWS]
+    assert "프롬프트 v2." in render_markdown(rows)
+
+
 def test_estimate_cost_uses_prices():
     """gpt-4o-mini 입력 100만 토큰 = $0.15, gpt-4o 출력 100만 토큰 = $10."""
     assert estimate_cost({"gpt-4o-mini": {"input_tokens": 1_000_000, "output_tokens": 0}}) == 0.15

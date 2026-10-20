@@ -1,6 +1,7 @@
 """명령줄 진입점: uv run repoute <명령>."""
 
 import argparse
+import importlib
 import os
 import sys
 import time
@@ -57,13 +58,14 @@ def index(url: str, cache_dir: str) -> None:
     repo.db.close()
 
 
-def map_repo(url: str, cache_dir: str, validate: bool) -> None:
+def map_repo(url: str, cache_dir: str, validate: bool, prompt: str = "v2") -> None:
     """레포 읽기 지도(진입점 + 읽기 순서)를 만들어 출력한다. 실제 LLM 을 호출한다."""
+    prompts = importlib.import_module(f"repoute.prompts.reading_guide_{prompt}")
     start = time.perf_counter()
     try:
         repo = build_index(url, cache_dir)
         deps = Deps(get_fast_llm(), get_quality_llm(), repo)
-        state = run_reading_guide(deps, validate=validate)
+        state = run_reading_guide(deps, validate=validate, prompts=prompts)
     except Exception as e:  # URL·git·API 키·네트워크 오류는 한 줄로만 알린다
         message = str(e).strip().splitlines()[0] if str(e).strip() else ""
         print(f"오류: {type(e).__name__}: {message}")
@@ -105,13 +107,14 @@ def main() -> None:
     map_parser.add_argument("url", help="GitHub URL 또는 로컬 레포 경로")
     map_parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스 캐시")
     map_parser.add_argument("--no-validate", action="store_true", help="인용 검증 루프 끄기")
+    map_parser.add_argument("--prompt", choices=["v1", "v2"], default="v2", help="프롬프트 버전")
     args = parser.parse_args()
     if args.command == "check":
         check()
     elif args.command == "index":
         index(args.url, args.cache_dir)
     elif args.command == "map":
-        map_repo(args.url, args.cache_dir, validate=not args.no_validate)
+        map_repo(args.url, args.cache_dir, validate=not args.no_validate, prompt=args.prompt)
 
 
 if __name__ == "__main__":

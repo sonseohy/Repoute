@@ -14,6 +14,7 @@ from repoute.graphs.reading_guide import (
     select_targets,
 )
 from repoute.indexing.index import build_index
+from repoute.prompts import reading_guide_v2
 from repoute.validation.citations import CodeRef
 
 # 원본 레포 파일: main 의 run() 이 util 의 helper() 를 부른다 (test_index 와 같은 구성)
@@ -131,6 +132,36 @@ def test_naive_skips_validation(index):
     assert not state.get("validation_errors")
     assert state["retry_count"] == 0
     assert len(deps.quality_llm.prompts) == 1
+
+
+def test_v2_prompt_happy_path(index):
+    """prompts=v2 로도 정상 흐름이 되고, 합성 프롬프트에 v2 규칙과 줄 1(모듈 시작)이 들어간다."""
+    deps = _deps(index, _target_count(index), [_guide(4)])
+    state = run_reading_guide(deps, prompts=reading_guide_v2)
+    assert state["validation_errors"] == []
+    assert state["retry_count"] == 0
+    prompt = deps.quality_llm.prompts[0]
+    assert "인용 가능한 줄: 1(모듈 시작)" in prompt  # 심볼 없는 모듈도 인용할 줄이 생긴다
+    assert "1 이상의 정수" in prompt  # v2 에만 있는 규칙
+
+
+def test_feedback_hint_lists_citable_lines(index):
+    """줄 범위 밖 인용(999)의 피드백에 "대신 쓸 줄"(1(모듈 시작), run:4) 힌트가 붙는다."""
+    deps = _deps(index, _target_count(index), [_guide(999), _guide(4)])
+    run_reading_guide(deps)
+    hint = "app/main.py:999 — 파일은 5줄까지 → 이 파일에서 인용 가능한 줄: 1(모듈 시작), run:4"
+    assert hint in deps.quality_llm.prompts[1]
+    assert "run:4" not in deps.quality_llm.prompts[0]  # 요약 목록이 아니라 힌트에서 온 값
+
+
+def test_feedback_hint_similar_path(index):
+    """없는 파일(main.py) 인용이면 같은 파일명의 인덱스 경로(app/main.py)를 힌트로 준다."""
+    wrong = _guide(4)
+    wrong.entrypoints = [CodeRef(file="main.py", line=4, symbol="run")]
+    deps = _deps(index, _target_count(index), [wrong, _guide(4)])
+    run_reading_guide(deps)
+    hint = "main.py:4 — 파일이 없음 → 인덱스에 있는 비슷한 경로: app/main.py"
+    assert hint in deps.quality_llm.prompts[1]
 
 
 def test_cli_help_shows_map():
