@@ -1,0 +1,35 @@
+[
+  {
+    "repo": "fastapi/fastapi@6f28852",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 541,
+    "targets": 22,
+    "citations": 6,
+    "refs": [
+      "fastapi/cli.py:8",
+      "fastapi/__init__.py:1",
+      "fastapi/exceptions.py:17",
+      "fastapi/responses.py:48",
+      "fastapi/routing.py:1179",
+      "fastapi/cli.py:8"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 18063,
+        "output_tokens": 1890
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 5755,
+        "output_tokens": 356
+      }
+    },
+    "cost": 0.021790950000000003,
+    "elapsed": 8.213998666964471
+  }
+]

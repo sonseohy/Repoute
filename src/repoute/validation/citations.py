@@ -57,3 +57,28 @@ def citation_validity(refs: list[CodeRef], db: SymbolDB, root: Path) -> float:
         return 0.0
     wrong = len(validate_citations(refs, db, root))
     return (len(refs) - wrong) / len(refs)
+
+
+def citation_specificity(refs: list[CodeRef], db: SymbolDB, root: Path) -> float:
+    """심볼을 실제로 가리키는 인용 비율 (0.0~1.0). 유효성과 별개로 "유용한 인용" 을 잰다.
+
+    구체적 = 그 파일의 어떤 심볼 범위(line_start~line_end) 안의 줄을 가리킴.
+    심볼이 하나도 없는 파일은 줄 1 도 구체적으로 인정(달리 가리킬 곳이 없음).
+    유효하지 않은 인용은 비구체적. 인용 없으면 0.0.
+    """
+    if not refs:
+        return 0.0
+    root = root.resolve()
+    cache: dict[Path, int] = {}
+    specific = 0
+    for ref in refs:
+        if _check(ref, db, root, cache) is not None:  # 틀린 인용은 어디도 가리키지 않는다
+            continue
+        rel = (root / ref.file).resolve().relative_to(root).as_posix()  # _check 와 같은 정규화
+        query = "SELECT line_start, line_end FROM symbols WHERE file = ?"
+        spans = db.conn.execute(query, (rel,)).fetchall()
+        if spans:
+            specific += any(start <= ref.line <= end for start, end in spans)
+        else:
+            specific += ref.line == 1  # 심볼 없는 파일은 줄 1(모듈 시작)만 인정
+    return specific / len(refs)

@@ -2,6 +2,8 @@
 
 import operator
 from functools import partial
+from pathlib import PurePosixPath
+from types import ModuleType
 from typing import Annotated, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -11,13 +13,15 @@ from pydantic import BaseModel
 from repoute.graphs.deps import Deps
 from repoute.indexing.entrypoints import find_entrypoints
 from repoute.indexing.imports import rank_modules
-from repoute.prompts.reading_guide_v1 import SUMMARIZE_MODULE, SYNTHESIZE_GUIDE
+from repoute.prompts import reading_guide_v1
 from repoute.validation.citations import CodeRef, validate_citations
 
 MAX_TARGETS = 12  # PageRank 상위 몇 개 모듈을 요약할지
 HEAD_LINES = 60  # 요약 프롬프트에 넣을 파일 앞부분 줄 수
 MAX_EDGES = 30  # 합성 프롬프트에 넣을 import 관계 수
 MAX_RETRIES = 2  # 인용 검증 실패 시 재생성 횟수 상한 (무한 루프 방지)
+MAX_HINT_LINES = 15  # 힌트에 넣을 인용 가능한 심볼 줄 수
+MAX_HINT_PATHS = 3  # 힌트에 넣을 비슷한 경로 수
 
 
 class ModuleSummary(BaseModel):
@@ -62,6 +66,15 @@ def _symbols(deps: Deps, file: str) -> list[tuple[str, str, int]]:
     return [tuple(row) for row in rows]
 
 
+def _citable(deps: Deps, file: str, limit: int | None = None) -> str:
+    """인용 가능한 줄 목록. 심볼이 없는 모듈만 줄 1(모듈 시작)을 준다.
+
+    심볼이 있는 파일에도 줄 1 을 주면 모델이 안전한 줄 1 로 쏠린다 (E6, troubleshooting 14).
+    """
+    symbols = _symbols(deps, file)[:limit]
+    return ", ".join(f"{n}:{line}" for n, _, line in symbols) or "1(모듈 시작)"
+
+
 def select_targets(state: GuideState, deps: Deps) -> dict:
     """PageRank 상위 모듈 + 진입점이 있는 모듈 (중복 제거, 순서 유지)."""
     graph = deps.index.graph
@@ -84,7 +97,7 @@ def fan_out(state: GuideState, deps: Deps) -> list[Send]:
     ]
 
 
-def summarize_module(state: dict, deps: Deps) -> dict:
+def summarize_module(state: dict, deps: Deps, prompts: ModuleType = reading_guide_v1) -> dict:
     """모듈 하나를 fast 모델로 요약한다. 입력은 Send 로 받은 {"module", "symbols"}."""
     module = state["module"]
     file = deps.index.graph.nodes[module]["file"]
@@ -92,17 +105,17 @@ def summarize_module(state: dict, deps: Deps) -> dict:
     source = (deps.index.info.path / file).read_text(encoding="utf-8", errors="replace")
     head = source.splitlines()[:HEAD_LINES]
     code = "\n".join(f"{i:>4}| {text}" for i, text in enumerate(head, start=1))
-    prompt = SUMMARIZE_MODULE.format(module=module, file=file, symbols=symbols, code=code)
+    prompt = prompts.SUMMARIZE_MODULE.format(module=module, file=file, symbols=symbols, code=code)
     result = deps.fast_llm.with_structured_output(ModuleSummary).invoke(prompt)
     return {"summaries": [result]}
 
 
-def synthesize(state: GuideState, deps: Deps) -> dict:
+def synthesize(state: GuideState, deps: Deps, prompts: ModuleType = reading_guide_v1) -> dict:
     """요약·import 관계·진입점·PageRank 로 읽기 순서를 합성한다 (quality 모델)."""
     index = deps.index
     summaries = "\n".join(
         f"- {s.module} ({s.file}, {s.role}): {s.summary}\n"
-        f"  심볼: {', '.join(f'{n}:{line}' for n, _, line in _symbols(deps, s.file)) or '없음'}"
+        f"  인용 가능한 줄: {_citable(deps, s.file)}"
         for s in state.get("summaries", [])
     )
     ranked_scores = dict(rank_modules(index.graph))
@@ -112,7 +125,7 @@ def synthesize(state: GuideState, deps: Deps) -> dict:
     entry = find_entrypoints(index.db, index.info.path)
     entrypoints = "\n".join(f"- {s.file}:{s.line_start} {s.name}" for s in entry) or "없음"
     ranked = "\n".join(f"- {m} ({score:.3f})" for m, score in list(ranked_scores.items())[:10])
-    prompt = SYNTHESIZE_GUIDE.format(
+    prompt = prompts.SYNTHESIZE_GUIDE.format(
         repo_id=index.info.repo_id,
         summaries=summaries or "없음",
         edges=edges,
@@ -126,11 +139,25 @@ def synthesize(state: GuideState, deps: Deps) -> dict:
     return {"guide": result, "retry_count": retry}
 
 
+def _hint(error: str, ref: CodeRef, deps: Deps) -> str:
+    """검증 오류 하나에 "대신 무엇을 쓸지" 알려 주는 힌트 (E4 에서 피드백만으로는 못 고쳤다)."""
+    file = str(PurePosixPath(ref.file))  # "./a.py" 같은 표기를 DB 경로("a.py")와 맞춘다
+    if error.endswith("파일이 없음"):
+        name = PurePosixPath(file).name
+        files = {data["file"] for _, data in deps.index.graph.nodes(data=True)}
+        similar = sorted(f for f in files if PurePosixPath(f).name == name)[:MAX_HINT_PATHS]
+        return f"인덱스에 있는 비슷한 경로: {', '.join(similar) or '없음'}"
+    return f"이 파일에서 인용 가능한 줄: {_citable(deps, file, MAX_HINT_LINES)}"
+
+
 def validate(state: GuideState, deps: Deps) -> dict:
-    """진입점·각 단계의 인용을 실제 코드와 대조한다 (wave08 Validator)."""
+    """진입점·각 단계의 인용을 실제 코드와 대조하고, 오류마다 힌트를 붙인다 (wave08 Validator)."""
     guide = state["guide"]
     refs = guide.entrypoints + [step.ref for step in guide.reading_order]
-    errors = validate_citations(refs, deps.index.db, deps.index.info.path)
+    errors = []
+    for ref in refs:  # 오류와 인용을 짝지으려고 하나씩 검사한다
+        for error in validate_citations([ref], deps.index.db, deps.index.info.path):
+            errors.append(f"{error} → {_hint(error, ref, deps)}")
     return {"validation_errors": errors}
 
 
@@ -144,12 +171,17 @@ def after_validate(state: GuideState) -> str:
     return END
 
 
-def build_reading_guide_graph(deps: Deps, validate: bool = True):
-    """validate=False 면 검증 루프 없는 naive 버전 (실험 E4 베이스라인용)."""
+def build_reading_guide_graph(
+    deps: Deps, validate: bool = True, prompts: ModuleType = reading_guide_v1
+):
+    """validate=False 면 검증 루프 없는 naive 버전 (실험 E4 베이스라인용).
+
+    prompts 는 SUMMARIZE_MODULE·SYNTHESIZE_GUIDE 를 가진 프롬프트 모듈 (기본 v1: E4 재현용).
+    """
     builder = StateGraph(GuideState)
     builder.add_node("select_targets", partial(select_targets, deps=deps))
-    builder.add_node("summarize_module", partial(summarize_module, deps=deps))
-    builder.add_node("synthesize", partial(synthesize, deps=deps))
+    builder.add_node("summarize_module", partial(summarize_module, deps=deps, prompts=prompts))
+    builder.add_node("synthesize", partial(synthesize, deps=deps, prompts=prompts))
     builder.add_edge(START, "select_targets")
     builder.add_conditional_edges(
         "select_targets", partial(fan_out, deps=deps), ["summarize_module"]
@@ -164,7 +196,9 @@ def build_reading_guide_graph(deps: Deps, validate: bool = True):
     return builder.compile()
 
 
-def run_reading_guide(deps: Deps, validate: bool = True) -> GuideState:
+def run_reading_guide(
+    deps: Deps, validate: bool = True, prompts: ModuleType = reading_guide_v1
+) -> GuideState:
     """그래프를 만들어 한 번 실행하고 최종 상태를 돌려준다."""
-    graph = build_reading_guide_graph(deps, validate=validate)
+    graph = build_reading_guide_graph(deps, validate=validate, prompts=prompts)
     return graph.invoke({"retry_count": 0, "validation_errors": []})

@@ -1,0 +1,181 @@
+[
+  {
+    "repo": "psf/requests@611c616",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 20,
+    "targets": 13,
+    "citations": 8,
+    "refs": [
+      "src/requests/help.py:126",
+      "src/requests/compat.py:36",
+      "src/requests/models.py:108",
+      "src/requests/structures.py:20",
+      "src/requests/__init__.py:60",
+      "src/requests/cookies.py:31",
+      "src/requests/exceptions.py:20",
+      "src/requests/utils.py:99"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 14933,
+        "output_tokens": 1031
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4153,
+        "output_tokens": 501
+      }
+    },
+    "cost": 0.018251049999999998,
+    "elapsed": 7.879157333867624
+  },
+  {
+    "repo": "encode/httpx@b5addb6",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 23,
+    "targets": 14,
+    "citations": 9,
+    "refs": [
+      "httpx/__init__.py:18",
+      "httpx/_models.py:139",
+      "httpx/_types.py:92",
+      "httpx/_urls.py:15",
+      "httpx/_exceptions.py:74",
+      "httpx/_utils.py:15",
+      "httpx/_config.py:16",
+      "httpx/_auth.py:22",
+      "httpx/_main.py:452"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 17856,
+        "output_tokens": 1106
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4932,
+        "output_tokens": 543
+      }
+    },
+    "cost": 0.021102000000000003,
+    "elapsed": 8.02142187510617
+  },
+  {
+    "repo": "fastapi/fastapi@6f28852",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 541,
+    "targets": 22,
+    "citations": 6,
+    "refs": [
+      "fastapi/cli.py:8",
+      "fastapi/__init__.py:1",
+      "fastapi/exceptions.py:17",
+      "fastapi/_compat/v2.py:43",
+      "fastapi/responses.py:48",
+      "fastapi/routing.py:129"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 18063,
+        "output_tokens": 1888
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 5753,
+        "output_tokens": 346
+      }
+    },
+    "cost": 0.021684750000000003,
+    "elapsed": 6.737884416943416
+  },
+  {
+    "repo": "pallets/click@2247b35",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 17,
+    "targets": 13,
+    "citations": 12,
+    "refs": [
+      "src/click/core.py:1496",
+      "src/click/core.py:1506",
+      "src/click/core.py:1515",
+      "src/click/testing.py:100",
+      "src/click/_compat.py:22",
+      "src/click/core.py:238",
+      "src/click/types.py:60",
+      "src/click/utils.py:32",
+      "src/click/_winconsole.py:83",
+      "src/click/exceptions.py:35",
+      "src/click/globals.py:13",
+      "src/click/shell_completion.py:19"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 19873,
+        "output_tokens": 1099
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 6643,
+        "output_tokens": 589
+      }
+    },
+    "cost": 0.02613785,
+    "elapsed": 8.57382420799695
+  },
+  {
+    "repo": "Textualize/rich@9d8f9a3",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 109,
+    "targets": 15,
+    "citations": 9,
+    "refs": [
+      "rich/live.py:111",
+      "rich/progress.py:1168",
+      "rich/status.py:85",
+      "rich/cells.py:38",
+      "rich/console.py:581",
+      "rich/_unicode_data/__init__.py:31",
+      "rich/text.py:118",
+      "rich/style.py:40",
+      "rich/segment.py:61"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 19610,
+        "output_tokens": 1200
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 5715,
+        "output_tokens": 465
+      }
+    },
+    "cost": 0.022599,
+    "elapsed": 6.866590790916234
+  }
+]
