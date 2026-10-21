@@ -62,7 +62,7 @@
 ## 10. 진입점 휴리스틱이 디버그 함수를 고름 — `requests/help.py:main` (Phase 2)
 - **증상**: requests 의 진입점으로 `help.py:126 main` 이 뽑힘. 실제 진입은 `api.py` 의 `get/post` 또는 `__init__.py` 의 공개 API.
 - **원인**: 이름이 `main` 이면 무조건 후보. 라이브러리형 레포(CLI 가 아닌)는 `main` 이 진입점이 아니다.
-- **측정됨(기록 14)**: gold 19개 중 1개만 맞음, `entrypoint_recall` 0.05 (n=5). **미해결**. 후보: `__init__.py` 의 `__all__`/import 된 이름을 후보에 추가, 공개 클래스와 그 핵심 메서드, `help`·`debug`·`_compat`·`testing` 파일명 감점. 목표 0.5 이상.
+- **측정됨(기록 14)**: gold 19개 중 1개만 맞음, `entrypoint_recall` 0.05 (n=5). **부분 해결(기록 15)**: `__init__.py` export 기반 후보 +3, 공개 클래스 핵심 메서드 +2, 경로·비공개 감점 → recall@10 0.58, @5 0.43. 남은 문제: +3 동점 60개를 파일 이름순으로 가르는 운 의존, CLI `main` 이 라이브러리에서 1위(httpx `_main.py`, fastapi `cli.py`). 다음: 호출 그래프로 동점 가르기, scripts 없는 레포에서 `main` 가산 제거.
 
 ## 11. 읽기 순서가 PageRank 순위를 그대로 따라감 (Phase 2)
 - **증상**: requests 읽기 순서 1~3위가 PageRank 1~3위(compat, models, structures)와 같음. 사람은 `api.py → sessions.py → adapters.py` 흐름을 먼저 읽는다.

@@ -18,6 +18,7 @@
 | [12](12-walkthrough-batch-explore-limit.md) | walkthrough-batch-explore-limit | 11 + 읽기 없이 탐색 6회면 도구 층에서 거부 | **엄격 통과 13→20/20, read_code 0회 7→0, 재작성 7→0, $0.42→$0.37.** 도달 8→4/20 (얕은 답, trade-off) | 20 | 10 과 동일 | 태그 `wt-batch` | (커밋 후 기재) |
 | [13](13-walkthrough-batch-quality.md) | walkthrough-batch-quality (E5) | 12 와 동일, agent 만 gpt-4o | 엄격 20/20 유지, **도달 4→13/20**, 단계 3.3→4.9, 도구 11.9→9.9, 시간 17→14s, 질문당 $0.018→$0.083 (4.5배) | 20 | 12 와 동일 | 태그 `wt-batch` | (커밋 후 기재) |
 | [14](14-phase4-baselines.md) | phase4-baselines | 정답 데이터셋(레포 5, 질문 20 체인) + 평가자 4종, 현재 수치 측정 | 정적 진입점 재현율 **0.05**, PageRank p@5 **0.24**; 체인 정확도 fast 0.49 / fast+상한 0.28 / quality 0.60 | 5 레포 / 20 질문 | 결정론적 평가자, 기존 raw 재채점 | — (LLM 미사용) | (커밋 후 기재) |
+| [15](15-entrypoints-v2.md) | entrypoints-v2 | 공개 API export 기반 진입점 후보·점수, docs_src 제외 | 정적 entrypoint_recall@10 **0.05 → 0.58**, @5 0.43 (동점 처리가 운에 의존, fastapi 76파일) | 5 | static_baseline.py (LLM 미사용) | — | (커밋 후 기재) |
 
 ## 이름 규칙
 
