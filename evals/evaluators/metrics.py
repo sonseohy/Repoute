@@ -135,3 +135,35 @@ def predicted_chain_from_refs(refs: list[tuple[str, str | None]]) -> list[str]:
         if symbol and (not chain or chain[-1] != symbol):
             chain.append(symbol)
     return chain
+
+
+def issue_module_precision_at_k(
+    predicted_modules: list[str], gold_modules: list[str], k: int = 3
+) -> float:
+    """Issue Matcher: 예측 상위 k 모듈 중 정답 모듈 비율. 분모는 min(k, 정답 수).
+
+    이슈 정답 모듈은 대개 1~2개라 core_module_precision_at_k 처럼 분모를 k 로 두면
+    정답이 1개인 이슈의 만점이 1/k 가 된다. 그래서 분모를 정답 수에 맞춘다
+    (정답 1개를 상위 3개 안에 맞히면 1.0). 비교 규칙(끝 두 조각, 중복 한 번)은 같다.
+    """
+    if not gold_modules or k <= 0:
+        return 0.0
+    denom = min(k, len(gold_modules))
+    hits = core_module_precision_at_k(predicted_modules, gold_modules, k) * k
+    return min(1.0, round(hits) / denom)
+
+
+def issue_module_hit_at_k(
+    predicted_modules: list[str], gold_modules: list[str], k: int = 3
+) -> bool:
+    """Issue Matcher: 상위 k 예측 모듈 중 정답이 하나라도 있는가 (가장 느슨한 지표)."""
+    return issue_module_precision_at_k(predicted_modules, gold_modules, k) > 0
+
+
+def issue_symbol_hit(predicted_symbols: list[str], gold_symbols: list[str]) -> bool:
+    """Issue Matcher: 예측 심볼 중 하나라도 정답 심볼과 끝 이름이 같은가.
+
+    "Session.request" 정답에 "request" 예측도 맞은 것으로 친다(_tail 비교).
+    """
+    gold_tails = {_tail(g) for g in gold_symbols}
+    return any(_tail(p) in gold_tails for p in predicted_symbols)

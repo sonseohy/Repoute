@@ -21,6 +21,7 @@ class Settings:
     fast_model: str  # 저비용 모델: 라우팅·요약
     quality_model: str  # 고품질 모델: 최종 합성·설명
     embedding_model: str = DEFAULT_EMBEDDING_MODEL  # 심볼 임베딩 (search_symbols 를 켤 때만 사용)
+    github_token: str = ""  # github-mcp-server 원격 엔드포인트 인증 (Issue Matcher, 없으면 빈 값)
 
 
 def load_settings() -> Settings:
@@ -30,6 +31,7 @@ def load_settings() -> Settings:
         fast_model=os.environ.get("FAST_MODEL", "gpt-4o-mini"),
         quality_model=os.environ.get("QUALITY_MODEL", "gpt-4o"),
         embedding_model=os.environ.get("REPOUTE_EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL),
+        github_token=os.environ.get("GITHUB_PERSONAL_ACCESS_TOKEN", ""),
     )
 
 

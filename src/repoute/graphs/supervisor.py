@@ -5,16 +5,22 @@ wave06: 게이트는 프롬프트가 아니라 코드로 (심볼 없는 ask 는 
 wave12: 체크포인터를 주면 guide·cursor·history 가 thread 에 남아 "다음 파일" 이 지도를 다시
 만들지 않는다. Phase 5 API 의 단일 진입점. 진행 상황은 events 로 쌓여
 stream_mode="updates" 로 보인다.
+Phase 6: issues 의도는 기여할 이슈를 추천한다. 프로필(관심·수준)이 thread 에 없으면
+interrupt() 로 멈춰 사용자에게 묻고, 같은 thread 의 다음 메시지를 Command(resume=...) 로 받아
+이어 간다 (pending_interrupt·turn_input 참고).
 """
 
+import asyncio
 import operator
 import re
+import threading
 from dataclasses import dataclass, field
 from functools import partial
 from pathlib import Path
 from typing import Annotated, Any, Literal, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command, interrupt
 from pydantic import BaseModel
 
 from repoute.config import DEFAULT_EMBEDDING_MODEL
@@ -42,6 +48,22 @@ SEEN_STEP_PATTERN = re.compile(
 NEXT_PATTERN = re.compile(
     r"^\s*(?:다음|그다음|이어서|next\b)|^\s*" + SEEN_STEP_PATTERN.pattern, re.IGNORECASE
 )
+# 이슈 추천을 원하는 말. LLM 이 map/chat 이라 해도 이 단어가 있으면 issues 로 고친다 (비용 0).
+# 오탐 위험: "이 issue 는 버그야?" 처럼 이슈를 언급만 하는 구조·흐름 질문도 issues 로 간다.
+# 그래도 issues 는 프로필 질문(또는 토큰 안내)으로 시작해 되돌리기 쉽고, ask 는 건드리지 않아
+# 함수 이름이 있는 질문의 따라가기는 잃지 않는다.
+ISSUE_PATTERN = re.compile(r"이슈|issue|기여|contribute|good\s*first", re.IGNORECASE)
+# 프로필 수준 단어 → Profile.level. 영어 셋에 한국어 별칭을 더했다
+LEVEL_WORDS = {
+    "beginner": "beginner",
+    "초보": "beginner",
+    "초급": "beginner",
+    "입문": "beginner",
+    "intermediate": "intermediate",
+    "중급": "intermediate",
+    "advanced": "advanced",
+    "고급": "advanced",
+}
 HISTORY_IN_PROMPT = 4  # 분류 프롬프트에 넣는 최근 대화 수
 HISTORY_TEXT_LIMIT = 200  # 기억 한 줄의 최대 글자 수 (프롬프트가 커지지 않게)
 
@@ -49,8 +71,9 @@ HISTORY_TEXT_LIMIT = 200  # 기억 한 줄의 최대 글자 수 (프롬프트가
 class Intent(BaseModel):
     """의도 분류 결과 (fast 모델 구조화 출력)."""
 
-    # map=구조/어디서부터, ask=특정 코드 흐름, next=읽기 순서 다음 단계, chat=인사·기타
-    kind: Literal["map", "ask", "chat", "next"]
+    # map=구조/어디서부터, ask=특정 코드 흐름, next=읽기 순서 다음 단계, chat=인사·기타,
+    # issues=기여할 이슈 추천 (Phase 6)
+    kind: Literal["map", "ask", "chat", "next", "issues"]
     reason: str
 
 
@@ -76,6 +99,8 @@ class SupervisorState(TypedDict, total=False):
     next: dict | None  # next 결과 (next_step 참고)
     validation_errors: list[str]  # 서브그래프에 남은 인용 오류 (설계 원칙 2: 숨기지 않는다)
     reply: str | None  # chat 또는 안내 문구
+    profile: dict | None  # 이슈 추천 프로필 (Profile.model_dump). thread 에 남아 다시 묻지 않는다
+    issues: Any  # IssueMatches | None — issues 결과. 클래스는 다른 모듈이라 지연 import (Any)
     history: Annotated[list[dict], operator.add]  # 최근 대화 {"role": "user"|"agent", "text"}
     events: Annotated[list[dict], add_events]  # 진행 상황 (SSE 용), 이번 실행 분만
 
@@ -96,6 +121,8 @@ class SupervisorDeps:
     embedder: Any = None
     embedding_model: str = DEFAULT_EMBEDDING_MODEL
     stores: dict[str, Any] = field(default_factory=dict)  # repo_url → SymbolEmbeddingStore
+    github_token: str = ""  # 이슈 추천용 GitHub 토큰. 비면 issues 는 안내만 한다
+    issue_tools: dict | None = None  # 이름 → GitHub MCP 도구. None 이면 첫 이슈 요청에서 1회 로드
 
     def sub_deps(self, repo_url: str) -> Deps:
         """서브그래프(읽기 지도·따라가기)가 받을 Deps. 임베딩 저장소가 있으면 함께 넘긴다."""
@@ -144,6 +171,8 @@ def _gate(
         return "map", "이 대화에 읽기 지도가 없어 다음 단계를 고를 수 없음"
     if kind == "ask" and not can_search and not SYMBOL_PATTERN.search(message):
         return "map", "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음"
+    if kind in ("map", "chat") and ISSUE_PATTERN.search(message):
+        return "issues", "메시지에 이슈·기여 단어가 있어 이슈 추천으로 보냄"
     return None
 
 
@@ -155,6 +184,7 @@ def classify(state: SupervisorState, deps: SupervisorDeps) -> dict:
     - 지도 없는 next → map: 이어 갈 읽기 순서가 없다.
     - 지도가 있고 "다음" 으로 시작 → next: 지도를 다시 만들면 같은 1단계를 또 보여 주고
       LLM 비용도 다시 든다 (UI 에서 발견한 문제).
+    - map/chat 인데 이슈·기여 단어가 있음 → issues (ISSUE_PATTERN 참고).
     """
     history = _history_text(state.get("history") or [])
     prompt = supervisor_v2.CLASSIFY.format(history=history, message=state["message"])
@@ -169,7 +199,13 @@ def classify(state: SupervisorState, deps: SupervisorDeps) -> dict:
     return {"intent": intent, "events": events}
 
 
-ROUTES = {"map": "run_map", "ask": "run_ask", "next": "next_step", "chat": "chat_reply"}
+ROUTES = {
+    "map": "run_map",
+    "ask": "run_ask",
+    "next": "next_step",
+    "chat": "chat_reply",
+    "issues": "run_issues",
+}
 
 
 def route(state: SupervisorState) -> str:
@@ -248,6 +284,120 @@ def next_step(state: SupervisorState) -> dict:
     return {"next": nxt, "cursor": cursor + 1, "events": [event]}
 
 
+def _profile_class():
+    """Profile 클래스 (issue_matcher 를 쓸 때만 import 한다)."""
+    from repoute.graphs.issue_matcher import Profile
+
+    return Profile
+
+
+def parse_profile(text: str):
+    """사용자 답 한 줄 → Profile. 쉼표로 나눈 조각에서 수준 단어를 찾고 나머지는 관심 영역.
+
+    "인증, beginner" → (인증, beginner)
+    "HTTP 인증, CLI 파싱 고급" → (HTTP 인증, CLI 파싱, advanced)
+    수준 단어가 없으면 beginner (기여가 처음인 사용자가 가장 흔하다).
+    """
+    level, parts = "beginner", []
+    for chunk in text.split(","):
+        words = []
+        for word in chunk.split():
+            found = LEVEL_WORDS.get(word.strip(".!?()").lower())
+            if found:
+                level = found
+            else:
+                words.append(word)
+        if words:
+            parts.append(" ".join(words))
+    return _profile_class()(interests=", ".join(parts), level=level)
+
+
+def _run_async(coro):
+    """코루틴을 끝까지 돌린다. 실행 중인 루프가 있으면 새 스레드의 새 루프에서 돌린다.
+
+    API 는 그래프를 별도 스레드에서 돌려 보통 루프가 없지만, 노트북·async 코드에서 부르면
+    asyncio.run 이 "이미 루프가 돈다" 로 실패하므로 그 경우만 스레드를 하나 띄운다.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    box = {}
+
+    def target():
+        try:
+            box["value"] = asyncio.run(coro)
+        except BaseException as e:  # 스레드 밖으로 그대로 다시 던진다
+            box["error"] = e
+
+    worker = threading.Thread(target=target)
+    worker.start()
+    worker.join()
+    if "error" in box:
+        raise box["error"]
+    return box["value"]
+
+
+def _load_issue_tools(deps: SupervisorDeps) -> dict:
+    """GitHub MCP 도구를 처음 한 번만 불러 deps.issue_tools 에 둔다 (테스트는 대체한다)."""
+    if deps.issue_tools is None:
+        from repoute.github.mcp import load_github_tools
+
+        tools = _run_async(load_github_tools(deps.github_token))
+        deps.issue_tools = {tool.name: tool for tool in tools}
+    return deps.issue_tools
+
+
+def _run_issue_matcher(deps: SupervisorDeps, repo_url: str, profile):
+    """Issue Matcher 서브그래프를 부르는 얇은 래퍼 (지연 import, 테스트는 대체한다).
+
+    embedder 가 있으면 따라가기처럼 심볼 임베딩을 준비해 넘긴다 (같은 커밋이면 파일 캐시).
+    """
+    from repoute.graphs.issue_matcher import IssueDeps, run_issue_matcher
+
+    index, store = deps.indexes[repo_url], None
+    if deps.embedder is not None:
+        store = ensure_embeddings(index, deps.embedder, deps.embedding_model, deps.cache_dir)
+        deps.stores[repo_url] = store
+    sub = IssueDeps(
+        fast_llm=deps.fast_llm,
+        index=index,
+        embedder=deps.embedder,
+        embedding_store=store,
+        issue_tools=deps.issue_tools or {},
+    )
+    return run_issue_matcher(sub, f"{index.info.owner}/{index.info.name}", profile)
+
+
+def run_issues(state: SupervisorState, deps: SupervisorDeps) -> dict:
+    """기여할 이슈를 추천한다. 프로필이 없으면 interrupt() 로 멈춰 사용자에게 묻는다.
+
+    interrupt 는 노드를 예외로 멈추고, Command(resume=답) 으로 재개하면 이 노드를 처음부터
+    다시 실행하며 그때 interrupt() 가 답을 돌려준다. 그래서 interrupt 앞에는 다시 해도 되는
+    일(토큰 확인)만 두고, 비용이 드는 일(도구 로드·매칭)은 뒤에 둔다.
+    재개 실행은 ensure_index 를 거치지 않으므로 인덱스가 없으면 여기서 연다 (캐시 히트).
+    토큰이 없거나 thread 가 없으면(재개할 곳이 없음) 멈추지 않고 안내(reply)만 준다.
+    """
+    if not deps.github_token:
+        return {"reply": supervisor_v2.ISSUES_NEED_TOKEN, "events": [{"type": "Replied"}]}
+    if not state.get("thread_id"):
+        return {"reply": supervisor_v2.ISSUES_NEED_THREAD, "events": [{"type": "Replied"}]}
+    update = {}
+    if state.get("profile") is None:
+        answer = interrupt({"kind": "profile", "question": supervisor_v2.PROFILE_QUESTION})
+        profile = parse_profile(str(answer))
+        update["profile"] = profile.model_dump()
+    else:
+        profile = _profile_class()(**state["profile"])
+    url = state["repo_url"]
+    if url not in deps.indexes:
+        deps.indexes[url] = build_index(url, deps.cache_dir)
+    _load_issue_tools(deps)
+    issues = _run_issue_matcher(deps, url, profile)
+    event = {"type": "IssuesReady", "count": len(issues.matches), "considered": issues.considered}
+    return {**update, "issues": issues, "events": [event]}
+
+
 def chat_reply(state: SupervisorState) -> dict:
     """LLM 없이 고정 안내를 돌려준다."""
     return {"reply": supervisor_v2.CHAT_REPLY, "events": [{"type": "Replied"}]}
@@ -270,6 +420,10 @@ def _agent_summary(state: SupervisorState) -> str:
     if kind == "next" and state.get("next"):
         nxt = state["next"]
         return f"읽기 순서 {nxt['order']}단계 {nxt['file']} 를 짚음 (남은 {nxt['remaining']}개)"
+    if kind == "issues" and state.get("issues") is not None:
+        matches = state["issues"].matches
+        numbers = ", ".join(f"#{m.number}" for m in matches)
+        return f"이슈 추천 {len(matches)}개: {numbers}" if matches else "추천할 이슈를 찾지 못함"
     return state.get("reply") or ""
 
 
@@ -281,13 +435,13 @@ def remember(state: SupervisorState) -> dict:
 
 
 def build_supervisor_graph(deps: SupervisorDeps, checkpointer=None):
-    """START → ensure_index → classify → (run_map | run_ask | next_step | chat_reply)
+    """START → ensure_index → classify → (run_map | run_ask | next_step | chat_reply | run_issues)
     → remember → END.
 
     checkpointer 를 주면 같은 thread_id 로 guide·cursor·history 를 이어 간다 (wave12).
     """
     builder = StateGraph(SupervisorState)
-    for node in (ensure_index, classify, run_map, run_ask):
+    for node in (ensure_index, classify, run_map, run_ask, run_issues):
         builder.add_node(node.__name__, partial(node, deps=deps))
     for node in (next_step, chat_reply, remember):
         builder.add_node(node.__name__, node)
@@ -300,22 +454,64 @@ def build_supervisor_graph(deps: SupervisorDeps, checkpointer=None):
     return builder.compile(checkpointer=checkpointer)
 
 
-def turn_input(repo_url: str, message: str, thread_id: str) -> dict:
-    """메시지 하나의 시작 입력. thread 에 남길 것(guide·cursor·history)은 건드리지 않는다.
+def pending_interrupt(graph, config: dict) -> dict | None:
+    """이 thread 에서 답을 기다리는 interrupt 의 값({"kind", "question"}), 없으면 None.
 
-    이번 실행의 결과 칸(answer·next·reply·validation_errors)은 비워 지난 메시지의 결과가
-    섞이지 않게 하고, events 는 None 으로 비운다 (add_events 참고).
+    state.next 만 보지 않는 이유: 노드가 예외로 끝난 실행도 next 가 남는다. 그 thread 에
+    새 메시지를 resume 으로 넘기면 실패한 노드를 그 메시지로 다시 돌리게 되므로, interrupt 가
+    실제로 걸린 경우만 재개하고 나머지는 새 턴으로 처음부터 실행한다.
     """
+    if graph.checkpointer is None or not config["configurable"].get("thread_id"):
+        return None
+    for task in graph.get_state(config).tasks:
+        for item in task.interrupts:
+            return item.value
+    return None
+
+
+def _turn_reset() -> dict:
+    """이번 실행의 결과 칸을 비우는 값. events 는 None 으로 비운다 (add_events 참고)."""
     return {
-        "repo_url": repo_url,
-        "message": message,
-        "thread_id": thread_id,
         "answer": None,
         "next": None,
         "reply": None,
+        "issues": None,
         "validation_errors": [],
         "events": None,
     }
+
+
+def turn_input(repo_url: str, message: str, thread_id: str, graph=None) -> dict | Command:
+    """메시지 하나의 시작 입력. thread 에 남길 것(guide·cursor·history·profile)은 건드리지 않는다.
+
+    이번 실행의 결과 칸(answer·next·reply·issues·validation_errors)은 비워 지난 메시지의 결과가
+    섞이지 않게 한다. graph 를 주고 그 thread 에 답을 기다리는 interrupt 가 있으면
+    (pending_interrupt) 새 메시지를 그 답으로 보는 Command(resume=message) 를 돌려준다.
+    이때 update 로 결과 칸을 비워야 멈춘 실행의 events 가 재개 결과에 섞이지 않는다.
+    원래 message·intent 는 그대로 둔다 (history 에는 이슈를 요청한 원래 말이 남는다).
+    한계: 질문을 받은 뒤 전혀 다른 말을 해도 그 말을 답으로 쓴다 (프로필로 파싱된다).
+    """
+    if graph is not None:
+        config = {"configurable": {"thread_id": thread_id}}
+        if pending_interrupt(graph, config) is not None:
+            return Command(resume=message, update=_turn_reset())
+    return {"repo_url": repo_url, "message": message, "thread_id": thread_id, **_turn_reset()}
+
+
+# interrupt kind → 진행 이벤트 이름
+INTERRUPT_EVENTS = {"profile": "ProfileRequested"}
+
+
+def ask_user_update(interrupts) -> dict:
+    """그래프 출력의 __interrupt__ 를 결과 칸으로 바꾼다: reply=질문, ask_user=True, 이벤트.
+
+    기존 프론트는 reply 를 그대로 보여 주므로 질문을 reply 에 넣는 것이 최소 변경이다.
+    """
+    value = interrupts[0].value
+    question = value.get("question", "")
+    kind = INTERRUPT_EVENTS.get(value.get("kind"), "InputRequested")
+    event = {"type": kind, "question": question}
+    return {"reply": question, "ask_user": True, "events": [event]}
 
 
 def run_supervisor(
@@ -324,8 +520,14 @@ def run_supervisor(
     """메시지 하나를 처리하고 최종 상태를 돌려준다.
 
     thread_id 가 있으면 deps.checkpointer 로 상태를 thread 에 남긴다. 없으면 기억 없이 한 번.
+    그 thread 가 질문(interrupt)에서 멈춰 있으면 이 메시지로 재개한다. 이번 실행이 질문에서
+    멈추면 상태에 ask_user=True 와 reply=질문, ProfileRequested 이벤트를 더해 돌려준다.
     """
     saver = deps.checkpointer if thread_id else None
     graph = build_supervisor_graph(deps, saver)
     config = {"configurable": {"thread_id": thread_id}}
-    return graph.invoke(turn_input(repo_url, message, thread_id), config=config)
+    state = graph.invoke(turn_input(repo_url, message, thread_id, graph), config=config)
+    if interrupts := state.get("__interrupt__"):
+        asked = ask_user_update(interrupts)
+        state = {**state, **asked, "events": (state.get("events") or []) + asked["events"]}
+    return state

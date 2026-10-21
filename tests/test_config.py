@@ -11,7 +11,8 @@ from repoute.config import (
 
 def test_load_settings(monkeypatch):
     """환경변수가 없으면 기본값, 있으면 그 값을 읽는다."""
-    for name in ("LLM_PROVIDER", "FAST_MODEL", "QUALITY_MODEL", "REPOUTE_EMBEDDING_MODEL"):
+    names = ("LLM_PROVIDER", "FAST_MODEL", "QUALITY_MODEL", "REPOUTE_EMBEDDING_MODEL")
+    for name in (*names, "GITHUB_PERSONAL_ACCESS_TOKEN"):
         monkeypatch.delenv(name, raising=False)
     assert load_settings() == Settings("openai", "gpt-4o-mini", "gpt-4o")
 
@@ -43,3 +44,11 @@ def test_get_embedder_builds_model(monkeypatch):
     monkeypatch.setenv("OPENAI_API_KEY", "test")
     embedder = get_embedder(Settings("openai", "gpt-4o-mini", "gpt-4o"))
     assert hasattr(embedder, "embed_query") and hasattr(embedder, "embed_documents")
+
+
+def test_github_token_setting(monkeypatch):
+    """GitHub 토큰은 GITHUB_PERSONAL_ACCESS_TOKEN 에서 읽고, 없으면 빈 문자열이다."""
+    monkeypatch.delenv("GITHUB_PERSONAL_ACCESS_TOKEN", raising=False)
+    assert load_settings().github_token == ""
+    monkeypatch.setenv("GITHUB_PERSONAL_ACCESS_TOKEN", "ghp_test")
+    assert load_settings().github_token == "ghp_test"

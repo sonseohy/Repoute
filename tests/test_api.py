@@ -13,6 +13,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
 from repoute.api.app import create_app
+from repoute.graphs import supervisor
 from repoute.graphs.reading_guide import ModuleSummary, ReadingGuide, ReadingStep
 from repoute.graphs.supervisor import Intent, SupervisorDeps
 from repoute.graphs.walkthrough import Step, WalkthroughAnswer
@@ -80,12 +81,15 @@ def repo_url(tmp_path):
     return f"file://{origin}"
 
 
-def _client(tmp_path, intents=(), quality=None, feedback=None, explains=()) -> TestClient:
-    """가짜 LLM·메모리 체크포인터를 꽂은 앱의 TestClient. explains 는 fast 의 Explanation 큐."""
+def _client(tmp_path, intents=(), quality=None, feedback=None, explains=(), token="") -> TestClient:
+    """가짜 LLM·메모리 체크포인터를 꽂은 앱의 TestClient. explains 는 fast 의 Explanation 큐.
+
+    token 은 SupervisorDeps.github_token (이슈 추천 테스트만 준다).
+    """
     summaries = [ModuleSummary(module="m", file="f.py", summary="요약", role="core")] * 5
     fast = FakeLLM({Intent: list(intents), ModuleSummary: summaries, Explanation: list(explains)})
     saver = InMemorySaver(serde=JsonPlusSerializer(allowed_msgpack_modules=CHECKPOINT_TYPES))
-    deps = SupervisorDeps(fast, quality or FakeLLM(), tmp_path / "cache", saver)
+    deps = SupervisorDeps(fast, quality or FakeLLM(), tmp_path / "cache", saver, github_token=token)
     return TestClient(create_app(deps, feedback_client=feedback))
 
 
@@ -266,3 +270,47 @@ def test_explain_cached(tmp_path, repo_url):
         "prompt_version": "v2",
     }
     assert second == {**first, "cached": True}  # 큐가 비었으니 LLM 을 또 불렀다면 IndexError
+
+
+def test_issues_ask_profile_then_resume(tmp_path, repo_url, monkeypatch, issue_mod):
+    """이슈 추천: 첫 runs 는 프로필 질문(result.ask_user)으로 멈추고, 같은 thread 의 둘째 runs 가
+    그 답으로 재개되어 result.issues 를 준다 (GitHub·매칭은 가짜).
+
+    재개 실행은 분류를 다시 하지 않지만 result.intent 는 thread 에 남은 issues 를 보여 준다.
+    """
+    calls = []
+
+    def fake_matcher(deps, repo_url, profile):
+        calls.append(profile)
+        match = issue_mod.IssueMatch(
+            number=34,
+            title="인증 오류 메시지 개선",
+            url="https://github.com/owner/name/issues/34",
+            labels=["good first issue"],
+            why="인증 관심과 맞음",
+            modules=["app.main"],
+            refs=[RUN],
+            difficulty="easy",
+        )
+        return issue_mod.IssueMatches(
+            repo="owner/name", profile=profile, matches=[match], considered=5
+        )
+
+    monkeypatch.setattr(supervisor, "_run_issue_matcher", fake_matcher)
+    monkeypatch.setattr(supervisor, "_load_issue_tools", lambda deps: {})
+    intents = [Intent(kind="issues", reason="이슈 추천")]
+    with _client(tmp_path, intents, token="test-token") as client:
+        body = {"repo_url": repo_url, "message": "good first issue 추천해줘"}
+        first = _sse(client.post("/threads/t1/runs", json=body).text)
+        second = _sse(
+            client.post("/threads/t1/runs", json={**body, "message": "인증, beginner"}).text
+        )
+    asked, done = dict(first)["result"], dict(second)["result"]
+    assert _update_types(first) == ["IndexReady", "IntentDecided", "ProfileRequested"]
+    assert asked["ask_user"] is True and "beginner" in asked["reply"] and asked["issues"] is None
+    assert calls[0].model_dump() == {"interests": "인증", "level": "beginner"}
+    assert _update_types(second) == ["IssuesReady"]
+    assert done["ask_user"] is False and done["reply"] is None
+    assert done["issues"]["matches"][0]["number"] == 34 and done["issues"]["considered"] == 5
+    assert done["intent"]["kind"] == "issues"
+    assert second[-1][0] == "done"

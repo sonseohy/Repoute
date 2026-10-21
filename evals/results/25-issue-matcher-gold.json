@@ -1,0 +1,1443 @@
+{
+  "meta": {
+    "date": "2026-10-21",
+    "dataset": "evals/datasets/issue_matcher_gold.json",
+    "raw_dir": "evals/datasets/raw",
+    "embedding_model": "openai:text-embedding-3-small",
+    "k_symbols": 5,
+    "module_k": 3,
+    "max_symbol_names": 5,
+    "query": "title + \"\\n\" + body[:500] (issue_matcher.match_symbols 와 같음)",
+    "query_tokens_est": 2762,
+    "cost_est": 5.524e-05,
+    "token_note": "임베딩 API 는 토큰 콜백에 안 잡혀 글자 수/4 추정",
+    "repos": {
+      "psf/requests": {
+        "repo_id": "psf/requests@611c616",
+        "symbols_embedded": 320,
+        "embedding_cached": true
+      },
+      "encode/httpx": {
+        "repo_id": "encode/httpx@b5addb6",
+        "symbols_embedded": 533,
+        "embedding_cached": true
+      },
+      "pallets/click": {
+        "repo_id": "pallets/click@2247b35",
+        "symbols_embedded": 678,
+        "embedding_cached": true
+      },
+      "Textualize/rich": {
+        "repo_id": "Textualize/rich@9d8f9a3",
+        "symbols_embedded": 1145,
+        "embedding_cached": true
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "im-requests-01",
+      "repo": "psf/requests",
+      "number": 7634,
+      "title": "Non-string form field names raise AttributeError when files are attached",
+      "difficulty": "easy",
+      "gold_modules": [
+        "requests.models"
+      ],
+      "gold_symbols": [
+        "RequestEncodingMixin._encode_files",
+        "PreparedRequest.prepare_body"
+      ],
+      "modules": [
+        "src.requests.models",
+        "src.requests.exceptions",
+        "src.requests.help"
+      ],
+      "symbols": [
+        "RequestEncodingMixin._encode_files",
+        "FileModeWarning",
+        "InvalidHeader",
+        "info",
+        "RequestEncodingMixin._encode_params"
+      ],
+      "hits": [
+        {
+          "name": "RequestEncodingMixin._encode_files",
+          "file": "src/requests/models.py",
+          "line": 183,
+          "score": 0.37891191244125366
+        },
+        {
+          "name": "FileModeWarning",
+          "file": "src/requests/exceptions.py",
+          "line": 157,
+          "score": 0.3641383647918701
+        },
+        {
+          "name": "InvalidHeader",
+          "file": "src/requests/exceptions.py",
+          "line": 122,
+          "score": 0.31734323501586914
+        },
+        {
+          "name": "info",
+          "file": "src/requests/help.py",
+          "line": 67,
+          "score": 0.3079756796360016
+        },
+        {
+          "name": "RequestEncodingMixin._encode_params",
+          "file": "src/requests/models.py",
+          "line": 134,
+          "score": 0.3040408492088318
+        }
+      ],
+      "query_chars": 573,
+      "query_tokens_est": 143,
+      "seconds": 0.99,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-requests-02",
+      "repo": "psf/requests",
+      "number": 7630,
+      "title": "Incorrect type annotation for iter_lines",
+      "difficulty": "easy",
+      "gold_modules": [
+        "requests.models"
+      ],
+      "gold_symbols": [
+        "Response.iter_lines",
+        "Response.iter_content"
+      ],
+      "modules": [
+        "src.requests.models",
+        "src.requests.exceptions"
+      ],
+      "symbols": [
+        "Response.iter_lines",
+        "Response.iter_lines",
+        "Response.iter_lines",
+        "ChunkedEncodingError",
+        "Response.iter_content"
+      ],
+      "hits": [
+        {
+          "name": "Response.iter_lines",
+          "file": "src/requests/models.py",
+          "line": 980,
+          "score": 0.4787389039993286
+        },
+        {
+          "name": "Response.iter_lines",
+          "file": "src/requests/models.py",
+          "line": 987,
+          "score": 0.4787389039993286
+        },
+        {
+          "name": "Response.iter_lines",
+          "file": "src/requests/models.py",
+          "line": 994,
+          "score": 0.4613186717033386
+        },
+        {
+          "name": "ChunkedEncodingError",
+          "file": "src/requests/exceptions.py",
+          "line": 130,
+          "score": 0.4059690833091736
+        },
+        {
+          "name": "Response.iter_content",
+          "file": "src/requests/models.py",
+          "line": 911,
+          "score": 0.3967963457107544
+        }
+      ],
+      "query_chars": 368,
+      "query_tokens_est": 92,
+      "seconds": 0.355,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-requests-03",
+      "repo": "psf/requests",
+      "number": 7629,
+      "title": "proxy_bypass_registry uses unanchored re.match (Windows proxy bypass)",
+      "difficulty": "easy",
+      "gold_modules": [
+        "requests.utils"
+      ],
+      "gold_symbols": [
+        "proxy_bypass_registry",
+        "proxy_bypass"
+      ],
+      "modules": [
+        "src.requests.utils",
+        "src.requests.exceptions"
+      ],
+      "symbols": [
+        "proxy_bypass_registry",
+        "proxy_bypass",
+        "should_bypass_proxies",
+        "should_bypass_proxies.get_proxy",
+        "InvalidProxyURL"
+      ],
+      "hits": [
+        {
+          "name": "proxy_bypass_registry",
+          "file": "src/requests/utils.py",
+          "line": 99,
+          "score": 0.5654250979423523
+        },
+        {
+          "name": "proxy_bypass",
+          "file": "src/requests/utils.py",
+          "line": 137,
+          "score": 0.5361697673797607
+        },
+        {
+          "name": "should_bypass_proxies",
+          "file": "src/requests/utils.py",
+          "line": 810,
+          "score": 0.4169975519180298
+        },
+        {
+          "name": "should_bypass_proxies.get_proxy",
+          "file": "src/requests/utils.py",
+          "line": 819,
+          "score": 0.41190633177757263
+        },
+        {
+          "name": "InvalidProxyURL",
+          "file": "src/requests/exceptions.py",
+          "line": 126,
+          "score": 0.39024853706359863
+        }
+      ],
+      "query_chars": 570,
+      "query_tokens_est": 142,
+      "seconds": 0.16,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-requests-04",
+      "repo": "psf/requests",
+      "number": 7564,
+      "title": "raise FileNotFoundError for missing TLS material",
+      "difficulty": "easy",
+      "gold_modules": [
+        "requests.adapters"
+      ],
+      "gold_symbols": [
+        "HTTPAdapter.cert_verify"
+      ],
+      "modules": [
+        "src.requests.exceptions",
+        "src.requests",
+        "src.requests.models"
+      ],
+      "symbols": [
+        "SSLError",
+        "_check_cryptography",
+        "Response.raise_for_status",
+        "check_compatibility",
+        "proxy_bypass"
+      ],
+      "hits": [
+        {
+          "name": "SSLError",
+          "file": "src/requests/exceptions.py",
+          "line": 78,
+          "score": 0.38547903299331665
+        },
+        {
+          "name": "_check_cryptography",
+          "file": "src/requests/__init__.py",
+          "line": 99,
+          "score": 0.3472464084625244
+        },
+        {
+          "name": "Response.raise_for_status",
+          "file": "src/requests/models.py",
+          "line": 1144,
+          "score": 0.3314998745918274
+        },
+        {
+          "name": "check_compatibility",
+          "file": "src/requests/__init__.py",
+          "line": 60,
+          "score": 0.30737876892089844
+        },
+        {
+          "name": "proxy_bypass",
+          "file": "src/requests/utils.py",
+          "line": 137,
+          "score": 0.2879253029823303
+        }
+      ],
+      "query_chars": 549,
+      "query_tokens_est": 137,
+      "seconds": 0.172,
+      "metrics": {
+        "precision_at_3": 0.0,
+        "hit_at_3": false,
+        "symbol_hit": false,
+        "top1_hit": false
+      }
+    },
+    {
+      "id": "im-requests-05",
+      "repo": "psf/requests",
+      "number": 7223,
+      "title": "Chardet is used, when it is available, not when `[use-chardet-on-py3]`-extra is installed",
+      "difficulty": "medium",
+      "gold_modules": [
+        "requests.compat",
+        "requests"
+      ],
+      "gold_symbols": [
+        "_resolve_char_detection",
+        "check_compatibility"
+      ],
+      "modules": [
+        "src.requests.exceptions",
+        "src.requests.compat"
+      ],
+      "symbols": [
+        "RequestsDependencyWarning",
+        "RequestsWarning",
+        "_resolve_char_detection",
+        "FileModeWarning",
+        "URLRequired"
+      ],
+      "hits": [
+        {
+          "name": "RequestsDependencyWarning",
+          "file": "src/requests/exceptions.py",
+          "line": 161,
+          "score": 0.5041422843933105
+        },
+        {
+          "name": "RequestsWarning",
+          "file": "src/requests/exceptions.py",
+          "line": 153,
+          "score": 0.3865664005279541
+        },
+        {
+          "name": "_resolve_char_detection",
+          "file": "src/requests/compat.py",
+          "line": 36,
+          "score": 0.35421523451805115
+        },
+        {
+          "name": "FileModeWarning",
+          "file": "src/requests/exceptions.py",
+          "line": 157,
+          "score": 0.3442954421043396
+        },
+        {
+          "name": "URLRequired",
+          "file": "src/requests/exceptions.py",
+          "line": 102,
+          "score": 0.3286546468734741
+        }
+      ],
+      "query_chars": 590,
+      "query_tokens_est": 147,
+      "seconds": 0.154,
+      "metrics": {
+        "precision_at_3": 0.5,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": false
+      }
+    },
+    {
+      "id": "im-httpx-01",
+      "repo": "encode/httpx",
+      "number": 3614,
+      "title": "Corruption of query parameter value when using base_url with query string",
+      "difficulty": "medium",
+      "gold_modules": [
+        "httpx._client",
+        "httpx._urls"
+      ],
+      "gold_symbols": [
+        "BaseClient._merge_url",
+        "BaseClient._enforce_trailing_slash"
+      ],
+      "modules": [
+        "httpx._urls",
+        "httpx._client"
+      ],
+      "symbols": [
+        "URL.query",
+        "BaseClient.params",
+        "BaseClient.params",
+        "BaseClient.base_url",
+        "BaseClient.base_url"
+      ],
+      "hits": [
+        {
+          "name": "URL.query",
+          "file": "httpx/_urls.py",
+          "line": 258,
+          "score": 0.49526339769363403
+        },
+        {
+          "name": "BaseClient.params",
+          "file": "httpx/_client.py",
+          "line": 330,
+          "score": 0.49238210916519165
+        },
+        {
+          "name": "BaseClient.params",
+          "file": "httpx/_client.py",
+          "line": 337,
+          "score": 0.4811507761478424
+        },
+        {
+          "name": "BaseClient.base_url",
+          "file": "httpx/_client.py",
+          "line": 295,
+          "score": 0.469032347202301
+        },
+        {
+          "name": "BaseClient.base_url",
+          "file": "httpx/_client.py",
+          "line": 288,
+          "score": 0.45591309666633606
+        }
+      ],
+      "query_chars": 574,
+      "query_tokens_est": 143,
+      "seconds": 0.161,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": false,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-httpx-02",
+      "repo": "encode/httpx",
+      "number": 3565,
+      "title": "Percent encoding `|` in paths",
+      "difficulty": "easy",
+      "gold_modules": [
+        "httpx._urlparse"
+      ],
+      "gold_symbols": [
+        "urlparse",
+        "quote"
+      ],
+      "modules": [
+        "httpx._urlparse",
+        "httpx._models",
+        "httpx._urls"
+      ],
+      "symbols": [
+        "percent_encoded",
+        "Headers.encoding",
+        "PERCENT",
+        "Headers.encoding",
+        "URL.raw_path"
+      ],
+      "hits": [
+        {
+          "name": "percent_encoded",
+          "file": "httpx/_urlparse.py",
+          "line": 482,
+          "score": 0.48254284262657166
+        },
+        {
+          "name": "Headers.encoding",
+          "file": "httpx/_models.py",
+          "line": 192,
+          "score": 0.4487811326980591
+        },
+        {
+          "name": "PERCENT",
+          "file": "httpx/_urlparse.py",
+          "line": 478,
+          "score": 0.4424026906490326
+        },
+        {
+          "name": "Headers.encoding",
+          "file": "httpx/_models.py",
+          "line": 167,
+          "score": 0.4300757646560669
+        },
+        {
+          "name": "URL.raw_path",
+          "file": "httpx/_urls.py",
+          "line": 283,
+          "score": 0.41389572620391846
+        }
+      ],
+      "query_chars": 530,
+      "query_tokens_est": 132,
+      "seconds": 0.168,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": false,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-httpx-03",
+      "repo": "encode/httpx",
+      "number": 3400,
+      "title": "Mention header name error message for invalid header encodings",
+      "difficulty": "easy",
+      "gold_modules": [
+        "httpx._models"
+      ],
+      "gold_symbols": [
+        "_normalize_header_value",
+        "Headers.__init__"
+      ],
+      "modules": [
+        "httpx._models",
+        "httpx._auth",
+        "httpx._exceptions"
+      ],
+      "symbols": [
+        "Headers.encoding",
+        "Headers.encoding",
+        "Headers",
+        "DigestAuth._get_header_value",
+        "DecodingError"
+      ],
+      "hits": [
+        {
+          "name": "Headers.encoding",
+          "file": "httpx/_models.py",
+          "line": 167,
+          "score": 0.5846961736679077
+        },
+        {
+          "name": "Headers.encoding",
+          "file": "httpx/_models.py",
+          "line": 192,
+          "score": 0.5446252822875977
+        },
+        {
+          "name": "Headers",
+          "file": "httpx/_models.py",
+          "line": 139,
+          "score": 0.5350444316864014
+        },
+        {
+          "name": "DigestAuth._get_header_value",
+          "file": "httpx/_auth.py",
+          "line": 311,
+          "score": 0.5129134058952332
+        },
+        {
+          "name": "DecodingError",
+          "file": "httpx/_exceptions.py",
+          "line": 243,
+          "score": 0.488959401845932
+        }
+      ],
+      "query_chars": 563,
+      "query_tokens_est": 140,
+      "seconds": 0.163,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": false,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-httpx-04",
+      "repo": "encode/httpx",
+      "number": 3396,
+      "title": "Allow multipart requests without attaching files",
+      "difficulty": "medium",
+      "gold_modules": [
+        "httpx._content",
+        "httpx._multipart"
+      ],
+      "gold_symbols": [
+        "encode_request",
+        "encode_multipart_data"
+      ],
+      "modules": [
+        "httpx._content",
+        "httpx._multipart"
+      ],
+      "symbols": [
+        "encode_multipart_data",
+        "FileField",
+        "MultipartStream.get_content_length",
+        "MultipartStream",
+        "get_multipart_boundary_from_content_type"
+      ],
+      "hits": [
+        {
+          "name": "encode_multipart_data",
+          "file": "httpx/_content.py",
+          "line": 152,
+          "score": 0.4392712116241455
+        },
+        {
+          "name": "FileField",
+          "file": "httpx/_multipart.py",
+          "line": 115,
+          "score": 0.4392405152320862
+        },
+        {
+          "name": "MultipartStream.get_content_length",
+          "file": "httpx/_multipart.py",
+          "line": 265,
+          "score": 0.43672484159469604
+        },
+        {
+          "name": "MultipartStream",
+          "file": "httpx/_multipart.py",
+          "line": 224,
+          "score": 0.4198710322380066
+        },
+        {
+          "name": "get_multipart_boundary_from_content_type",
+          "file": "httpx/_multipart.py",
+          "line": 56,
+          "score": 0.4060777425765991
+        }
+      ],
+      "query_chars": 549,
+      "query_tokens_est": 137,
+      "seconds": 0.189,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-httpx-05",
+      "repo": "encode/httpx",
+      "number": 3586,
+      "title": "Client misses socket_options attribute",
+      "difficulty": "medium",
+      "gold_modules": [
+        "httpx._client",
+        "httpx._transports.default"
+      ],
+      "gold_symbols": [
+        "Client.__init__",
+        "Client._init_transport",
+        "Client._init_proxy_transport"
+      ],
+      "modules": [
+        "httpx._client"
+      ],
+      "symbols": [
+        "Client.options",
+        "AsyncClient.options",
+        "Client._init_transport",
+        "AsyncClient._init_transport",
+        "Client._init_proxy_transport"
+      ],
+      "hits": [
+        {
+          "name": "Client.options",
+          "file": "httpx/_client.py",
+          "line": 1065,
+          "score": 0.5322791337966919
+        },
+        {
+          "name": "AsyncClient.options",
+          "file": "httpx/_client.py",
+          "line": 1780,
+          "score": 0.5051115155220032
+        },
+        {
+          "name": "Client._init_transport",
+          "file": "httpx/_client.py",
+          "line": 718,
+          "score": 0.49532821774482727
+        },
+        {
+          "name": "AsyncClient._init_transport",
+          "file": "httpx/_client.py",
+          "line": 1432,
+          "score": 0.4951271116733551
+        },
+        {
+          "name": "Client._init_proxy_transport",
+          "file": "httpx/_client.py",
+          "line": 740,
+          "score": 0.4927458167076111
+        }
+      ],
+      "query_chars": 539,
+      "query_tokens_est": 134,
+      "seconds": 0.158,
+      "metrics": {
+        "precision_at_3": 0.5,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-click-01",
+      "repo": "pallets/click",
+      "number": 3888,
+      "title": "use the path_type to perform the other click.Path checks",
+      "difficulty": "hard",
+      "gold_modules": [
+        "click.types"
+      ],
+      "gold_symbols": [
+        "Path.convert",
+        "Path.coerce_path_result"
+      ],
+      "modules": [
+        "src.click.types"
+      ],
+      "symbols": [
+        "Path",
+        "Path.coerce_path_result",
+        "PathInfoDict",
+        "Path.to_info_dict",
+        "Path.__init__"
+      ],
+      "hits": [
+        {
+          "name": "Path",
+          "file": "src/click/types.py",
+          "line": 1059,
+          "score": 0.6123194098472595
+        },
+        {
+          "name": "Path.coerce_path_result",
+          "file": "src/click/types.py",
+          "line": 1147,
+          "score": 0.4701099097728729
+        },
+        {
+          "name": "PathInfoDict",
+          "file": "src/click/types.py",
+          "line": 1050,
+          "score": 0.4639013111591339
+        },
+        {
+          "name": "Path.to_info_dict",
+          "file": "src/click/types.py",
+          "line": 1136,
+          "score": 0.4546566605567932
+        },
+        {
+          "name": "Path.__init__",
+          "file": "src/click/types.py",
+          "line": 1107,
+          "score": 0.43347859382629395
+        }
+      ],
+      "query_chars": 534,
+      "query_tokens_est": 133,
+      "seconds": 0.176,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-click-02",
+      "repo": "pallets/click",
+      "number": 3652,
+      "title": "Automatically append ellipsis (`...`) to metavars when `multiple=True` in options",
+      "difficulty": "easy",
+      "gold_modules": [
+        "click.core"
+      ],
+      "gold_symbols": [
+        "Option.get_help_spec",
+        "Parameter.make_metavar"
+      ],
+      "modules": [
+        "src.click.decorators",
+        "src.click.termui",
+        "src.click.core"
+      ],
+      "symbols": [
+        "option",
+        "secho",
+        "_MultiCommand",
+        "Argument.make_metavar",
+        "Parameter.spec"
+      ],
+      "hits": [
+        {
+          "name": "option",
+          "file": "src/click/decorators.py",
+          "line": 352,
+          "score": 0.4424102306365967
+        },
+        {
+          "name": "secho",
+          "file": "src/click/termui.py",
+          "line": 780,
+          "score": 0.43721091747283936
+        },
+        {
+          "name": "_MultiCommand",
+          "file": "src/click/core.py",
+          "line": 2166,
+          "score": 0.42594313621520996
+        },
+        {
+          "name": "Argument.make_metavar",
+          "file": "src/click/core.py",
+          "line": 3944,
+          "score": 0.42077407240867615
+        },
+        {
+          "name": "Parameter.spec",
+          "file": "src/click/core.py",
+          "line": 2570,
+          "score": 0.4187823534011841
+        }
+      ],
+      "query_chars": 582,
+      "query_tokens_est": 145,
+      "seconds": 0.143,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": false
+      }
+    },
+    {
+      "id": "im-click-03",
+      "repo": "pallets/click",
+      "number": 3362,
+      "title": "`HelpFormatter.write_usage` breaks options at a hyphen",
+      "difficulty": "easy",
+      "gold_modules": [
+        "click.formatting",
+        "click._textwrap"
+      ],
+      "gold_symbols": [
+        "HelpFormatter.write_usage",
+        "wrap_text"
+      ],
+      "modules": [
+        "src.click.core"
+      ],
+      "symbols": [
+        "Command.format_options",
+        "Command.format_usage",
+        "Group.format_options",
+        "Option.get_help_spec._write_opts",
+        "Command.format_help"
+      ],
+      "hits": [
+        {
+          "name": "Command.format_options",
+          "file": "src/click/core.py",
+          "line": 1325,
+          "score": 0.5476978421211243
+        },
+        {
+          "name": "Command.format_usage",
+          "file": "src/click/core.py",
+          "line": 1188,
+          "score": 0.5320546627044678
+        },
+        {
+          "name": "Group.format_options",
+          "file": "src/click/core.py",
+          "line": 2006,
+          "score": 0.5269951820373535
+        },
+        {
+          "name": "Option.get_help_spec._write_opts",
+          "file": "src/click/core.py",
+          "line": 3569,
+          "score": 0.5113310813903809
+        },
+        {
+          "name": "Command.format_help",
+          "file": "src/click/core.py",
+          "line": 1288,
+          "score": 0.49969062209129333
+        }
+      ],
+      "query_chars": 555,
+      "query_tokens_est": 138,
+      "seconds": 0.147,
+      "metrics": {
+        "precision_at_3": 0.0,
+        "hit_at_3": false,
+        "symbol_hit": false,
+        "top1_hit": false
+      }
+    },
+    {
+      "id": "im-click-04",
+      "repo": "pallets/click",
+      "number": 2753,
+      "title": "get_parameter_source does not work with invoke or forward",
+      "difficulty": "medium",
+      "gold_modules": [
+        "click.core"
+      ],
+      "gold_symbols": [
+        "Context.invoke",
+        "Context.get_parameter_source",
+        "Context.set_parameter_source"
+      ],
+      "modules": [
+        "src.click.core"
+      ],
+      "symbols": [
+        "Context.get_parameter_source",
+        "Context.invoke",
+        "Context.invoke",
+        "ParameterSource",
+        "Command.get_params"
+      ],
+      "hits": [
+        {
+          "name": "Context.get_parameter_source",
+          "file": "src/click/core.py",
+          "line": 970,
+          "score": 0.47793713212013245
+        },
+        {
+          "name": "Context.invoke",
+          "file": "src/click/core.py",
+          "line": 880,
+          "score": 0.4747926592826843
+        },
+        {
+          "name": "Context.invoke",
+          "file": "src/click/core.py",
+          "line": 887,
+          "score": 0.4747926592826843
+        },
+        {
+          "name": "ParameterSource",
+          "file": "src/click/core.py",
+          "line": 199,
+          "score": 0.4617479741573334
+        },
+        {
+          "name": "Command.get_params",
+          "file": "src/click/core.py",
+          "line": 1132,
+          "score": 0.4561099112033844
+        }
+      ],
+      "query_chars": 558,
+      "query_tokens_est": 139,
+      "seconds": 0.168,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-click-05",
+      "repo": "pallets/click",
+      "number": 2740,
+      "title": "Display exception notes when raising `ClickException`",
+      "difficulty": "easy",
+      "gold_modules": [
+        "click.exceptions"
+      ],
+      "gold_symbols": [
+        "ClickException.show",
+        "ClickException.format_message"
+      ],
+      "modules": [
+        "src.click.exceptions",
+        "src.click.core"
+      ],
+      "symbols": [
+        "ClickException",
+        "ClickException.show",
+        "FileError",
+        "Option.get_error_hint",
+        "ClickException.format_message"
+      ],
+      "hits": [
+        {
+          "name": "ClickException",
+          "file": "src/click/exceptions.py",
+          "line": 35,
+          "score": 0.6126111149787903
+        },
+        {
+          "name": "ClickException.show",
+          "file": "src/click/exceptions.py",
+          "line": 57,
+          "score": 0.5321763753890991
+        },
+        {
+          "name": "FileError",
+          "file": "src/click/exceptions.py",
+          "line": 342,
+          "score": 0.5057336091995239
+        },
+        {
+          "name": "Option.get_error_hint",
+          "file": "src/click/core.py",
+          "line": 3423,
+          "score": 0.504672110080719
+        },
+        {
+          "name": "ClickException.format_message",
+          "file": "src/click/exceptions.py",
+          "line": 51,
+          "score": 0.49723899364471436
+        }
+      ],
+      "query_chars": 554,
+      "query_tokens_est": 138,
+      "seconds": 0.212,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-rich-01",
+      "repo": "Textualize/rich",
+      "number": 4238,
+      "title": "[BUG] Traceback.extract loops forever when __cause__ and __context__ form a cycle",
+      "difficulty": "easy",
+      "gold_modules": [
+        "rich.traceback"
+      ],
+      "gold_symbols": [
+        "Traceback.extract"
+      ],
+      "modules": [
+        "rich.traceback"
+      ],
+      "symbols": [
+        "Traceback.extract",
+        "Traceback.from_exception",
+        "Traceback.__rich_console__",
+        "Trace",
+        "Traceback.__init__"
+      ],
+      "hits": [
+        {
+          "name": "Traceback.extract",
+          "file": "rich/traceback.py",
+          "line": 433,
+          "score": 0.6044571399688721
+        },
+        {
+          "name": "Traceback.from_exception",
+          "file": "rich/traceback.py",
+          "line": 353,
+          "score": 0.5536907911300659
+        },
+        {
+          "name": "Traceback.__rich_console__",
+          "file": "rich/traceback.py",
+          "line": 626,
+          "score": 0.5352450609207153
+        },
+        {
+          "name": "Trace",
+          "file": "rich/traceback.py",
+          "line": 254,
+          "score": 0.5188040733337402
+        },
+        {
+          "name": "Traceback.__init__",
+          "file": "rich/traceback.py",
+          "line": 295,
+          "score": 0.503666877746582
+        }
+      ],
+      "query_chars": 582,
+      "query_tokens_est": 145,
+      "seconds": 0.172,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-rich-02",
+      "repo": "Textualize/rich",
+      "number": 4237,
+      "title": "[BUG] Text negative integer indexing drops span styles",
+      "difficulty": "easy",
+      "gold_modules": [
+        "rich.text"
+      ],
+      "gold_symbols": [
+        "Text.__getitem__"
+      ],
+      "modules": [
+        "rich.text",
+        "rich.containers"
+      ],
+      "symbols": [
+        "Text._trim_spans",
+        "Text.split.flatten_spans",
+        "Text.spans",
+        "Text.spans",
+        "Lines.__getitem__"
+      ],
+      "hits": [
+        {
+          "name": "Text._trim_spans",
+          "file": "rich/text.py",
+          "line": 886,
+          "score": 0.5044373869895935
+        },
+        {
+          "name": "Text.split.flatten_spans",
+          "file": "rich/text.py",
+          "line": 1091,
+          "score": 0.5042855739593506
+        },
+        {
+          "name": "Text.spans",
+          "file": "rich/text.py",
+          "line": 421,
+          "score": 0.4594825208187103
+        },
+        {
+          "name": "Text.spans",
+          "file": "rich/text.py",
+          "line": 426,
+          "score": 0.4565379023551941
+        },
+        {
+          "name": "Lines.__getitem__",
+          "file": "rich/containers.py",
+          "line": 79,
+          "score": 0.45006895065307617
+        }
+      ],
+      "query_chars": 555,
+      "query_tokens_est": 138,
+      "seconds": 0.171,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-rich-03",
+      "repo": "Textualize/rich",
+      "number": 4216,
+      "title": "Console.print(text) silently drops Text's own justify unless justify= is also passed to print()",
+      "difficulty": "hard",
+      "gold_modules": [
+        "rich.console",
+        "rich.text"
+      ],
+      "gold_symbols": [
+        "Console._collect_renderables",
+        "Text.join",
+        "Text.__rich_console__"
+      ],
+      "modules": [
+        "rich.console",
+        "rich.text",
+        "rich.containers"
+      ],
+      "symbols": [
+        "Console._collect_renderables.check_text",
+        "Console.print",
+        "Text.styled",
+        "Lines.justify",
+        "Text.__rich_console__"
+      ],
+      "hits": [
+        {
+          "name": "Console._collect_renderables.check_text",
+          "file": "rich/console.py",
+          "line": 1550,
+          "score": 0.4884711503982544
+        },
+        {
+          "name": "Console.print",
+          "file": "rich/console.py",
+          "line": 1652,
+          "score": 0.4744170904159546
+        },
+        {
+          "name": "Text.styled",
+          "file": "rich/text.py",
+          "line": 332,
+          "score": 0.47063034772872925
+        },
+        {
+          "name": "Lines.justify",
+          "file": "rich/containers.py",
+          "line": 111,
+          "score": 0.4573708474636078
+        },
+        {
+          "name": "Text.__rich_console__",
+          "file": "rich/text.py",
+          "line": 689,
+          "score": 0.45705315470695496
+        }
+      ],
+      "query_chars": 596,
+      "query_tokens_est": 149,
+      "seconds": 0.156,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-rich-04",
+      "repo": "Textualize/rich",
+      "number": 4214,
+      "title": "[BUG] `Columns(width=...)` raises `ZeroDivisionError` when the requested width does not fit",
+      "difficulty": "easy",
+      "gold_modules": [
+        "rich.columns"
+      ],
+      "gold_symbols": [
+        "Columns.__rich_console__"
+      ],
+      "modules": [
+        "rich.columns",
+        "rich.layout",
+        "rich.syntax"
+      ],
+      "symbols": [
+        "Columns.__rich_console__",
+        "ColumnSplitter.divide",
+        "Columns",
+        "Syntax._numbers_column_width",
+        "Columns.__init__"
+      ],
+      "hits": [
+        {
+          "name": "Columns.__rich_console__",
+          "file": "rich/columns.py",
+          "line": 62,
+          "score": 0.4897192716598511
+        },
+        {
+          "name": "ColumnSplitter.divide",
+          "file": "rich/layout.py",
+          "line": 129,
+          "score": 0.48271989822387695
+        },
+        {
+          "name": "Columns",
+          "file": "rich/columns.py",
+          "line": 16,
+          "score": 0.48175182938575745
+        },
+        {
+          "name": "Syntax._numbers_column_width",
+          "file": "rich/syntax.py",
+          "line": 592,
+          "score": 0.4542848765850067
+        },
+        {
+          "name": "Columns.__init__",
+          "file": "rich/columns.py",
+          "line": 31,
+          "score": 0.4533615708351135
+        }
+      ],
+      "query_chars": 592,
+      "query_tokens_est": 148,
+      "seconds": 0.168,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    },
+    {
+      "id": "im-rich-05",
+      "repo": "Textualize/rich",
+      "number": 4208,
+      "title": "[BUG]Console.save_text clears recorded output when file write fails",
+      "difficulty": "easy",
+      "gold_modules": [
+        "rich.console"
+      ],
+      "gold_symbols": [
+        "Console.save_text",
+        "Console.export_text"
+      ],
+      "modules": [
+        "rich.console"
+      ],
+      "symbols": [
+        "Console.save_text",
+        "Console.save_html",
+        "Console.export_text",
+        "Console._write_buffer",
+        "Console._collect_renderables.check_text"
+      ],
+      "hits": [
+        {
+          "name": "Console.save_text",
+          "file": "rich/console.py",
+          "line": 2224,
+          "score": 0.6406500339508057
+        },
+        {
+          "name": "Console.save_html",
+          "file": "rich/console.py",
+          "line": 2321,
+          "score": 0.5532890558242798
+        },
+        {
+          "name": "Console.export_text",
+          "file": "rich/console.py",
+          "line": 2192,
+          "score": 0.5387700796127319
+        },
+        {
+          "name": "Console._write_buffer",
+          "file": "rich/console.py",
+          "line": 2059,
+          "score": 0.49921613931655884
+        },
+        {
+          "name": "Console._collect_renderables.check_text",
+          "file": "rich/console.py",
+          "line": 1550,
+          "score": 0.4736140966415405
+        }
+      ],
+      "query_chars": 568,
+      "query_tokens_est": 142,
+      "seconds": 0.137,
+      "metrics": {
+        "precision_at_3": 1.0,
+        "hit_at_3": true,
+        "symbol_hit": true,
+        "top1_hit": true
+      }
+    }
+  ],
+  "summary": {
+    "by_repo": {
+      "psf/requests": {
+        "n": 5,
+        "failed": 0,
+        "precision_at_3": 0.7,
+        "hit_at_3": 0.8,
+        "symbol_hit": 0.8,
+        "top1_hit": 0.6,
+        "query_tokens_est": 661
+      },
+      "encode/httpx": {
+        "n": 5,
+        "failed": 0,
+        "precision_at_3": 0.9,
+        "hit_at_3": 1.0,
+        "symbol_hit": 0.4,
+        "top1_hit": 1.0,
+        "query_tokens_est": 686
+      },
+      "pallets/click": {
+        "n": 5,
+        "failed": 0,
+        "precision_at_3": 0.8,
+        "hit_at_3": 0.8,
+        "symbol_hit": 0.8,
+        "top1_hit": 0.6,
+        "query_tokens_est": 693
+      },
+      "Textualize/rich": {
+        "n": 5,
+        "failed": 0,
+        "precision_at_3": 1.0,
+        "hit_at_3": 1.0,
+        "symbol_hit": 1.0,
+        "top1_hit": 1.0,
+        "query_tokens_est": 722
+      }
+    },
+    "by_difficulty": {
+      "easy": {
+        "n": 13,
+        "failed": 0,
+        "precision_at_3": 0.8461538461538461,
+        "hit_at_3": 0.8461538461538461,
+        "symbol_hit": 0.6923076923076923,
+        "top1_hit": 0.7692307692307693,
+        "query_tokens_est": 1780
+      },
+      "medium": {
+        "n": 5,
+        "failed": 0,
+        "precision_at_3": 0.8,
+        "hit_at_3": 1.0,
+        "symbol_hit": 0.8,
+        "top1_hit": 0.8,
+        "query_tokens_est": 700
+      },
+      "hard": {
+        "n": 2,
+        "failed": 0,
+        "precision_at_3": 1.0,
+        "hit_at_3": 1.0,
+        "symbol_hit": 1.0,
+        "top1_hit": 1.0,
+        "query_tokens_est": 282
+      }
+    },
+    "overall": {
+      "n": 20,
+      "failed": 0,
+      "precision_at_3": 0.85,
+      "hit_at_3": 0.9,
+      "symbol_hit": 0.75,
+      "top1_hit": 0.8,
+      "query_tokens_est": 2762
+    }
+  }
+}

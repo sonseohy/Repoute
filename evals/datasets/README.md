@@ -8,6 +8,7 @@ Phase 4 평가(PLAN 6절 Phase 4) 에 쓰는 정답 데이터. 네 파일 모두
 | `walkthrough_questions.json` | `walkthrough-qa` | 질문 20개 (레포 4개 × 5) | 도달(`expect_reach`), `call_chain_accuracy`(`expect_chain`) |
 | `supervisor_intents.json` | (로컬 전용) | 메시지 30개 | 의도 분류 정확도 (`evals/experiments/supervisor_intents.py`) |
 | `walkthrough_questions_nosymbol.json` | (로컬 전용, 미등록) | 질문 10개 (레포 4개 × 2~3) | 도달(`expect_reach`), `call_chain_accuracy`(`expect_chain`) |
+| `issue_matcher_gold.json` | (로컬 전용, 미등록) | 이슈 20개 (레포 4개 × 5) | `issue_module_precision_at_k`(k=3), `issue_symbol_hit` |
 
 대상 레포와 커밋 (인덱스 `.repoute_cache/index/<owner>__<name>@<commit>.sqlite` 의 커밋과 같다):
 psf/requests@611c616, encode/httpx@b5addb6, pallets/click@2247b35, Textualize/rich@9d8f9a3, fastapi/fastapi@6f28852.
@@ -55,6 +56,37 @@ Supervisor `classify`(fast 모델 + 코드 게이트 `_gate`)가 메시지를 ma
 - **근거 확인 방법:** `expect_chain` 의 각 이름을 인덱스 `symbols` 테이블에서 `sqlite3` 로 조회해 존재를 확인하고, `chain_evidence` 의 각 `path:line` 을 `.repoute_cache/<owner>/<name>/` 소스에서 직접 열어 그 줄이 해당 체인 심볼의 `line_start~line_end` 안에 있고 설명(호출문·raise 줄)과 맞는지 봤다. 괄호 안 `:NNN` 은 같은 파일의 보충 줄이다.
 - **동적 호출:** click 두 질문의 `self.consume_value`·`self.value_from_envvar`·`super().resolve_envvar_value` 는 질문 상황(옵션)으로 정해지는 `Option.*` 구체 메서드를 적었다(2절 체인 규칙과 같음). ns-rich-02 의 `renderable.__rich_console__` 은 `Text.__rich_console__`.
 - **한계:** n 이 작아 한 항목이 10%p 를 움직인다. ns-rich-01 의 `self.options`·`self.size` 는 property 접근이라 인덱스 `calls` 테이블에 없다(조회로 확인) — 정적 호출 그래프만으로는 `Console.print → Console.options → Console.size` 를 따라갈 수 없다. ns-click-02 는 옵션에 프롬프트가 설정된 경우를 전제한다.
+
+## 5. `issue_matcher_gold.json` — Issue Matcher 정답
+
+**목적.** Phase 6 Issue Matcher(열린 이슈 → "이 이슈를 하려면 읽어야 할 모듈·심볼") 평가용. GitHub 의 실제 열린 이슈마다 고치거나 읽어야 할 모듈과 심볼을 코드를 직접 읽고 정했다.
+
+| 필드 | 뜻 |
+|---|---|
+| `id` | `im-<레포>-NN` |
+| `repo`, `number`, `title`, `url`, `labels` | 이슈 원본 값 (raw JSON 에서 그대로 복사) |
+| `gold_modules` | 1~3개, 점 표기 패키지 경로(`requests.models`, `httpx._transports.default`). `src/` 접두어는 뺐고 `__init__.py` 는 패키지 이름(`requests`). 평가자는 끝 두 조각으로 비교하므로 인덱스 graph 노드 이름(`src.requests.models`)과도 맞는다 |
+| `gold_symbols` | 1~3개 `{name, file, line}`. `name` 은 인덱스 `symbols.name`, `line` 은 그 행의 `line_start`. `@overload` 로 같은 이름 행이 여러 개면 구현부(마지막 def) 행을 적었다(`Response.iter_lines`, `Response.iter_content`, `Context.invoke`) |
+| `note` | 이 이슈를 고른 이유와 이 모듈·심볼인 이유 한 줄 |
+| `difficulty` | `easy`(한 함수 국소 수정) / `medium`(2곳 이상 또는 경로 추적 필요) / `hard`(원인 추적·설계 판단 필요) — 라벨러 판단 |
+
+- **n = 20** (레포 4개 × 5). 난이도 easy 13 / medium 5 / hard 2.
+- **수집.** 2026-10-21 06:38 UTC, GitHub 공개 REST API(토큰 없음). 호출 URL:
+  - `https://api.github.com/repos/psf/requests/issues?state=open&per_page=50`
+  - `https://api.github.com/repos/encode/httpx/issues?state=open&per_page=50` (+ `&page=2`)
+  - `https://api.github.com/repos/pallets/click/issues?state=open&per_page=50`
+  - `https://api.github.com/repos/Textualize/rich/issues?state=open&per_page=50`
+
+  응답은 `raw/issues_<owner>__<name>.json` 에 가공 없이 저장했다(httpx 2쪽은 `raw/issues_encode__httpx_page2.json`). 이 API 는 PR 도 이슈로 돌려주므로 50개 중 `pull_request` 키가 있는 항목을 빼면 이슈는 requests 21 / httpx 8+28 / click 41 / rich 36 개다. httpx 는 1쪽에 이슈가 8개뿐이라 후보가 모자라 2쪽을 한 번 더 받았다.
+- **선택 기준.** 코드 변경이 필요한 구체적 이슈만. 질문·문서·CI·배포·테스트 코드만 고치는 이슈 제외(예: requests 7599·7547 문서, rich 4222·4223 테스트, click 3081 문서). 본문(재현 코드·트레이스백·지목한 파일)으로 어느 코드인지 추론 가능한 것을 골랐다. 고친 곳이 모듈 수준 코드라 인덱스 심볼이 없는 이슈는 뺐다(rich 4201 `rich/__init__.py` 의 `_IMPORT_CWD`). 이 네 레포는 "good first issue"/"help wanted"/"bug" 라벨을 거의 쓰지 않아(click 은 주제 라벨 `parsing`·`help output` 만, 나머지는 대부분 무라벨) 라벨 우선 기준은 적용하지 못했고, 제목의 `[BUG]`·본문의 재현 코드를 대신 봤다.
+- **라벨 = Opus 에이전트 초안, 사용자 검수 전** (2026-10-21, LLM 호출 없이 소스 읽기). 각 심볼은 `.repoute_cache/<owner>/<name>/` 소스에서 이슈가 말하는 동작이 일어나는 줄을 직접 열어 확인했고, `(name, line_start)` 가 인덱스 `symbols` 테이블에 있는지 `sqlite3` 로 한 번 조회했다(테스트는 형식만 본다).
+- **커밋.** 인덱스·소스 커밋은 위와 같다: requests 611c616, httpx b5addb6, click 2247b35, rich 9d8f9a3.
+
+**한계.**
+- 이슈는 수집 시점(HEAD) 기준인데 인덱스·소스는 고정 커밋이라 어긋날 수 있다. 예: httpx 3400 본문 트레이스백의 `_utils.normalize_header_value` 는 인덱스 커밋에서 `_models._normalize_header_value` 로 옮겨져 있어 옮겨진 쪽을 적었다. 라벨 시점에 모든 심볼이 인덱스에 있음을 확인했다.
+- 정답이 하나가 아니다. "읽어야 할 곳" 은 고칠 곳 + 호출 경로 일부라 사람마다 1~2개 다를 수 있다. 대칭 코드(httpx `AsyncClient._init_transport`, rich `save_html`·`save_svg`, click `UsageError.show`)는 3개 상한 때문에 `note` 에만 적었다.
+- `issue_module_precision_at_k` 의 분모는 min(k, 정답 모듈 수) — 정답 모듈이 1개인 이슈(14개)도 상위 3개 안에 맞히면 1.0. 가장 느슨한 `issue_module_hit_at_k`(상위 k 에 정답 하나라도)도 함께 본다.
+- n 이 작아 한 이슈가 5%p 를 움직인다. 이슈는 열린 상태라 나중에 닫히거나 내용이 바뀔 수 있다(raw JSON 으로 재현).
 
 ## 라벨링 방법
 

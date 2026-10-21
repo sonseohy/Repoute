@@ -1,14 +1,26 @@
 """Supervisor 그래프 테스트 (실제 LLM 없음). 실행: uv run pytest tests/test_supervisor.py"""
 
+import asyncio
 import subprocess
+import sys
+import types
 
 import pytest
 from langchain_core.messages import AIMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
+from repoute.graphs import supervisor
 from repoute.graphs.reading_guide import ModuleSummary, ReadingGuide, ReadingStep
-from repoute.graphs.supervisor import Intent, SupervisorDeps, _gate, run_supervisor
+from repoute.graphs.supervisor import (
+    Intent,
+    SupervisorDeps,
+    _gate,
+    build_supervisor_graph,
+    parse_profile,
+    pending_interrupt,
+    run_supervisor,
+)
 from repoute.graphs.walkthrough import Step, WalkthroughAnswer
 from repoute.memory.checkpointer import CHECKPOINT_TYPES
 from repoute.prompts import supervisor_v2
@@ -304,3 +316,244 @@ def test_history_goes_into_classify_prompt(tmp_path, repo_url):
     assert "- 도우미: " + supervisor_v2.CHAT_REPLY[:20] in fast.structured_inputs[1]
     assert len(first["history"]) == 2 and len(second["history"]) == 4
     assert _types(second) == ["IndexReady", "IntentDecided", "Replied"]  # 이번 실행 분만
+
+
+# --- Phase 6: issues 의도 (Issue Matcher 는 가짜로 대체, GitHub·LLM 호출 없음) ---
+
+
+def _fake_matcher(issue_mod, calls: list):
+    """_run_issue_matcher 대역. 받은 Profile 을 calls 에 남기고 이슈 1개짜리 결과를 준다."""
+
+    def fake(deps, repo_url, profile):
+        calls.append(profile)
+        match = issue_mod.IssueMatch(
+            number=12,
+            title="helper 에 docstring 추가",
+            url="https://github.com/owner/name/issues/12",
+            labels=["good first issue"],
+            why="관심 영역과 맞는 작은 수정",
+            modules=["app.util"],
+            refs=[CodeRef(file="app/util.py", line=1, symbol="helper")],
+            difficulty="easy",
+        )
+        return issue_mod.IssueMatches(
+            repo="owner/name", profile=profile, matches=[match], considered=3
+        )
+
+    return fake
+
+
+@pytest.fixture
+def matcher_calls(monkeypatch, issue_mod) -> list:
+    """GitHub 도구 로드·이슈 매칭을 가짜로 바꾸고, 매칭에 넘어간 Profile 목록을 돌려준다."""
+    calls = []
+    monkeypatch.setattr(supervisor, "_run_issue_matcher", _fake_matcher(issue_mod, calls))
+    monkeypatch.setattr(supervisor, "_load_issue_tools", lambda deps: {})
+    return calls
+
+
+def test_gate_sends_issue_words_to_issues(tmp_path, repo_url):
+    """이슈·기여 단어가 있으면 LLM 이 map/chat 이라 해도 코드 게이트가 issues 로 고친다.
+
+    ask 는 건드리지 않아 함수 이름이 있는 질문의 따라가기는 그대로다. 실행에서는 지도를 만들지
+    않으므로 quality 모델은 한 번도 불리지 않는다 (토큰이 없어 안내로 끝난다).
+    """
+    assert _gate("map", "good first issue 추천해줘", False)[0] == "issues"
+    assert _gate("chat", "이 레포에 기여하고 싶어", False)[0] == "issues"
+    assert _gate("ask", "issue 에 나온 run() 은 어떻게 돌아?", False) is None
+    quality = FakeLLM()
+    deps = _deps(tmp_path, [Intent(kind="map", reason="구조")], quality)
+    state = run_supervisor(deps, repo_url, "good first issue 추천해줘", "t1")
+    deps.close()
+    assert state["intent"].kind == "issues"
+    assert _types(state) == ["IndexReady", "IntentDecided", "GateApplied", "Replied"]
+    assert state["events"][2]["from"] == "map" and state["events"][2]["to"] == "issues"
+    assert quality.prompts == []
+
+
+def test_issues_without_token_replies(tmp_path, repo_url, matcher_calls):
+    """토큰이 없으면 프로필을 묻지 않고(interrupt 없음) 토큰 안내만 하고, 매칭도 부르지 않는다.
+
+    멈춘 질문이 없으므로 같은 thread 의 다음 메시지는 재개가 아니라 새 턴으로 처리된다.
+    """
+    intents = [Intent(kind="issues", reason="이슈 추천"), Intent(kind="chat", reason="인사")]
+    deps = _deps(tmp_path, intents)
+    state = run_supervisor(deps, repo_url, "어떤 이슈부터 할까?", "t1")
+    graph = build_supervisor_graph(deps, deps.checkpointer)
+    waiting = pending_interrupt(graph, {"configurable": {"thread_id": "t1"}})
+    after = run_supervisor(deps, repo_url, "안녕", "t1")
+    deps.close()
+    assert state["reply"] == supervisor_v2.ISSUES_NEED_TOKEN
+    assert "GITHUB_PERSONAL_ACCESS_TOKEN" in state["reply"]
+    assert "ask_user" not in state and "__interrupt__" not in state
+    assert waiting is None and matcher_calls == []
+    assert _types(after) == ["IndexReady", "IntentDecided", "Replied"]
+
+
+def test_issues_asks_profile_then_resumes(tmp_path, repo_url, matcher_calls):
+    """프로필이 없으면 interrupt 로 묻고, 같은 thread 의 다음 메시지로 재개해 매칭한다.
+
+    첫 턴: result 에 ask_user 와 질문(reply), 이벤트 ProfileRequested, 매칭 호출 0회.
+    둘째 턴 "인증, beginner": Command(resume) 로 재개되어 Profile(인증, beginner) 로 매칭하고
+    issues 가 채워진다. 분류는 다시 하지 않는다(Intent 큐 1개로 충분). 멈춘 턴의 이벤트는
+    섞이지 않고, history 에는 원래 요청과 추천 요약이 남는다.
+    """
+    deps = _deps(tmp_path, [Intent(kind="issues", reason="이슈 추천")])
+    deps.github_token = "test-token"
+    first = run_supervisor(deps, repo_url, "good first issue 추천해줘", "t1")
+    graph = build_supervisor_graph(deps, deps.checkpointer)
+    waiting = pending_interrupt(graph, {"configurable": {"thread_id": "t1"}})
+    second = run_supervisor(deps, repo_url, "인증, beginner", "t1")
+    deps.close()
+    assert first["ask_user"] is True and first["reply"] == supervisor_v2.PROFILE_QUESTION
+    assert _types(first) == ["IndexReady", "IntentDecided", "ProfileRequested"]
+    assert first["events"][-1]["question"] == supervisor_v2.PROFILE_QUESTION
+    assert waiting == {"kind": "profile", "question": supervisor_v2.PROFILE_QUESTION}
+    assert [p.model_dump() for p in matcher_calls] == [{"interests": "인증", "level": "beginner"}]
+    assert second["issues"].matches[0].number == 12 and second["issues"].considered == 3
+    assert second["profile"] == {"interests": "인증", "level": "beginner"}
+    assert _types(second) == ["IssuesReady"]
+    assert second["events"][0] == {"type": "IssuesReady", "count": 1, "considered": 3}
+    assert "ask_user" not in second
+    assert second["history"][-2:] == [
+        {"role": "user", "text": "good first issue 추천해줘"},
+        {"role": "agent", "text": "이슈 추천 1개: #12"},
+    ]
+
+
+def test_issues_with_saved_profile_runs_directly(tmp_path, repo_url, matcher_calls):
+    """thread 에 프로필이 있으면 두 번째 이슈 요청은 묻지 않고(interrupt 없음) 바로 매칭한다."""
+    deps = _deps(tmp_path, [Intent(kind="issues", reason="이슈 추천")] * 2)
+    deps.github_token = "test-token"
+    run_supervisor(deps, repo_url, "기여할 이슈 추천해줘", "t1")
+    run_supervisor(deps, repo_url, "CLI 파싱 intermediate", "t1")
+    again = run_supervisor(deps, repo_url, "이슈 하나 더 추천해줘", "t1")
+    deps.close()
+    assert "ask_user" not in again
+    assert _types(again) == ["IndexReady", "IntentDecided", "IssuesReady"]
+    assert len(matcher_calls) == 2 and matcher_calls[1] == matcher_calls[0]
+    assert matcher_calls[1].interests == "CLI 파싱" and matcher_calls[1].level == "intermediate"
+    assert again["issues"].matches[0].number == 12
+
+
+def test_parse_profile(issue_mod):
+    """수준 단어를 찾아 level 로, 나머지를 interests 로. 수준이 없으면 beginner."""
+    parsed = parse_profile("CLI 파싱 intermediate")
+    assert (parsed.interests, parsed.level) == ("CLI 파싱", "intermediate")
+    assert parse_profile("인증, beginner").model_dump() == {
+        "interests": "인증",
+        "level": "beginner",
+    }
+    many = parse_profile("HTTP 인증, CLI 파싱, Advanced")
+    assert (many.interests, many.level) == ("HTTP 인증, CLI 파싱", "advanced")
+    assert parse_profile("문서화").level == "beginner"
+    assert parse_profile("중급, 테스트").level == "intermediate"
+
+
+def test_load_issue_tools_once_even_inside_running_loop(tmp_path, monkeypatch):
+    """GitHub 도구는 처음 한 번만 불러 deps 에 캐시하고, 실행 중인 루프 안에서도 불러진다.
+
+    repoute.github.mcp 는 가짜 모듈로 바꿔 네트워크 없이 load_github_tools 호출 수만 센다.
+    """
+    calls = []
+
+    class FakeTool:
+        """이름만 있는 도구."""
+
+        name = "list_issues"
+
+    async def load_github_tools(token, toolset="issues/readonly", names=None):
+        calls.append(token)
+        return [FakeTool()]
+
+    fake = types.ModuleType("repoute.github.mcp")
+    fake.load_github_tools = load_github_tools
+    monkeypatch.setitem(sys.modules, "repoute.github.mcp", fake)
+    deps = _deps(tmp_path, [])
+    deps.github_token = "test-token"
+    tools = supervisor._load_issue_tools(deps)
+    assert list(tools) == ["list_issues"] and supervisor._load_issue_tools(deps) is tools
+
+    async def inside_loop():
+        fresh = _deps(tmp_path, [])
+        fresh.github_token = "test-token"
+        return supervisor._load_issue_tools(fresh)  # asyncio.run 대신 새 스레드에서 돈다
+
+    assert list(asyncio.run(inside_loop())) == ["list_issues"]
+    assert calls == ["test-token", "test-token"]
+
+
+def test_issues_end_to_end_with_real_matcher(tmp_path, repo_url, monkeypatch, fake_embedder):
+    """실제 Issue Matcher 그래프까지 통째로: 프로필 재개 → MCP 가짜 도구 → 임베딩 매칭 → fast 랭킹.
+
+    `_run_issue_matcher` 를 가짜로 바꾸지 않는다. 도구 로드만 가짜(list_issues JSON) 로 대체하고,
+    임베더는 conftest 의 결정론 FakeEmbedder. refs 는 LLM 이 아니라 임베딩 검색이 붙인 것이라
+    가짜 레포의 실제 심볼(app.main.run / app.util.helper)·파일·줄을 가리켜야 한다.
+    """
+    import json
+
+    from langchain_core.tools import BaseTool
+
+    from repoute.graphs.issue_matcher import RankedPick, Ranking
+
+    class FakeListIssues(BaseTool):
+        name: str = "list_issues"
+        description: str = "List issues"
+
+        def _run(self, **kwargs):
+            raise NotImplementedError
+
+        async def _arun(self, **kwargs):
+            body = "helper 가 run 에서 호출될 때 결과가 틀립니다. " * 4
+            return json.dumps(
+                [
+                    {
+                        "number": 7,
+                        "title": "run helper bug",
+                        "body": body,
+                        "labels": [{"name": "bug"}],
+                        "html_url": "https://github.com/owner/name/issues/7",
+                        "comments": 1,
+                        "created_at": "2026-10-21T00:00:00Z",
+                    },
+                    {
+                        "number": 8,
+                        "title": "pr",
+                        "body": body,
+                        "labels": [],
+                        "html_url": "u",
+                        "comments": 0,
+                        "created_at": "2026-10-21T00:00:00Z",
+                        "pull_request": {},
+                    },
+                ]
+            )
+
+    fast = FakeLLM(
+        {
+            Intent: [Intent(kind="issues", reason="이슈 추천")],
+            ModuleSummary: _summaries(),
+            Ranking: [
+                Ranking(picks=[RankedPick(number=7, why="helper 호출 버그", difficulty="easy")])
+            ],
+        }
+    )
+    deps = _deps(tmp_path, [], fast=fast)
+    deps.github_token = "test-token"
+    deps.embedder = fake_embedder
+    monkeypatch.setattr(
+        supervisor,
+        "_load_issue_tools",
+        lambda d: d.__setattr__("issue_tools", {"list_issues": FakeListIssues()}),
+    )
+    run_supervisor(deps, repo_url, "good first issue 추천해줘", "t1")
+    second = run_supervisor(deps, repo_url, "인증, beginner", "t1")
+    deps.close()
+    issues = second["issues"]
+    assert issues.considered == 1 and issues.errors == []  # PR 은 제외됐다
+    match = issues.matches[0]
+    assert match.number == 7 and match.difficulty == "easy" and match.why == "helper 호출 버그"
+    assert match.refs and all(r.file in ("app/main.py", "app/util.py") for r in match.refs)
+    assert {r.symbol for r in match.refs} <= {"run", "helper"}
+    assert match.modules and set(match.modules) <= {"app.main", "app.util"}
+    assert _types(second) == ["EmbeddingsReady", "IssuesReady"] or _types(second) == ["IssuesReady"]

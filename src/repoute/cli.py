@@ -1,6 +1,7 @@
 """명령줄 진입점: uv run repoute <명령>."""
 
 import argparse
+import asyncio
 import importlib
 import os
 import sys
@@ -8,9 +9,12 @@ import time
 from pathlib import Path
 
 from repoute.config import get_embedder, get_fast_llm, get_quality_llm, load_settings
+from repoute.github.mcp import load_github_tools
 from repoute.graphs.deps import Deps
+from repoute.graphs.issue_matcher import MAX_CANDIDATES, IssueDeps, Profile, run_issue_matcher
 from repoute.graphs.reading_guide import run_reading_guide
 from repoute.graphs.walkthrough import ask, build_walkthrough_graph
+from repoute.indexing.clone import parse_repo_url
 from repoute.indexing.embeddings import ensure_embeddings
 from repoute.indexing.entrypoints import find_entrypoints
 from repoute.indexing.imports import modules_of, rank_modules_v2
@@ -176,6 +180,57 @@ def ask_repo(
     repo.db.close()
 
 
+def issues_repo(url: str, interests: str, level: str, k: int, cache_dir: str) -> None:
+    """열린 이슈 중 프로필에 맞는 것을 골라 읽을 모듈·인용과 함께 출력한다.
+
+    github-mcp-server(원격 MCP)에서 이슈를 받고, 심볼 임베딩으로 관련 코드를 찾은 뒤
+    fast LLM 1회로 순위를 매긴다. 실제 LLM·임베딩 API 를 호출한다.
+    """
+    settings = load_settings()
+    if not settings.github_token:
+        print("GITHUB_PERSONAL_ACCESS_TOKEN 이 없습니다. .env 에 읽기 권한 토큰을 넣어 주세요.")
+        print("(github-mcp-server 원격 엔드포인트 인증에 씁니다. .env.example 참고)")
+        sys.exit(1)
+    start = time.perf_counter()
+    try:
+        owner, name = parse_repo_url(url)
+        tools = asyncio.run(load_github_tools(settings.github_token))
+        repo = build_index(url, cache_dir)
+        embedder = get_embedder(settings)
+        store = ensure_embeddings(repo, embedder, settings.embedding_model, cache_dir)
+        deps = IssueDeps(get_fast_llm(settings), repo, embedder, store, {t.name: t for t in tools})
+        result = run_issue_matcher(
+            deps, f"{owner}/{name}", Profile(interests=interests, level=level), k=k
+        )
+    except Exception as e:  # URL·토큰·네트워크·API 오류는 한 줄로만 알린다
+        message = str(e).strip().splitlines()[0] if str(e).strip() else ""
+        print(f"오류: {type(e).__name__}: {message}")
+        sys.exit(1)
+    elapsed = time.perf_counter() - start
+
+    print(f"repo: {result.repo}   MCP 도구: {', '.join(sorted(deps.issue_tools))}")
+    print(f"후보: {result.considered}개 (입문용 필터 뒤)   추천: {len(result.matches)}개")
+    for error in result.errors:
+        print(f"  - 오류: {error}")
+    for m in result.matches:
+        print(f"#{m.number:<6} [{m.difficulty}] {m.title}")
+        print(f"        {m.why}")
+        print(f"        모듈: {', '.join(m.modules) or '없음'}")
+        refs = ", ".join(
+            f"{r.file}:{r.line}" + (f" [{r.symbol}]" if r.symbol else "") for r in m.refs
+        )
+        print(f"        읽을 곳: {refs or '없음'}")
+        print(f"        {m.url}")
+    queries = min(result.considered, MAX_CANDIDATES)  # 후보 상위 10개만 임베딩 쿼리
+    calls = 1 if result.considered else 0
+    print(
+        f"비용: fast LLM {calls}회 + 임베딩 쿼리 {queries}회 "
+        f"(+ 첫 실행은 심볼 임베딩, {'cache hit' if store.cached else '새로 만듦'})"
+    )
+    print(f"시간: {elapsed:.1f}s   (LLM 비용은 LangSmith 'repoute-dev' 에서 확인)")
+    repo.db.close()
+
+
 def main() -> None:
     """서브커맨드를 해석해 해당 함수를 실행한다."""
     parser = argparse.ArgumentParser(prog="repoute")
@@ -210,6 +265,16 @@ def main() -> None:
         action="store_true",
         help="심볼 임베딩 검색 도구를 켠다 (첫 실행은 임베딩 API 비용 발생, 기본 꺼짐)",
     )
+    issues_parser = sub.add_parser(
+        "issues", help="프로필에 맞는 이슈와 읽을 코드를 추천한다 (GitHub MCP + LLM 호출)"
+    )
+    issues_parser.add_argument("url", help="GitHub URL (예: https://github.com/psf/requests)")
+    issues_parser.add_argument("--interests", default="", help='관심사 (예: "HTTP 재시도, 테스트")')
+    issues_parser.add_argument(
+        "--level", choices=["beginner", "intermediate", "advanced"], default="beginner"
+    )
+    issues_parser.add_argument("--k", type=int, default=5, help="추천할 이슈 수")
+    issues_parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스 캐시")
     args = parser.parse_args()
     if args.command == "check":
         check()
@@ -227,6 +292,8 @@ def main() -> None:
             agent_model=args.agent_model,
             search_symbols=args.search_symbols,
         )
+    elif args.command == "issues":
+        issues_repo(args.url, args.interests, args.level, args.k, args.cache_dir)
 
 
 if __name__ == "__main__":

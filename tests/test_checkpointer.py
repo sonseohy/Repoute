@@ -8,7 +8,7 @@ from langchain_core.messages import AIMessage
 from repoute.graphs.deps import Deps
 from repoute.graphs.walkthrough import Step, WalkthroughAnswer, ask, build_walkthrough_graph
 from repoute.indexing.index import build_index
-from repoute.memory.checkpointer import open_checkpointer
+from repoute.memory.checkpointer import CHECKPOINT_TYPES, open_checkpointer
 from repoute.validation.citations import CodeRef
 
 # tests 는 패키지가 아니므로 test_walkthrough 에서 import 하지 않고 필요한 최소만 옮겼다
@@ -107,3 +107,9 @@ def test_other_thread_is_empty(index):
     other = graph.get_state({"configurable": {"thread_id": "t2"}})
     assert other.values == {}
     saver.conn.close()
+
+
+def test_checkpoint_types_include_issue_matcher():
+    """이슈 추천 결과(IssueMatches)와 프로필(Profile)을 되살릴 수 있게 허용 타입에 들어 있다."""
+    assert ("repoute.graphs.issue_matcher", "IssueMatches") in CHECKPOINT_TYPES
+    assert ("repoute.graphs.issue_matcher", "Profile") in CHECKPOINT_TYPES

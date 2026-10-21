@@ -19,7 +19,12 @@ from langsmith.utils import tracing_is_enabled
 
 from repoute.api.schemas import FeedbackRequest, RepoRequest, RunRequest
 from repoute.api.sse import format_sse
-from repoute.graphs.supervisor import SupervisorDeps, build_supervisor_graph, turn_input
+from repoute.graphs.supervisor import (
+    SupervisorDeps,
+    ask_user_update,
+    build_supervisor_graph,
+    turn_input,
+)
 from repoute.indexing.entrypoints import find_entrypoints
 from repoute.indexing.explain import enclosing_symbol, explain_symbol
 from repoute.indexing.imports import modules_of, rank_modules_v2
@@ -78,12 +83,18 @@ def _find_symbol(cache_dir, owner: str, name: str, path: str, line: int):
     return root, span, repo_id
 
 
-def _run_graph(base: SupervisorDeps, start: dict, out: queue.Queue) -> None:
+def _run_graph(
+    base: SupervisorDeps, repo_url: str, message: str, thread_id: str, out: queue.Queue
+) -> None:
     """그래프를 이 스레드에서 끝까지 돌리며 SSE 이벤트를 큐에 넣는다.
 
     인덱스 SQLite 연결은 만든 스레드에서만 쓸 수 있어 열기·쓰기·닫기를 모두 여기서 한다
     (troubleshooting 04·15). 그래프는 체크포인터로 컴파일해 guide·cursor·history 가 thread 에
     남는다 (wave12). state 는 이번 실행의 업데이트만 모으므로 result 에도 이번 실행 분만 담긴다.
+
+    Phase 6: thread 가 질문(interrupt)에서 멈춰 있으면 turn_input 이 이 메시지를 답으로 넘기는
+    Command(resume) 를 만든다. 이번 실행이 질문에서 멈추면 "__interrupt__" 업데이트를
+    ProfileRequested 이벤트와 result.ask_user=true·reply=질문 으로 바꾼다.
     """
     deps = SupervisorDeps(
         base.fast_llm,
@@ -92,18 +103,27 @@ def _run_graph(base: SupervisorDeps, start: dict, out: queue.Queue) -> None:
         base.checkpointer,
         embedder=base.embedder,  # 심볼 임베딩 검색 (레포당 첫 질문에서 1회 생성, 이후 파일 캐시)
         embedding_model=base.embedding_model,
+        github_token=base.github_token,
+        issue_tools=base.issue_tools,  # 앞 요청이 불러 둔 GitHub 도구를 다시 쓴다
     )
-    state = dict(start)
-    config = {"configurable": {"thread_id": start["thread_id"]}}
+    state: dict = {}
+    config = {"configurable": {"thread_id": thread_id}}
     try:
         with collect_runs() as cb:  # 루트 실행 id = LangSmith 피드백을 붙일 곳
             graph = build_supervisor_graph(deps, deps.checkpointer)
+            start = turn_input(repo_url, message, thread_id, graph)
             for update in graph.stream(start, config=config, stream_mode="updates"):
                 for node, values in update.items():
+                    if node == "__interrupt__":  # values 는 Interrupt 튜플 (dict 가 아니다)
+                        values = ask_user_update(values)
                     values = values or {}
                     events = values.get("events", [])
                     state.update({k: v for k, v in values.items() if k != "events"})
                     out.put(("update", {"node": node, "events": events}))
+            if state.get("intent") is None:  # 재개 실행은 classify 를 거치지 않는다
+                state["intent"] = graph.get_state(config).values.get("intent")
+        if deps.issue_tools is not None:  # 처음 불러온 도구는 다음 요청도 쓰게 base 에 남긴다
+            base.issue_tools = deps.issue_tools
         run_id = str(cb.traced_runs[0].id) if cb.traced_runs and tracing_is_enabled() else None
         result = {
             "intent": _dump(state.get("intent")),
@@ -111,8 +131,10 @@ def _run_graph(base: SupervisorDeps, start: dict, out: queue.Queue) -> None:
             "answer": _dump(state.get("answer")),
             "next": state.get("next"),  # next_step 의 dict 그대로 (pydantic 아님)
             "reply": state.get("reply"),
+            "issues": _dump(state.get("issues")),  # IssueMatches (Phase 6)
+            "ask_user": bool(state.get("ask_user")),  # true 면 reply 가 질문, 다음 메시지가 답
             "validation_errors": state.get("validation_errors") or [],
-            "thread_id": start["thread_id"],
+            "thread_id": thread_id,
             "run_id": run_id,
         }
         out.put(("result", result))
@@ -147,6 +169,8 @@ def create_app(
                 saver,
                 embedder=get_embedder(settings),  # 기록 24: 이름 없는 질문 도달 0 → 6/10
                 embedding_model=settings.embedding_model,
+                # 다른 설정 필드처럼 load_settings 가 채운다. 없으면 이슈 추천은 안내만 한다
+                github_token=getattr(settings, "github_token", ""),
             )
         else:
             app.state.deps = deps
@@ -237,10 +261,13 @@ def create_app(
 
     @app.post("/threads/{thread_id}/runs")
     async def run(thread_id: str, body: RunRequest):
-        """Supervisor 를 돌리며 진행(update)·결과(result)·오류(error)·끝(done)을 SSE 로 보낸다."""
-        start = turn_input(body.repo_url, body.message, thread_id)
+        """Supervisor 를 돌리며 진행(update)·결과(result)·오류(error)·끝(done)을 SSE 로 보낸다.
+
+        thread 가 질문(ask_user)에서 멈춰 있으면 이 메시지가 그 답이 된다 (_run_graph 참고).
+        """
         out: queue.Queue = queue.Queue()
-        threading.Thread(target=_run_graph, args=(app.state.deps, start, out), daemon=True).start()
+        args = (app.state.deps, body.repo_url, body.message, thread_id, out)
+        threading.Thread(target=_run_graph, args=args, daemon=True).start()
 
         async def stream():
             loop = asyncio.get_running_loop()
