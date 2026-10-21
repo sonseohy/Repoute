@@ -99,7 +99,7 @@ def map_repo(url: str, cache_dir: str, validate: bool, prompt: str = "v3") -> No
 
 
 def ask_repo(
-    url: str, question: str, thread: str | None, cache_dir: str, prompt: str = "v1"
+    url: str, question: str, thread: str | None, cache_dir: str, prompt: str = "v2"
 ) -> None:
     """질문 하나로 호출 체인을 따라가 근거와 함께 출력한다. 실제 LLM 을 호출한다.
 
@@ -166,7 +166,7 @@ def main() -> None:
     ask_parser.add_argument("question", help='예: "create_app() 을 부르면 무슨 일이 일어나?"')
     ask_parser.add_argument("--thread", help="이어 갈 대화 ID (기본: <repo_id>:default)")
     ask_parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스·대화 캐시")
-    ask_parser.add_argument("--prompt", choices=["v1"], default="v1", help="프롬프트 버전")
+    ask_parser.add_argument("--prompt", choices=["v1", "v2"], default="v2", help="프롬프트 버전")
     args = parser.parse_args()
     if args.command == "check":
         check()

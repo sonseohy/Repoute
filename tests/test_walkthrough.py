@@ -3,7 +3,7 @@
 import subprocess
 
 import pytest
-from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
@@ -17,6 +17,7 @@ from repoute.graphs.walkthrough import (
     build_walkthrough_graph,
 )
 from repoute.indexing.index import build_index
+from repoute.prompts import walkthrough_v1, walkthrough_v2
 from repoute.validation.citations import CodeRef
 
 # 원본 레포 파일: main 의 run() 이 util 의 helper() 를 부른다 (test_reading_guide 와 같은 구성)
@@ -99,10 +100,10 @@ def _answer(*refs: CodeRef) -> WalkthroughAnswer:
 GOOD = _answer(CodeRef(file="app/main.py", line=4, symbol="run"))
 
 
-def _run(index, chat, structured, checkpointer=None):
-    """가짜 LLM 을 quality 자리에 꽂은 그래프와 그 LLM."""
+def _run(index, chat, structured, checkpointer=None, prompts=walkthrough_v1):
+    """가짜 LLM 을 quality 자리에 꽂은 그래프와 그 LLM. 프롬프트 기본은 그래프와 같은 v1."""
     llm = FakeToolLLM(chat, structured)
-    graph = build_walkthrough_graph(Deps(None, llm, index), checkpointer=checkpointer)
+    graph = build_walkthrough_graph(Deps(None, llm, index), prompts, checkpointer)
     return graph, llm
 
 
@@ -118,6 +119,20 @@ def test_happy_path(index):
     tool_texts = [m.content for m in state["messages"] if isinstance(m, ToolMessage)]
     assert "app/main.py:4-5" in tool_texts[0]  # find_definition 이 실제 인덱스를 조회했다
     assert "def run():" in tool_texts[1]  # read_code 가 실제 파일을 읽었다
+
+
+def test_happy_path_prompt_v2(index):
+    """v2 프롬프트로도 정상 흐름이 통과하고, agent 첫 입력의 SystemMessage 에 "읽기 전략" 이 있다.
+
+    cli 기본값이 v2 이므로 그래프가 v2 를 실제로 받아 쓰는지 확인한다.
+    """
+    chat = [_call("find_definition", {"name": "run"}), _read_main(), AIMessage(content="답 준비")]
+    graph, llm = _run(index, chat, [GOOD], prompts=walkthrough_v2)
+    state = ask(graph, "run() 을 부르면?")
+    assert state["validation_errors"] == []
+    assert state["tool_calls"] == 2
+    first = llm.chat_inputs[0][0]
+    assert isinstance(first, SystemMessage) and "읽기 전략" in first.content
 
 
 def test_unread_code_rejected(index):
