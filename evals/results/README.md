@@ -14,6 +14,7 @@
 | [08](08-walkthrough-v2.md) | walkthrough-v2 | 점 붙은 이름 재시도·read_code 힌트·읽기 전략 프롬프트 (같은 질문 재측정) | 도구 15→13, Session.send 도달(4→5단계), 인용 5/5 유효·구체적. 비용 $0.080→$0.099 (+23%, 턴당 컨텍스트 증가) | 1 | 체크포인트 + LangSmith | 00:16:07 UTC | (커밋 후 기재) |
 | [09](09-walkthrough-fast-agent.md) | walkthrough-fast-agent (E5) | agent 턴 gpt-4o-mini + def 줄 힌트 + 재읽기 차단 (통제군 포함) | fast: $0.099→$0.025 (−75%), send 도달 유지, def 줄 0%→100%. quality 통제군: $0.043, 3단계에서 멈춤 | 1×2 | 체크포인트 채점 + LangSmith | 00:23:59 / 00:24:12 UTC | (커밋 후 기재) |
 | [10](10-walkthrough-batch.md) | walkthrough-batch | 따라가기 질문 20개 배치 (레포 4개, fast agent, v3) | 사후 유효 90% 이나 **엄격 통과 13/20=65%** (read_code 0회 7건이 전부 실패), 도달 11/20(수동), 평균 $0.022·19.3s | 20 | 체크포인트 채점 + LangSmith validate 출력 교차 확인 | 태그 `wt-batch` | (커밋 후 기재) |
+| [11](11-walkthrough-batch-nudge.md) | walkthrough-batch-nudge | 10 + "읽지 않고 답하면 넛지" | 엄격 13/20 (변화 없음). 넛지 발동 3건은 전부 성공, 실패 7건은 답하기 전 상한 도달로 넛지 미발동 | 20 | 10 과 동일 | 태그 `wt-batch` | (커밋 후 기재) |
 
 ## 이름 규칙
 
