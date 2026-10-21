@@ -19,6 +19,8 @@
 | [13](13-walkthrough-batch-quality.md) | walkthrough-batch-quality (E5) | 12 와 동일, agent 만 gpt-4o | 엄격 20/20 유지, **도달 4→13/20**, 단계 3.3→4.9, 도구 11.9→9.9, 시간 17→14s, 질문당 $0.018→$0.083 (4.5배) | 20 | 12 와 동일 | 태그 `wt-batch` | (커밋 후 기재) |
 | [14](14-phase4-baselines.md) | phase4-baselines | 정답 데이터셋(레포 5, 질문 20 체인) + 평가자 4종, 현재 수치 측정 | 정적 진입점 재현율 **0.05**, PageRank p@5 **0.24**; 체인 정확도 fast 0.49 / fast+상한 0.28 / quality 0.60 | 5 레포 / 20 질문 | 결정론적 평가자, 기존 raw 재채점 | — (LLM 미사용) | (커밋 후 기재) |
 | [15](15-entrypoints-v2.md) | entrypoints-v2 | 공개 API export 기반 진입점 후보·점수, docs_src 제외 | 정적 entrypoint_recall@10 **0.05 → 0.58**, @5 0.43 (동점 처리가 운에 의존, fastapi 76파일) | 5 | static_baseline.py (LLM 미사용) | — | (커밋 후 기재) |
+| [16](16-reading-guide-gold.md) | reading-guide-gold (E1 실측) | 읽기 지도 LLM 출력(v3 + 진입점 v2 + docs_src 제외)을 gold 로 채점 | entrypoint_recall **0.27**, core_module_p@5 **0.32** (정적 0.24), 인용 100%. 읽기 순서가 PageRank 순서를 그대로 따름 | 5 | e4 스크립트 gold 채점, LangSmith 교차 | 태그 `prompt-v3` | (커밋 후 기재) |
+| [17](17-ranking-v2.md) | ranking-v2 | 역방향 개인화 PageRank + `__init__` 감쇠 (22개 변형 비교) | 정적 core_module_p@5 **0.24 → 0.60** (시드 효과 미확인, 과적합 경고) | 5 | static_baseline.py | — | (커밋 후 기재) |
 
 ## 이름 규칙
 
