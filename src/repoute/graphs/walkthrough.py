@@ -138,10 +138,11 @@ def tools_node(state: WalkState, tools: list) -> dict:
     for call in state["messages"][-1].tool_calls:
         tool, call_id = by_name.get(call["name"]), call["id"]
         seen = _covering(call, ranges)
-        if seen:  # 프롬프트 지시 대신 입력으로 막는다: 예산을 쓰지 않고 앞의 결과를 가리킨다
+        if seen:  # 프롬프트 지시 대신 입력으로 막는다: 실행 없이 앞의 결과를 가리킨다
             file, a, b = seen
             note = f"이미 읽은 범위입니다 ({file} {a}~{b}줄). 대화의 앞부분 결과를 쓰세요."
             results.append(ToolMessage(note, tool_call_id=call_id))
+            used += 1  # 예산은 소모한다: 같은 범위를 반복해도 상한에서 끝난다 (무한 루프 방지)
             continue
         if used >= MAX_TOOL_CALLS or tool is None:
             results.append(ToolMessage("실행 안 함: 상한 초과·없는 도구", tool_call_id=call_id))

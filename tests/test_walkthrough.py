@@ -212,11 +212,14 @@ def test_agent_model_fast(index):
 
 
 def test_reread_inside_read_range_blocked(index):
-    """이미 읽은 1~5줄 안의 read_code(4~5) 는 실행 없이 "이미 읽은 범위" 를 돌려주고 세지 않는다."""
+    """이미 읽은 1~5줄 안의 read_code(4~5) 는 실행 없이 "이미 읽은 범위" 를 돌려준다.
+
+    예산은 소모한다(tool_calls 2). 처음엔 세지 않았는데 같은 범위를 반복하는 모델이면
+    recursion 한계까지 돌아서 바꿨다 (troubleshooting 21)."""
     again = _call("read_code", {"file": "app/main.py", "start": 4, "end": 5}, 2)
     graph, _ = _run(index, [_read_main(), again, AIMessage(content="답")], [GOOD])
     state = ask(graph, "run() 을 부르면?")
-    assert state["tool_calls"] == 1  # 두 번째 read_code 는 예산을 쓰지 않았다
+    assert state["tool_calls"] == 2  # 차단된 read_code 도 예산을 쓴다
     assert state["read_ranges"] == [("app/main.py", 1, 5)]
     last_tool = [m for m in state["messages"] if isinstance(m, ToolMessage)][-1]
     assert last_tool.content.startswith("이미 읽은 범위입니다 (app/main.py 1~5줄)")
