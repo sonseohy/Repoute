@@ -1,11 +1,12 @@
 # evals/datasets — 평가 정답 데이터셋
 
-Phase 4 평가(PLAN 6절 Phase 4) 에 쓰는 정답 데이터. 두 파일 모두 JSON 배열이라 파일 안에 메타를 넣을 수 없어서, 스키마·라벨링 방법·한계를 여기에 적는다.
+Phase 4 평가(PLAN 6절 Phase 4) 에 쓰는 정답 데이터. 세 파일 모두 JSON 배열이라 파일 안에 메타를 넣을 수 없어서, 스키마·라벨링 방법·한계를 여기에 적는다.
 
 | 파일 | LangSmith 데이터셋 | 항목 수 | 사용하는 평가자 |
 |---|---|---|---|
 | `reading_guide_gold.json` | `reading-guide-gold` | 레포 5개 | `entrypoint_recall`, `core_module_precision@5` |
 | `walkthrough_questions.json` | `walkthrough-qa` | 질문 20개 (레포 4개 × 5) | 도달(`expect_reach`), `call_chain_accuracy`(`expect_chain`) |
+| `supervisor_intents.json` | (로컬 전용) | 메시지 30개 | 의도 분류 정확도 (`evals/experiments/supervisor_intents.py`) |
 
 대상 레포와 커밋 (인덱스 `.repoute_cache/index/<owner>__<name>@<commit>.sqlite` 의 커밋과 같다):
 psf/requests@611c616, encode/httpx@b5addb6, pallets/click@2247b35, Textualize/rich@9d8f9a3, fastapi/fastapi@6f28852.
@@ -36,6 +37,10 @@ psf/requests@611c616, encode/httpx@b5addb6, pallets/click@2247b35, Textualize/ri
 - 실제 호출 순서를 따른다. 6개 상한을 넘으면 질문과 가까운 쪽(뒤쪽)을 남기고 앞부분을 생략하며, 생략 사실을 `chain_evidence` 첫 줄에 적었다 (requests-04, httpx-05).
 - 동적 호출(`auth_handler(self)` → `HTTPBasicAuth.__call__`, `renderable.__rich_console__` → `Table.__rich_console__`, `self.invoke` → `Group.invoke`)은 질문의 상황(인자가 tuple, 출력 대상이 Table, 명령이 Group)으로 정해지는 구체 메서드를 적었다. 이름 기준 정적 호출 그래프(troubleshooting 12)로는 안 보이는 연결이다.
 - `with` 블록 끝의 `__exit__`(rich-03) 처럼 호출문이 없는 연결도 포함했다.
+
+## 3. `supervisor_intents.json` — Supervisor 의도 분류
+
+Supervisor `classify`(fast 모델 + 코드 게이트 `_gate`)가 메시지를 map·ask·next·chat 중 어디로 보내는지 재는 데이터. 항목은 `{id, message, has_guide, history, expected, note}` 이고, `has_guide` 는 이 대화에 읽기 지도가 이미 있는지, `history` 는 분류 프롬프트에 들어가는 최근 대화(`{"role": "user"|"agent", "text"}`, 도우미 줄은 `_agent_summary` 모양으로 씀)다. **라벨 = 사람 수작업**(규칙·LLM 자동 라벨 아님. 초안은 Opus 에이전트가 2026-10-21 에 손으로 붙였고 사용자 검수 전. 사용자가 실제로 칠 법한 한국어 메시지 27개 + 영어 3개, 각 라벨의 이유를 `note` 에 한 줄), **n = 30**, 분포 map 9 / ask 9 / next 6 / chat 6. next 는 모두 `has_guide: true` 이고, 지도 없는 "다음"(si-06)은 게이트 규칙대로 map 으로 라벨해 map 9개에 넣었다. 함수 이름이 없는 ask 2개(si-13 리디렉트, si-14 인증 헤더)는 사람 기준으로 ask 지만 현재 게이트가 map 으로 내리므로(Phase 5.5-4 완화 대상) 결과에서 따로 집계한다. 한계: n 이 작아 한 항목이 정확도를 3%p 움직이고, next 6개는 모두 `NEXT_PATTERN` 에 걸리는 표현이라 게이트 후 next 정확도는 사실상 정규식 검사다. LLM 단독 정확도와 함께 봐야 한다.
 
 ## 라벨링 방법
 

@@ -9,14 +9,14 @@ from pathlib import Path
 from pydantic import BaseModel, Field
 
 from repoute.indexing.symbols import SymbolDB
-from repoute.prompts.explain_v1 import EXPLAIN
+from repoute.prompts import explain_v2
 from repoute.tools.code_tools import MAX_READ_LINES
 
 CACHE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS explanations (
     repo_id TEXT, file TEXT, line_start INTEGER, what TEXT, watch_json TEXT,
-    docstring_ko TEXT,
-    PRIMARY KEY (repo_id, file, line_start)
+    docstring_ko TEXT, prompt_version TEXT,
+    PRIMARY KEY (repo_id, file, line_start, prompt_version)
 );
 """
 
@@ -86,29 +86,51 @@ def _numbered_code(root: Path, span: SymbolSpan) -> tuple[str, bool]:
 
 
 def _ensure_schema(conn: sqlite3.Connection) -> None:
-    """캐시 테이블을 만들고, 옛 DB 에 docstring_ko 컬럼이 없으면 추가한다 (옛 행은 NULL)."""
-    conn.executescript(CACHE_SCHEMA)
+    """캐시 테이블을 만든다. 옛 DB(prompt_version 컬럼 없음)는 새 PK 로 옮긴다.
+
+    PK 를 바꾸려면 ALTER 로는 안 되므로 이름을 바꿔 두고 새 테이블에 복사한 뒤 지운다.
+    옛 행은 모두 v1 프롬프트 결과이므로 'v1' 로 둔다. docstring_ko 컬럼조차 없는
+    더 옛날 DB 는 docstring_ko 를 NULL 로 옮긴다 (explain_symbol 이 필요할 때 다시 만든다).
+    """
     columns = {row[1] for row in conn.execute("PRAGMA table_info(explanations)")}
-    if "docstring_ko" not in columns:
-        conn.execute("ALTER TABLE explanations ADD COLUMN docstring_ko TEXT")
-        conn.commit()
+    if not columns or "prompt_version" in columns:  # 테이블이 없거나 이미 새 스키마
+        conn.executescript(CACHE_SCHEMA)
+        return
+    doc = "docstring_ko" if "docstring_ko" in columns else "NULL"
+    conn.execute("ALTER TABLE explanations RENAME TO explanations_old")
+    conn.executescript(CACHE_SCHEMA)
+    conn.execute(
+        "INSERT INTO explanations"
+        " (repo_id, file, line_start, what, watch_json, docstring_ko, prompt_version)"
+        f" SELECT repo_id, file, line_start, what, watch_json, {doc}, 'v1'"
+        " FROM explanations_old"
+    )
+    conn.execute("DROP TABLE explanations_old")
+    conn.commit()
 
 
 def explain_symbol(
-    llm, root: Path, span: SymbolSpan, cache_path: Path, repo_id: str
+    llm,
+    root: Path,
+    span: SymbolSpan,
+    cache_path: Path,
+    repo_id: str,
+    prompts=explain_v2,
 ) -> tuple[Explanation, bool]:
-    """심볼 코드를 fast 모델에 보내 설명을 만든다. (repo_id, file, line_start) 로 캐시.
+    """심볼 코드를 fast 모델에 보내 설명을 만든다. (repo_id, file, line_start, 버전) 으로 캐시.
 
-    반환 (설명, cached). 연결은 이 함수 안에서 열고 닫는다 (요청 스레드마다 따로).
+    prompts 는 EXPLAIN·VERSION 을 가진 프롬프트 모듈(기본 explain_v2). 프롬프트가 바뀌면
+    버전이 달라 옛 결과를 재사용하지 않는다. 반환 (설명, cached).
+    연결은 이 함수 안에서 열고 닫는다 (요청 스레드마다 따로).
     """
     cache_path.parent.mkdir(parents=True, exist_ok=True)
-    key = (repo_id, span.file, span.line_start)
+    key = (repo_id, span.file, span.line_start, prompts.VERSION)
     conn = sqlite3.connect(cache_path)
     try:
         _ensure_schema(conn)
         row = conn.execute(
             "SELECT what, watch_json, docstring_ko FROM explanations"
-            " WHERE repo_id = ? AND file = ? AND line_start = ?",
+            " WHERE repo_id = ? AND file = ? AND line_start = ? AND prompt_version = ?",
             key,
         ).fetchone()
         # docstring_ko 가 NULL 인 옛 행은 docstring 이 있을 때만 다시 만든다
@@ -116,7 +138,7 @@ def explain_symbol(
             what, watch = row[0], json.loads(row[1])
             return Explanation(what=what, watch=watch, docstring_ko=row[2] or ""), True
         code, truncated = _numbered_code(root, span)
-        prompt = EXPLAIN.format(name=span.name, kind=span.kind, file=span.file, code=code)
+        prompt = prompts.EXPLAIN.format(name=span.name, kind=span.kind, file=span.file, code=code)
         result = llm.with_structured_output(Explanation).invoke(prompt)
         if not span.docstring:  # docstring 이 없는데 지어낸 번역은 버린다
             result = result.model_copy(update={"docstring_ko": ""})
@@ -125,8 +147,8 @@ def explain_symbol(
             result = Explanation(what=what, watch=result.watch, docstring_ko=result.docstring_ko)
         conn.execute(
             "INSERT OR REPLACE INTO explanations"
-            " (repo_id, file, line_start, what, watch_json, docstring_ko)"
-            " VALUES (?, ?, ?, ?, ?, ?)",
+            " (repo_id, file, line_start, prompt_version, what, watch_json, docstring_ko)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 *key,
                 result.what,

@@ -25,6 +25,7 @@ from repoute.indexing.explain import enclosing_symbol, explain_symbol
 from repoute.indexing.imports import modules_of, rank_modules_v2
 from repoute.indexing.index import build_index
 from repoute.indexing.symbols import SymbolDB
+from repoute.prompts import explain_v2
 from repoute.tools.code_tools import MAX_READ_LINES
 
 
@@ -206,13 +207,18 @@ def create_app(
         cache_path = Path(cache_dir) / "index" / "explanations.sqlite"
         try:
             result, cached = explain_symbol(
-                app.state.deps.fast_llm, root, span, cache_path, repo_id
+                app.state.deps.fast_llm, root, span, cache_path, repo_id, prompts=explain_v2
             )
         except Exception as e:  # LLM 오류는 한 줄로
             message = str(e).strip().splitlines()[0] if str(e).strip() else "LLM 오류"
             raise HTTPException(502, message) from e
         keys = ("name", "kind", "line_start", "line_end")
-        return {**{k: getattr(span, k) for k in keys}, **result.model_dump(), "cached": cached}
+        return {
+            **{k: getattr(span, k) for k in keys},
+            **result.model_dump(),
+            "cached": cached,
+            "prompt_version": explain_v2.VERSION,
+        }
 
     @app.post("/threads/{thread_id}/runs")
     async def run(thread_id: str, body: RunRequest):

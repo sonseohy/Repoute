@@ -9,6 +9,7 @@ import pytest
 from repoute.indexing.explain import Explanation, SymbolSpan, enclosing_symbol, explain_symbol
 from repoute.indexing.parser import parse_repo
 from repoute.indexing.symbols import SymbolDB
+from repoute.prompts import explain_v1, explain_v2
 
 CODE = '''def helper(x):
     """x 를 두 배로 만든다."""
@@ -108,32 +109,89 @@ def test_explain_drops_made_up_docstring_ko(tmp_path, repo):
     assert first.docstring_ko == "" and second.docstring_ko == "" and cached
 
 
+def _old_cache(path: Path, with_docstring_ko: bool) -> None:
+    """prompt_version 컬럼이 없는 옛 캐시 DB 에 helper(줄 1) 행 하나를 만든다."""
+    doc_col = " docstring_ko TEXT," if with_docstring_ko else ""
+    old = sqlite3.connect(path)
+    old.execute(
+        "CREATE TABLE explanations (repo_id TEXT, file TEXT, line_start INTEGER,"
+        f" what TEXT, watch_json TEXT,{doc_col} PRIMARY KEY (repo_id, file, line_start))"
+    )
+    row = ("o/n@abc1234", "shop.py", 1, "옛 설명.", '["곱셈 (줄 3)"]')
+    if with_docstring_ko:
+        old.execute("INSERT INTO explanations VALUES (?, ?, ?, ?, ?, ?)", (*row, "옛 번역."))
+    else:
+        old.execute("INSERT INTO explanations VALUES (?, ?, ?, ?, ?)", row)
+    old.commit()
+    old.close()
+
+
+def _columns_and_rows(path: Path) -> tuple[set, list]:
+    """캐시 DB 의 컬럼 이름 집합과 (prompt_version, what, docstring_ko) 행 목록."""
+    conn = sqlite3.connect(path)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(explanations)")}
+    rows = conn.execute(
+        "SELECT prompt_version, what, docstring_ko FROM explanations ORDER BY prompt_version"
+    ).fetchall()
+    conn.close()
+    return columns, rows
+
+
 def test_explain_migrates_old_cache(tmp_path, repo):
-    """옛 스키마(docstring_ko 없음) DB 는 컬럼을 추가하고 docstring 있는 심볼은 다시 만든다."""
+    """docstring_ko 도 없는 아주 옛 DB 는 v1 행(docstring_ko NULL)으로 옮긴다.
+
+    docstring 있는 심볼을 v1 로 다시 물으면 NULL 이라 다시 만든다 (docstring_ko NULL 처리 유지).
+    """
     root, db = repo
     span = enclosing_symbol(db, root, "shop.py", 3)  # helper, docstring 있음
     cache = tmp_path / "old.sqlite"
-    old = sqlite3.connect(cache)
-    old.execute(
-        "CREATE TABLE explanations (repo_id TEXT, file TEXT, line_start INTEGER,"
-        " what TEXT, watch_json TEXT, PRIMARY KEY (repo_id, file, line_start))"
-    )
-    old.execute(
-        "INSERT INTO explanations VALUES (?, ?, ?, ?, ?)",
-        ("o/n@abc1234", "shop.py", 1, "옛 설명.", '["곱셈 (줄 3)"]'),
-    )
-    old.commit()
-    old.close()
+    _old_cache(cache, with_docstring_ko=False)
     expl = Explanation(what="두 배로 만든다.", watch=["곱셈 (줄 3)"], docstring_ko="x 를 두 배로.")
     fake = FakeLLM([expl])
-    result, cached = explain_symbol(fake, root, span, cache, "o/n@abc1234")
+    result, cached = explain_symbol(fake, root, span, cache, "o/n@abc1234", prompts=explain_v1)
     assert cached is False and len(fake.prompts) == 1
     assert result.what == "두 배로 만든다." and result.docstring_ko == "x 를 두 배로."
-    conn = sqlite3.connect(cache)
-    columns = {row[1] for row in conn.execute("PRAGMA table_info(explanations)")}
-    stored = conn.execute("SELECT docstring_ko FROM explanations WHERE line_start = 1").fetchone()
-    conn.close()
-    assert "docstring_ko" in columns and stored == ("x 를 두 배로.",)
+    columns, rows = _columns_and_rows(cache)
+    assert {"docstring_ko", "prompt_version"} <= columns
+    assert rows == [("v1", "두 배로 만든다.", "x 를 두 배로.")]
+
+
+def test_explain_migrates_to_prompt_version(tmp_path, repo):
+    """prompt_version 없는 옛 DB(행 1개)는 컬럼이 생기고 옛 행은 'v1' 로 남는다.
+
+    v2 요청은 캐시 미스(LLM 1회)이고, 같은 심볼의 v1 요청은 옮겨진 옛 행을 그대로 쓴다.
+    """
+    root, db = repo
+    span = enclosing_symbol(db, root, "shop.py", 3)
+    cache = tmp_path / "old.sqlite"
+    _old_cache(cache, with_docstring_ko=True)
+    expl = Explanation(what="v2 설명.", watch=["곱셈 (줄 3)"], docstring_ko="v2 번역.")
+    fake = FakeLLM([expl])
+    result, cached = explain_symbol(fake, root, span, cache, "o/n@abc1234")  # 기본 v2
+    assert cached is False and len(fake.prompts) == 1 and result.what == "v2 설명."
+    columns, rows = _columns_and_rows(cache)
+    assert "prompt_version" in columns
+    assert rows == [("v1", "옛 설명.", "옛 번역."), ("v2", "v2 설명.", "v2 번역.")]
+    old, cached_v1 = explain_symbol(fake, root, span, cache, "o/n@abc1234", prompts=explain_v1)
+    assert cached_v1 is True and old.what == "옛 설명." and len(fake.prompts) == 1
+
+
+def test_explain_cache_split_by_prompt_version(tmp_path, repo):
+    """같은 심볼이라도 프롬프트 v1·v2 는 캐시가 따로라 각각 LLM 1회, 다시 물으면 둘 다 캐시."""
+    root, db = repo
+    span = enclosing_symbol(db, root, "shop.py", 12)
+    v1 = Explanation(what="v1 설명.", watch=["대입 (줄 12)", "반환 (줄 13)"])
+    v2 = Explanation(what="v2 설명.", watch=["대입 (줄 12)", "반환 (줄 13)"])
+    fake = FakeLLM([v1, v2])
+    cache = tmp_path / "e.sqlite"
+    r1, c1 = explain_symbol(fake, root, span, cache, "o/n@abc1234", prompts=explain_v1)
+    r2, c2 = explain_symbol(fake, root, span, cache, "o/n@abc1234", prompts=explain_v2)
+    assert (c1, c2) == (False, False) and (r1.what, r2.what) == ("v1 설명.", "v2 설명.")
+    assert "다음 중에서 고른다" in fake.prompts[0] and "첫 항목은 반드시" in fake.prompts[1]
+    again1, c3 = explain_symbol(fake, root, span, cache, "o/n@abc1234", prompts=explain_v1)
+    again2, c4 = explain_symbol(fake, root, span, cache, "o/n@abc1234", prompts=explain_v2)
+    assert (c3, c4) == (True, True) and (again1.what, again2.what) == ("v1 설명.", "v2 설명.")
+    assert len(fake.prompts) == 2
 
 
 def test_explain_long_symbol_is_truncated(tmp_path):

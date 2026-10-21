@@ -263,5 +263,6 @@ def test_explain_cached(tmp_path, repo_url):
         "watch": ["helper() 호출 (줄 5)"],
         "docstring_ko": "",  # run 에는 docstring 이 없어 LLM 이 준 값을 버린다
         "cached": False,
+        "prompt_version": "v2",
     }
     assert second == {**first, "cached": True}  # 큐가 비었으니 LLM 을 또 불렀다면 IndexError

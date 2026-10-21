@@ -1,0 +1,350 @@
+[
+  {
+    "id": "si-01",
+    "message": "이 레포 구조 설명해줘",
+    "has_guide": false,
+    "history": [],
+    "expected": "map",
+    "note": "레포 전체 구조를 묻는다. '설명해줘' 가 ask 처럼 보일 수 있지만 특정 코드 이름이 없다"
+  },
+  {
+    "id": "si-02",
+    "message": "어디서부터 봐야 해?",
+    "has_guide": false,
+    "history": [],
+    "expected": "map",
+    "note": "출발점을 묻는 전형적인 지도 질문"
+  },
+  {
+    "id": "si-03",
+    "message": "처음 보는 사람이 읽을 순서 알려줘",
+    "has_guide": false,
+    "history": [],
+    "expected": "map",
+    "note": "'순서' 가 next 와 겹치지만 아직 지도가 없고 전체 순서를 처음 요청한다"
+  },
+  {
+    "id": "si-04",
+    "message": "https://github.com/psf/requests",
+    "has_guide": false,
+    "history": [],
+    "expected": "map",
+    "note": "URL 만 보냄. 레포를 처음 열었을 때의 기본 요청 = 지도. 질문 문장이 없어 chat 으로 갈 위험"
+  },
+  {
+    "id": "si-05",
+    "message": "핵심 모듈이 뭐야?",
+    "has_guide": false,
+    "history": [],
+    "expected": "map",
+    "note": "핵심 모듈 = 프롬프트 map 정의 그대로. '뭐야' 가 chat 처럼 보일 수 있다"
+  },
+  {
+    "id": "si-06",
+    "message": "다음",
+    "has_guide": false,
+    "history": [],
+    "expected": "map",
+    "note": "지도 없는 '다음'. 이어 갈 읽기 순서가 없으므로 지도를 먼저 만든다(게이트 규칙: 지도 없는 next → map)"
+  },
+  {
+    "id": "si-07",
+    "message": "이 프로젝트 진입점이 어디야?",
+    "has_guide": false,
+    "history": [],
+    "expected": "map",
+    "note": "진입점 = 프롬프트 map 정의. 특정 함수 이름 없음"
+  },
+  {
+    "id": "si-08",
+    "message": "Where should I start reading this codebase?",
+    "has_guide": false,
+    "history": [],
+    "expected": "map",
+    "note": "영어 지도 질문. 영단어가 많아 SYMBOL_PATTERN 은 걸리지만 의도는 출발점"
+  },
+  {
+    "id": "si-09",
+    "message": "그럼 전체 흐름을 큰 그림으로 다시 보여줘",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "Session.send() 가 뭐해?"
+      },
+      {
+        "role": "agent",
+        "text": "따라가기 답: Session.send 는 어댑터를 골라 요청을 보내고 응답에 훅을 적용한다"
+      }
+    ],
+    "expected": "map",
+    "note": "따라가기 직후 전체 그림을 다시 요청. 직전 대화가 ask 라 ask 로 끌려갈 위험"
+  },
+  {
+    "id": "si-10",
+    "message": "Session.send() 가 뭐해?",
+    "has_guide": false,
+    "history": [],
+    "expected": "ask",
+    "note": "메서드 이름이 있는 동작 질문"
+  },
+  {
+    "id": "si-11",
+    "message": "requests.get 호출하면 내부에서 뭐가 일어나?",
+    "has_guide": false,
+    "history": [],
+    "expected": "ask",
+    "note": "식별자 + 호출 흐름 질문"
+  },
+  {
+    "id": "si-12",
+    "message": "retry 로직은 어디 있어?",
+    "has_guide": false,
+    "history": [],
+    "expected": "ask",
+    "note": "'retry' 라는 코드 이름으로 특정 로직을 찾는다. '어디 있어' 가 map 처럼 보일 수 있다"
+  },
+  {
+    "id": "si-13",
+    "message": "리디렉트 처리는 어디서 해?",
+    "has_guide": false,
+    "history": [],
+    "expected": "ask",
+    "note": "특정 기능의 코드 위치를 묻는 ask. 현재 게이트는 map 으로 내림(Phase 5.5-4 완화 대상)"
+  },
+  {
+    "id": "si-14",
+    "message": "인증 헤더는 어떤 순서로 붙어?",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "어디서부터 읽어야 해?"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 지도 8단계를 보여 줌 (1단계: src/requests/api.py)"
+      }
+    ],
+    "expected": "ask",
+    "note": "특정 흐름(인증)을 묻는 ask. 현재 게이트는 map 으로 내림(Phase 5.5-4 완화 대상)"
+  },
+  {
+    "id": "si-15",
+    "message": "click.command 데코레이터가 함수를 어떻게 바꿔?",
+    "has_guide": false,
+    "history": [],
+    "expected": "ask",
+    "note": "데코레이터 이름이 있는 동작 질문"
+  },
+  {
+    "id": "si-16",
+    "message": "Console.print 부르면 어떤 순서로 실행돼?",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "핵심 모듈이 뭐야?"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 지도 7단계를 보여 줌 (1단계: rich/console.py)"
+      }
+    ],
+    "expected": "ask",
+    "note": "지도를 받은 뒤의 ask. 직전 대화가 map 이라 map·next 로 끌려갈 위험"
+  },
+  {
+    "id": "si-17",
+    "message": "What does HTTPAdapter.send do?",
+    "has_guide": false,
+    "history": [],
+    "expected": "ask",
+    "note": "영어 ask. 메서드 이름 포함"
+  },
+  {
+    "id": "si-18",
+    "message": "거기 나온 Session.request 따라가 줘",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "다음"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 순서 2단계 src/requests/sessions.py 를 짚음 (남은 6개)"
+      }
+    ],
+    "expected": "ask",
+    "note": "'다음' 으로 짚은 단계에서 힌트대로 따라가기 요청. 직전이 next 라 next 로 끌려갈 위험"
+  },
+  {
+    "id": "si-19",
+    "message": "다음",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "어디서부터 봐야 해?"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 지도 8단계를 보여 줌 (1단계: src/requests/api.py)"
+      }
+    ],
+    "expected": "next",
+    "note": "지도 직후 '다음'. 가장 기본적인 next"
+  },
+  {
+    "id": "si-20",
+    "message": "그다음은?",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "다음"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 순서 1단계 src/requests/api.py 를 짚음 (남은 7개)"
+      }
+    ],
+    "expected": "next",
+    "note": "next 를 이어 가는 짧은 말"
+  },
+  {
+    "id": "si-21",
+    "message": "다음 파일 알려줘",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "처음 보는 사람이 읽을 순서 알려줘"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 지도 6단계를 보여 줌 (1단계: src/click/decorators.py)"
+      }
+    ],
+    "expected": "next",
+    "note": "프롬프트 예시와 같은 표현"
+  },
+  {
+    "id": "si-22",
+    "message": "8번 다음에 뭐 봐야 해?",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "어디서부터 읽어야 해?"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 지도 10단계를 보여 줌 (1단계: rich/console.py)"
+      }
+    ],
+    "expected": "next",
+    "note": "본 단계 번호(8) + 다음. '뭐 봐야 해' 가 map 처럼 보일 수 있다"
+  },
+  {
+    "id": "si-23",
+    "message": "3단계까지 봤어 다음은",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "핵심 모듈이 뭐야?"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 지도 7단계를 보여 줌 (1단계: httpx/_api.py)"
+      }
+    ],
+    "expected": "next",
+    "note": "본 단계 번호 + 다음 (SEEN_STEP_PATTERN 대상)"
+  },
+  {
+    "id": "si-24",
+    "message": "이어서",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "다음"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 순서 3단계 httpx/_client.py 를 짚음 (남은 4개)"
+      }
+    ],
+    "expected": "next",
+    "note": "'다음' 이라는 말 없이 이어 가기만 요청"
+  },
+  {
+    "id": "si-25",
+    "message": "고마워",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "다음"
+      },
+      {
+        "role": "agent",
+        "text": "읽기 순서 4단계 src/requests/adapters.py 를 짚음 (남은 3개)"
+      }
+    ],
+    "expected": "chat",
+    "note": "감사 인사. 직전이 next 라 next 로 끌려갈 위험"
+  },
+  {
+    "id": "si-26",
+    "message": "안녕",
+    "has_guide": false,
+    "history": [],
+    "expected": "chat",
+    "note": "인사"
+  },
+  {
+    "id": "si-27",
+    "message": "너 뭐 할 수 있어?",
+    "has_guide": false,
+    "history": [],
+    "expected": "chat",
+    "note": "기능 문의 = 사용법 질문"
+  },
+  {
+    "id": "si-28",
+    "message": "이 도구 어떻게 써?",
+    "has_guide": false,
+    "history": [],
+    "expected": "chat",
+    "note": "사용법 문의. '이 도구' 가 레포 코드로 오해될 수 있다"
+  },
+  {
+    "id": "si-29",
+    "message": "LangGraph 가 뭐야?",
+    "has_guide": false,
+    "history": [],
+    "expected": "chat",
+    "note": "레포와 무관한 일반 개념 질문. 식별자처럼 보이는 이름이 있어 ask 로 가면 게이트도 못 막는다"
+  },
+  {
+    "id": "si-30",
+    "message": "ㅋㅋ",
+    "has_guide": true,
+    "history": [
+      {
+        "role": "user",
+        "text": "Session.send() 가 뭐해?"
+      },
+      {
+        "role": "agent",
+        "text": "따라가기 답: Session.send 는 어댑터를 골라 요청을 보내고 응답에 훅을 적용한다"
+      }
+    ],
+    "expected": "chat",
+    "note": "의미 없는 반응. 직전이 ask 라 ask 로 끌려갈 위험"
+  }
+]
