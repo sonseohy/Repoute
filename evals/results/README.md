@@ -12,6 +12,7 @@
 | [06](06-v3-regression.md) | v3-regression | 프롬프트 v3 기본값으로 레포 5개 회귀 측정 | citation_validity 100%, citation_specificity 100%, 재생성 0, 평균 $0.022·7.6s | 5 | 사후 검증 validity·specificity, 토큰 콜백 | 태그 `prompt-v3` | (커밋 후 기재) |
 | [07](07-walkthrough-first-run.md) | walkthrough-first-run | Phase 3 따라가기 첫 실행 (requests.get 질문) | 인용 4/4 유효·구체적, 재작성 0, 도구 15회(상한), $0.080, 24.1s. Session.request 이후 미도달 | 1 | 체크포인트 최종 상태 + LangSmith 토큰·비용 | 00:09:41 UTC 트레이스 | (커밋 후 기재) |
 | [08](08-walkthrough-v2.md) | walkthrough-v2 | 점 붙은 이름 재시도·read_code 힌트·읽기 전략 프롬프트 (같은 질문 재측정) | 도구 15→13, Session.send 도달(4→5단계), 인용 5/5 유효·구체적. 비용 $0.080→$0.099 (+23%, 턴당 컨텍스트 증가) | 1 | 체크포인트 + LangSmith | 00:16:07 UTC | (커밋 후 기재) |
+| [09](09-walkthrough-fast-agent.md) | walkthrough-fast-agent (E5) | agent 턴 gpt-4o-mini + def 줄 힌트 + 재읽기 차단 (통제군 포함) | fast: $0.099→$0.025 (−75%), send 도달 유지, def 줄 0%→100%. quality 통제군: $0.043, 3단계에서 멈춤 | 1×2 | 체크포인트 채점 + LangSmith | 00:23:59 / 00:24:12 UTC | (커밋 후 기재) |
 
 ## 이름 규칙
 
