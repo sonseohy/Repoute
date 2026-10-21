@@ -13,3 +13,6 @@ class Deps:
     fast_llm: Any  # 모듈 요약 (저비용)
     quality_llm: Any  # 읽기 순서 합성 (고품질)
     index: RepoIndex
+    # 옵트인 심볼 임베딩 검색(search_symbols). 둘 다 None 이면 도구 5개 그대로 (기본 동작 불변)
+    embedder: Any = None  # embed_query 를 가진 임베딩 모델
+    embedding_store: Any = None  # SymbolEmbeddingStore

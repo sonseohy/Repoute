@@ -1,0 +1,930 @@
+{
+  "meta": {
+    "date": "2026-10-21",
+    "dataset": "evals/datasets/pr_coach_gold.json",
+    "raw_dir": "evals/datasets/raw",
+    "stages": "parse_changed_files → find_changed_symbols → find_impact → find_test_files",
+    "changed_symbols": "hunk 문맥 이름 우선, 없으면 첫 변경 줄(시작 + 3)의 감싸는 심볼",
+    "impact": "변경 심볼마다 호출자 ≤5, 피호출자 0 (find_impact 기본값)",
+    "llm_calls": 0,
+    "repos": {
+      "psf/requests": {
+        "repo_id": "psf/requests@611c616",
+        "commit": "611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60"
+      },
+      "encode/httpx": {
+        "repo_id": "encode/httpx@b5addb6",
+        "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
+      },
+      "pallets/click": {
+        "repo_id": "pallets/click@2247b35",
+        "commit": "2247b35ea1c47c727d7a06e51fa280e12a863ff6"
+      },
+      "Textualize/rich": {
+        "repo_id": "Textualize/rich@9d8f9a3",
+        "commit": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f"
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "pr-requests-01",
+      "repo": "psf/requests",
+      "number": 6767,
+      "title": "Revert caching a default SSLContext",
+      "difficulty": "medium",
+      "changed": [
+        {
+          "name": "SOCKSProxyManager",
+          "file": "src/requests/adapters.py",
+          "line": 66
+        },
+        {
+          "name": "_urllib3_request_context",
+          "file": "src/requests/adapters.py",
+          "line": 85
+        },
+        {
+          "name": "HTTPAdapter.cert_verify",
+          "file": "src/requests/adapters.py",
+          "line": 307
+        }
+      ],
+      "impact": [
+        {
+          "name": "HTTPAdapter.proxy_manager_for",
+          "file": "src/requests/adapters.py",
+          "line": 269,
+          "relation": "caller",
+          "via": "SOCKSProxyManager"
+        },
+        {
+          "name": "HTTPAdapter.build_connection_pool_key_attributes",
+          "file": "src/requests/adapters.py",
+          "line": 403,
+          "relation": "caller",
+          "via": "_urllib3_request_context"
+        },
+        {
+          "name": "HTTPAdapter.send",
+          "file": "src/requests/adapters.py",
+          "line": 634,
+          "relation": "caller",
+          "via": "HTTPAdapter.cert_verify"
+        }
+      ],
+      "test_files": [],
+      "notes": [
+        "hunk → 심볼: 문맥 이름으로 3개, 줄로 0개"
+      ],
+      "seconds": 0.008,
+      "metrics": {
+        "changed_recall": 1.0,
+        "impact_recall": 0.6666666666666666,
+        "impact_precision": 0.6666666666666666,
+        "test_file_hit": false
+      }
+    },
+    {
+      "id": "pr-requests-02",
+      "repo": "psf/requests",
+      "number": 6963,
+      "title": "fix CVE 2024 47081: manual url parsing leads to netloc credentials leak",
+      "difficulty": "easy",
+      "changed": [
+        {
+          "name": "get_netrc_auth",
+          "file": "src/requests/utils.py",
+          "line": 231
+        }
+      ],
+      "impact": [
+        {
+          "name": "SessionRedirectMixin.rebuild_auth",
+          "file": "src/requests/sessions.py",
+          "line": 309,
+          "relation": "caller",
+          "via": "get_netrc_auth"
+        },
+        {
+          "name": "Session.prepare_request",
+          "file": "src/requests/sessions.py",
+          "line": 511,
+          "relation": "caller",
+          "via": "get_netrc_auth"
+        }
+      ],
+      "test_files": [
+        "tests/test_utils.py",
+        "tests/test_requests.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_utils.py",
+        "hunk → 심볼: 문맥 이름으로 1개, 줄로 0개"
+      ],
+      "seconds": 0.004,
+      "metrics": {
+        "changed_recall": 1.0,
+        "impact_recall": 1.0,
+        "impact_precision": 1.0,
+        "test_file_hit": true
+      }
+    },
+    {
+      "id": "pr-httpx-01",
+      "repo": "encode/httpx",
+      "number": 3699,
+      "title": "Expose `FunctionAuth` in `__all__`",
+      "difficulty": "easy",
+      "changed": [
+        {
+          "name": "main",
+          "file": "httpx/__init__.py",
+          "line": 18
+        }
+      ],
+      "impact": [],
+      "test_files": [
+        "tests/test_main.py",
+        "tests/conftest.py"
+      ],
+      "notes": [
+        "hunk → 심볼: 문맥 이름으로 1개, 줄로 0개"
+      ],
+      "seconds": 0.011,
+      "metrics": {
+        "changed_recall": 0.0,
+        "impact_recall": 0.0,
+        "impact_precision": 0.0,
+        "test_file_hit": false
+      }
+    },
+    {
+      "id": "pr-click-01",
+      "repo": "pallets/click",
+      "number": 3866,
+      "title": "Deprecate parameter names that are: not a Python identifier, or a Python Keyword, or not lower-cased",
+      "difficulty": "medium",
+      "changed": [
+        {
+          "name": "_echo_aborted",
+          "file": "src/click/core.py",
+          "line": 103
+        },
+        {
+          "name": "Parameter._parse_decls",
+          "file": "src/click/core.py",
+          "line": 2528
+        },
+        {
+          "name": "Option.get_error_hint",
+          "file": "src/click/core.py",
+          "line": 3423
+        },
+        {
+          "name": "Option._parse_decls",
+          "file": "src/click/core.py",
+          "line": 3449
+        },
+        {
+          "name": "Argument._parse_decls",
+          "file": "src/click/core.py",
+          "line": 3963
+        }
+      ],
+      "impact": [
+        {
+          "name": "Parameter.__init__",
+          "file": "src/click/core.py",
+          "line": 2406,
+          "relation": "caller",
+          "via": "Parameter._parse_decls"
+        },
+        {
+          "name": "BadParameter.format_message",
+          "file": "src/click/exceptions.py",
+          "line": 146,
+          "relation": "caller",
+          "via": "Option.get_error_hint"
+        },
+        {
+          "name": "MissingParameter.format_message",
+          "file": "src/click/exceptions.py",
+          "line": 184,
+          "relation": "caller",
+          "via": "Option.get_error_hint"
+        }
+      ],
+      "test_files": [
+        "tests/test_arguments.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_arguments.py",
+        "인덱스 커밋에 없는 파일: tests/test_deprecations.py",
+        "인덱스 커밋에 없는 파일: tests/test_options.py",
+        "hunk → 심볼: 문맥 이름으로 7개, 줄로 0개"
+      ],
+      "seconds": 0.02,
+      "metrics": {
+        "changed_recall": 0.25,
+        "impact_recall": 1.0,
+        "impact_precision": 0.5,
+        "test_file_hit": true
+      }
+    },
+    {
+      "id": "pr-click-02",
+      "repo": "pallets/click",
+      "number": 3877,
+      "title": "Add `Parameter.spec` and deprecate `human_readable_name`",
+      "difficulty": "hard",
+      "changed": [
+        {
+          "name": "_echo_aborted",
+          "file": "src/click/core.py",
+          "line": 103
+        },
+        {
+          "name": "_outside_click_stacklevel",
+          "file": "src/click/core.py",
+          "line": 108
+        },
+        {
+          "name": "Parameter",
+          "file": "src/click/core.py",
+          "line": 2241
+        },
+        {
+          "name": "Parameter.__init__",
+          "file": "src/click/core.py",
+          "line": 2406
+        },
+        {
+          "name": "Parameter._check_name_is_usable",
+          "file": "src/click/core.py",
+          "line": 2532
+        },
+        {
+          "name": "Parameter.handle_parse_result",
+          "file": "src/click/core.py",
+          "line": 2929
+        },
+        {
+          "name": "Parameter.get_error_hint",
+          "file": "src/click/core.py",
+          "line": 3023
+        },
+        {
+          "name": "Argument.__init__",
+          "file": "src/click/core.py",
+          "line": 3909
+        },
+        {
+          "name": "Argument._parse_decls",
+          "file": "src/click/core.py",
+          "line": 3963
+        },
+        {
+          "name": "Argument.get_help_record",
+          "file": "src/click/core.py",
+          "line": 3995
+        }
+      ],
+      "impact": [
+        {
+          "name": "Parameter.__init_subclass__",
+          "file": "src/click/core.py",
+          "line": 2392,
+          "relation": "caller",
+          "via": "_outside_click_stacklevel"
+        },
+        {
+          "name": "Option._check_name_is_normalized",
+          "file": "src/click/core.py",
+          "line": 3429,
+          "relation": "caller",
+          "via": "_outside_click_stacklevel"
+        },
+        {
+          "name": "_NonClosingTextIOWrapper.__init__",
+          "file": "src/click/_compat.py",
+          "line": 60,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Group.__init__",
+          "file": "src/click/core.py",
+          "line": 1762,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "CommandCollection.__init__",
+          "file": "src/click/core.py",
+          "line": 2191,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Option.__init__",
+          "file": "src/click/core.py",
+          "line": 3149,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "ClickException.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 44,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Option._parse_decls",
+          "file": "src/click/core.py",
+          "line": 3449,
+          "relation": "caller",
+          "via": "Parameter._check_name_is_usable"
+        },
+        {
+          "name": "Command.parse_args",
+          "file": "src/click/core.py",
+          "line": 1396,
+          "relation": "caller",
+          "via": "Parameter.handle_parse_result"
+        },
+        {
+          "name": "Option.get_error_hint",
+          "file": "src/click/core.py",
+          "line": 3423,
+          "relation": "caller",
+          "via": "Parameter.get_error_hint"
+        },
+        {
+          "name": "BadParameter.format_message",
+          "file": "src/click/exceptions.py",
+          "line": 146,
+          "relation": "caller",
+          "via": "Parameter.get_error_hint"
+        },
+        {
+          "name": "MissingParameter.format_message",
+          "file": "src/click/exceptions.py",
+          "line": 184,
+          "relation": "caller",
+          "via": "Parameter.get_error_hint"
+        },
+        {
+          "name": "UsageError.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 82,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "BadParameter.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 135,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "MissingParameter.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 173,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "NoSuchOption.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 241,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "NoSuchCommand.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 277,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "Command.format_options",
+          "file": "src/click/core.py",
+          "line": 1325,
+          "relation": "caller",
+          "via": "Argument.get_help_record"
+        },
+        {
+          "name": "Command.format_arguments",
+          "file": "src/click/core.py",
+          "line": 1337,
+          "relation": "caller",
+          "via": "Argument.get_help_record"
+        }
+      ],
+      "test_files": [
+        "tests/test_options.py",
+        "tests/test_context.py",
+        "tests/test_termui.py",
+        "tests/test_arguments.py",
+        "tests/test_testing.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_arguments.py",
+        "인덱스 커밋에 없는 파일: tests/test_deprecations.py",
+        "인덱스 커밋에 없는 파일: tests/test_options.py",
+        "hunk → 심볼: 문맥 이름으로 12개, 줄로 0개"
+      ],
+      "seconds": 0.013,
+      "metrics": {
+        "changed_recall": 0.4,
+        "impact_recall": 0.75,
+        "impact_precision": 0.3333333333333333,
+        "test_file_hit": true
+      }
+    },
+    {
+      "id": "pr-click-03",
+      "repo": "pallets/click",
+      "number": 3884,
+      "title": "Fix `show_envvar` output for a sequence or an empty `envvar`",
+      "difficulty": "easy",
+      "changed": [
+        {
+          "name": "Option.get_default",
+          "file": "src/click/core.py",
+          "line": 3389
+        },
+        {
+          "name": "Option.get_help_extra",
+          "file": "src/click/core.py",
+          "line": 3614
+        }
+      ],
+      "impact": [
+        {
+          "name": "Context.invoke",
+          "file": "src/click/core.py",
+          "line": 880,
+          "relation": "caller",
+          "via": "Option.get_default"
+        },
+        {
+          "name": "Parameter.consume_value",
+          "file": "src/click/core.py",
+          "line": 2680,
+          "relation": "caller",
+          "via": "Option.get_default"
+        },
+        {
+          "name": "Option.prompt_for_value",
+          "file": "src/click/core.py",
+          "line": 3698,
+          "relation": "caller",
+          "via": "Option.get_default"
+        },
+        {
+          "name": "Option.get_help_record",
+          "file": "src/click/core.py",
+          "line": 3589,
+          "relation": "caller",
+          "via": "Option.get_help_extra"
+        }
+      ],
+      "test_files": [
+        "tests/test_options.py",
+        "tests/test_defaults.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_options.py",
+        "hunk → 심볼: 문맥 이름으로 2개, 줄로 0개"
+      ],
+      "seconds": 0.009,
+      "metrics": {
+        "changed_recall": 0.5,
+        "impact_recall": 0.5,
+        "impact_precision": 0.25,
+        "test_file_hit": true
+      }
+    },
+    {
+      "id": "pr-rich-01",
+      "repo": "Textualize/rich",
+      "number": 3180,
+      "title": "Fix double-width characters disappearing when wrapping",
+      "difficulty": "medium",
+      "changed": [
+        {
+          "name": "words",
+          "file": "rich/_wrap.py",
+          "line": 12
+        },
+        {
+          "name": "set_cell_size",
+          "file": "rich/cells.py",
+          "line": 299
+        }
+      ],
+      "impact": [
+        {
+          "name": "divide_line",
+          "file": "rich/_wrap.py",
+          "line": 26,
+          "relation": "caller",
+          "via": "words"
+        },
+        {
+          "name": "Rule.__rich_console__",
+          "file": "rich/rule.py",
+          "line": 49,
+          "relation": "caller",
+          "via": "set_cell_size"
+        },
+        {
+          "name": "Rule._rule_line",
+          "file": "rich/rule.py",
+          "line": 105,
+          "relation": "caller",
+          "via": "set_cell_size"
+        },
+        {
+          "name": "Segment.adjust_line_length",
+          "file": "rich/segment.py",
+          "line": 354,
+          "relation": "caller",
+          "via": "set_cell_size"
+        },
+        {
+          "name": "Text.truncate",
+          "file": "rich/text.py",
+          "line": 859,
+          "relation": "caller",
+          "via": "set_cell_size"
+        }
+      ],
+      "test_files": [
+        "tests/test_cells.py",
+        "tests/test_text.py",
+        "tests/test_align.py",
+        "tests/test_pretty.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_cells.py",
+        "인덱스 커밋에 없는 파일: tests/test_text.py",
+        "hunk → 심볼: 문맥 이름으로 2개, 줄로 0개"
+      ],
+      "seconds": 0.021,
+      "metrics": {
+        "changed_recall": 0.3333333333333333,
+        "impact_recall": 0.5,
+        "impact_precision": 0.2,
+        "test_file_hit": true
+      }
+    },
+    {
+      "id": "pr-rich-02",
+      "repo": "Textualize/rich",
+      "number": 4070,
+      "title": "perf: reduce Console and RichHandler import time by deferring unused imports",
+      "difficulty": "hard",
+      "changed": [
+        {
+          "name": "_emoji_replace",
+          "file": "rich/_emoji_replace.py",
+          "line": 9
+        },
+        {
+          "name": "Console.render",
+          "file": "rich/console.py",
+          "line": 1294
+        },
+        {
+          "name": "Console._collect_renderables",
+          "file": "rich/console.py",
+          "line": 1500
+        },
+        {
+          "name": "Console._collect_renderables.check_text",
+          "file": "rich/console.py",
+          "line": 1550
+        },
+        {
+          "name": "Console.print_exception",
+          "file": "rich/console.py",
+          "line": 1873
+        },
+        {
+          "name": "Console._caller_frame_info",
+          "file": "rich/console.py",
+          "line": 1909
+        },
+        {
+          "name": "Console.log",
+          "file": "rich/console.py",
+          "line": 1947
+        },
+        {
+          "name": "Console.input",
+          "file": "rich/console.py",
+          "line": 2156
+        },
+        {
+          "name": "Console.export_html",
+          "file": "rich/console.py",
+          "line": 2244
+        },
+        {
+          "name": "Console.export_svg",
+          "file": "rich/console.py",
+          "line": 2352
+        },
+        {
+          "name": "Console.save_svg",
+          "file": "rich/console.py",
+          "line": 2606
+        },
+        {
+          "name": "NoEmoji",
+          "file": "rich/emoji.py",
+          "line": 16
+        },
+        {
+          "name": "Emoji.__init__",
+          "file": "rich/emoji.py",
+          "line": 25
+        },
+        {
+          "name": "Emoji.__rich_console__",
+          "file": "rich/emoji.py",
+          "line": 70
+        },
+        {
+          "name": "RichHandler.emit",
+          "file": "rich/logging.py",
+          "line": 138
+        },
+        {
+          "name": "RichHandler.render",
+          "file": "rich/logging.py",
+          "line": 215
+        },
+        {
+          "name": "rich_cast",
+          "file": "rich/protocol.py",
+          "line": 18
+        },
+        {
+          "name": "auto.do_replace.auto_repr",
+          "file": "rich/repr.py",
+          "line": 42
+        },
+        {
+          "name": "Theme.from_file",
+          "file": "rich/theme.py",
+          "line": 38
+        }
+      ],
+      "impact": [
+        {
+          "name": "Console.render_str",
+          "file": "rich/console.py",
+          "line": 1409,
+          "relation": "caller",
+          "via": "_emoji_replace"
+        },
+        {
+          "name": "Emoji.replace",
+          "file": "rich/emoji.py",
+          "line": 53,
+          "relation": "caller",
+          "via": "_emoji_replace"
+        },
+        {
+          "name": "TextSuite.time_render",
+          "file": "benchmarks/benchmarks.py",
+          "line": 40,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "TextSuite.time_render_unicode_heavy",
+          "file": "benchmarks/benchmarks.py",
+          "line": 60,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "Align.__rich_console__",
+          "file": "rich/align.py",
+          "line": 143,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "Console.render_lines",
+          "file": "rich/console.py",
+          "line": 1345,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "Console.print",
+          "file": "rich/console.py",
+          "line": 1652,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "PromptBase.get_input",
+          "file": "rich/prompt.py",
+          "line": 194,
+          "relation": "caller",
+          "via": "Console.input"
+        },
+        {
+          "name": "Console.save_html",
+          "file": "rich/console.py",
+          "line": 2321,
+          "relation": "caller",
+          "via": "Console.export_html"
+        },
+        {
+          "name": "_RefreshThread.__init__",
+          "file": "rich/live.py",
+          "line": 25,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        },
+        {
+          "name": "RichHandler.__init__",
+          "file": "rich/logging.py",
+          "line": 71,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        },
+        {
+          "name": "Heading.__init__",
+          "file": "rich/markdown.py",
+          "line": 153,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        },
+        {
+          "name": "ImageItem.__init__",
+          "file": "rich/markdown.py",
+          "line": 443,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        },
+        {
+          "name": "_TrackThread.__init__",
+          "file": "rich/progress.py",
+          "line": 67,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        },
+        {
+          "name": "Console.update_screen_lines",
+          "file": "rich/console.py",
+          "line": 1853,
+          "relation": "caller",
+          "via": "RichHandler.render"
+        },
+        {
+          "name": "Console._render_buffer",
+          "file": "rich/console.py",
+          "line": 2132,
+          "relation": "caller",
+          "via": "RichHandler.render"
+        },
+        {
+          "name": "Console.export_text",
+          "file": "rich/console.py",
+          "line": 2192,
+          "relation": "caller",
+          "via": "RichHandler.render"
+        },
+        {
+          "name": "Constrain.__rich_console__",
+          "file": "rich/constrain.py",
+          "line": 22,
+          "relation": "caller",
+          "via": "RichHandler.render"
+        },
+        {
+          "name": "JupyterMixin._repr_mimebundle_",
+          "file": "rich/jupyter.py",
+          "line": 41,
+          "relation": "caller",
+          "via": "RichHandler.render"
+        },
+        {
+          "name": "Measurement.get",
+          "file": "rich/measure.py",
+          "line": 79,
+          "relation": "caller",
+          "via": "rich_cast"
+        },
+        {
+          "name": "Theme.read",
+          "file": "rich/theme.py",
+          "line": 60,
+          "relation": "caller",
+          "via": "Theme.from_file"
+        }
+      ],
+      "test_files": [
+        "tests/test_markup.py",
+        "tests/test_logging.py",
+        "tests/test_inspect.py",
+        "tests/test_console.py",
+        "tests/test_markdown.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_console.py",
+        "인덱스 커밋에 없는 파일: tests/test_syntax.py",
+        "hunk → 심볼: 문맥 이름으로 21개, 줄로 0개"
+      ],
+      "seconds": 0.021,
+      "metrics": {
+        "changed_recall": 1.0,
+        "impact_recall": 0.6666666666666666,
+        "impact_precision": 0.25,
+        "test_file_hit": true
+      }
+    }
+  ],
+  "summary": {
+    "by_repo": {
+      "psf/requests": {
+        "n": 2,
+        "failed": 0,
+        "changed_recall": 1.0,
+        "impact_recall": 0.8333333333333333,
+        "impact_precision": 0.8333333333333333,
+        "test_file_hit": 0.5
+      },
+      "encode/httpx": {
+        "n": 1,
+        "failed": 0,
+        "changed_recall": 0.0,
+        "impact_recall": 0.0,
+        "impact_precision": 0.0,
+        "test_file_hit": 0.0
+      },
+      "pallets/click": {
+        "n": 3,
+        "failed": 0,
+        "changed_recall": 0.3833333333333333,
+        "impact_recall": 0.75,
+        "impact_precision": 0.3611111111111111,
+        "test_file_hit": 1.0
+      },
+      "Textualize/rich": {
+        "n": 2,
+        "failed": 0,
+        "changed_recall": 0.6666666666666666,
+        "impact_recall": 0.5833333333333333,
+        "impact_precision": 0.225,
+        "test_file_hit": 1.0
+      }
+    },
+    "by_difficulty": {
+      "easy": {
+        "n": 3,
+        "failed": 0,
+        "changed_recall": 0.5,
+        "impact_recall": 0.5,
+        "impact_precision": 0.4166666666666667,
+        "test_file_hit": 0.6666666666666666
+      },
+      "medium": {
+        "n": 3,
+        "failed": 0,
+        "changed_recall": 0.5277777777777778,
+        "impact_recall": 0.7222222222222222,
+        "impact_precision": 0.4555555555555555,
+        "test_file_hit": 0.6666666666666666
+      },
+      "hard": {
+        "n": 2,
+        "failed": 0,
+        "changed_recall": 0.7,
+        "impact_recall": 0.7083333333333333,
+        "impact_precision": 0.29166666666666663,
+        "test_file_hit": 1.0
+      }
+    },
+    "overall": {
+      "n": 8,
+      "failed": 0,
+      "changed_recall": 0.5604166666666667,
+      "impact_recall": 0.6354166666666666,
+      "impact_precision": 0.4,
+      "test_file_hit": 0.75
+    }
+  }
+}

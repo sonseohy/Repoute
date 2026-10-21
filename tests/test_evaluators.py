@@ -55,6 +55,33 @@ def test_precision_at_k_only_counts_top_k_once():
     assert m.core_module_precision_at_k(["pkg.a", "pkg.a", "pkg.c", "pkg.b"], gold, k=2) == 0.5
 
 
+def test_issue_module_precision_at_3():
+    """이슈 모듈 precision@3: 접두어 차이는 흡수하고 분모는 k=3."""
+    gold = ["requests.sessions", "requests.adapters"]
+    predicted = ["src.requests.sessions", "src.requests.utils", "requests.adapters", "x.y"]
+    assert m.issue_module_precision_at_k(predicted, gold) == 1.0  # 정답 2개 모두 상위 3개 안
+    assert m.issue_module_precision_at_k([], gold) == 0.0
+    # 정답이 1개면 상위 3개 안에 있을 때 1.0 (분모 = min(k, 정답 수))
+    assert (
+        m.issue_module_precision_at_k(["a.b", "requests.utils", "c.d"], ["requests.utils"]) == 1.0
+    )
+    assert m.issue_module_precision_at_k(["a.b", "c.d", "e.f"], ["requests.utils"]) == 0.0
+    assert m.issue_module_hit_at_k(["a.b", "requests.utils"], ["requests.utils"]) is True
+
+
+def test_issue_symbol_hit_by_tail_name():
+    """정답 "Session.request" 는 "request" 예측으로도 맞힌 것이다."""
+    gold = ["Session.request", "HTTPAdapter.send"]
+    assert m.issue_symbol_hit(["foo", "request"], gold)
+    assert m.issue_symbol_hit(["HTTPAdapter.send"], gold)
+
+
+def test_issue_symbol_hit_miss_and_empty():
+    """끝 이름이 하나도 겹치지 않거나 예측이 비면 False."""
+    assert not m.issue_symbol_hit(["Session.prepare_request"], ["Session.request"])
+    assert not m.issue_symbol_hit([], ["Session.request"])
+
+
 def test_reached_by_tail_name():
     """기록 13 관찰 2: 'prepare_body' 인용은 'PreparedRequest.prepare_body' 도달로 인정."""
     refs = [("src/requests/models.py", "prepare_body")]
@@ -172,3 +199,18 @@ def test_langsmith_dry_run_prints_counts_without_network():
         [sys.executable, str(script), "--dry-run"], capture_output=True, text=True, check=True
     ).stdout
     assert "[dry-run] walkthrough-qa: 예제 20개" in out
+
+
+def test_impact_recall_matches_tail_name_over_gold_count():
+    """PR Coach 영향 재현율: 끝 이름으로 맞추고 분모는 정답 수. 정답이 비면 0.0."""
+    gold = ["Session.send", "HTTPAdapter.build_response", "resolve_redirects"]
+    assert m.impact_recall(["send", "Session.resolve_redirects", "other"], gold) == 2 / 3
+    assert m.impact_recall(["send"], []) == 0.0
+
+
+def test_test_file_hit_compares_file_name_only():
+    """테스트 파일 적중: 경로 끝 파일명이 같으면 디렉터리가 달라도 맞은 것으로 친다."""
+    gold = ["tests/test_requests.py", "tests/test_utils.py"]
+    assert m.test_file_hit(["requests/tests/test_utils.py"], gold)
+    assert not m.test_file_hit(["tests/test_models.py"], gold)
+    assert not m.test_file_hit([], gold)

@@ -14,6 +14,9 @@ CHECKPOINT_TYPES = [
     ("repoute.graphs.walkthrough", "WalkthroughAnswer"),  # 따라가기 answer
     ("repoute.graphs.reading_guide", "ReadingGuide"),  # Supervisor guide (wave12)
     ("repoute.graphs.supervisor", "Intent"),  # Supervisor intent
+    ("repoute.graphs.issue_matcher", "IssueMatches"),  # Supervisor issues (Phase 6)
+    ("repoute.graphs.issue_matcher", "Profile"),  # IssueMatches.profile (상태엔 dict 로 둔다)
+    ("repoute.graphs.pr_coach", "PRReview"),  # Supervisor pr_review (Phase 7)
 ]
 
 

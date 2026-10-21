@@ -1,0 +1,1171 @@
+{
+  "meta": {
+    "date": "2026-10-21",
+    "dataset": "evals/datasets/pr_coach_gold.json",
+    "raw_dir": "evals/datasets/raw",
+    "stages": "parse_changed_files → find_changed_symbols → find_impact → find_test_files",
+    "llm_calls": 0,
+    "repos": {
+      "psf/requests": {
+        "repo_id": "psf/requests@611c616",
+        "commit": "611c6162cbc4ac2020a2f91c7cfa4f3abf9bbb60"
+      },
+      "encode/httpx": {
+        "repo_id": "encode/httpx@b5addb6",
+        "commit": "b5addb64f0161ff6bfe94c124ef76f6a1fba5254"
+      },
+      "pallets/click": {
+        "repo_id": "pallets/click@2247b35",
+        "commit": "2247b35ea1c47c727d7a06e51fa280e12a863ff6"
+      },
+      "Textualize/rich": {
+        "repo_id": "Textualize/rich@9d8f9a3",
+        "commit": "9d8f9a372cc5916fd4781fec207ced7ddac2f08f"
+      }
+    }
+  },
+  "rows": [
+    {
+      "id": "pr-requests-01",
+      "repo": "psf/requests",
+      "number": 6767,
+      "title": "Revert caching a default SSLContext",
+      "difficulty": "medium",
+      "changed": [
+        {
+          "name": "_urllib3_request_context",
+          "file": "src/requests/adapters.py",
+          "line": 85
+        },
+        {
+          "name": "HTTPAdapter.proxy_manager_for",
+          "file": "src/requests/adapters.py",
+          "line": 269
+        }
+      ],
+      "impact": [
+        {
+          "name": "HTTPAdapter.build_connection_pool_key_attributes",
+          "file": "src/requests/adapters.py",
+          "line": 403,
+          "relation": "caller",
+          "via": "_urllib3_request_context"
+        },
+        {
+          "name": "HTTPAdapter.get_connection_with_tls_context",
+          "file": "src/requests/adapters.py",
+          "line": 455,
+          "relation": "caller",
+          "via": "HTTPAdapter.proxy_manager_for"
+        },
+        {
+          "name": "HTTPAdapter.get_connection",
+          "file": "src/requests/adapters.py",
+          "line": 512,
+          "relation": "caller",
+          "via": "HTTPAdapter.proxy_manager_for"
+        },
+        {
+          "name": "get_auth_from_url",
+          "file": "src/requests/utils.py",
+          "line": 1070,
+          "relation": "callee",
+          "via": "HTTPAdapter.proxy_manager_for"
+        },
+        {
+          "name": "SOCKSProxyManager",
+          "file": "src/requests/adapters.py",
+          "line": 66,
+          "relation": "callee",
+          "via": "HTTPAdapter.proxy_manager_for"
+        },
+        {
+          "name": "HTTPAdapter.proxy_headers",
+          "file": "src/requests/adapters.py",
+          "line": 613,
+          "relation": "callee",
+          "via": "HTTPAdapter.proxy_manager_for"
+        }
+      ],
+      "test_files": [],
+      "notes": [],
+      "seconds": 0.014,
+      "metrics": {
+        "changed_recall": 0.5,
+        "impact_recall": 0.6666666666666666,
+        "impact_precision": 0.3333333333333333,
+        "test_file_hit": false
+      }
+    },
+    {
+      "id": "pr-requests-02",
+      "repo": "psf/requests",
+      "number": 6963,
+      "title": "fix CVE 2024 47081: manual url parsing leads to netloc credentials leak",
+      "difficulty": "easy",
+      "changed": [
+        {
+          "name": "super_len",
+          "file": "src/requests/utils.py",
+          "line": 160
+        }
+      ],
+      "impact": [
+        {
+          "name": "PreparedRequest.prepare_body",
+          "file": "src/requests/models.py",
+          "line": 576,
+          "relation": "caller",
+          "via": "super_len"
+        },
+        {
+          "name": "PreparedRequest.prepare_content_length",
+          "file": "src/requests/models.py",
+          "line": 654,
+          "relation": "caller",
+          "via": "super_len"
+        }
+      ],
+      "test_files": [
+        "tests/test_utils.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_utils.py"
+      ],
+      "seconds": 0.009,
+      "metrics": {
+        "changed_recall": 0.0,
+        "impact_recall": 0.0,
+        "impact_precision": 0.0,
+        "test_file_hit": true
+      }
+    },
+    {
+      "id": "pr-httpx-01",
+      "repo": "encode/httpx",
+      "number": 3699,
+      "title": "Expose `FunctionAuth` in `__all__`",
+      "difficulty": "easy",
+      "changed": [],
+      "impact": [],
+      "test_files": [],
+      "notes": [],
+      "seconds": 0.0,
+      "metrics": {
+        "changed_recall": 0.0,
+        "impact_recall": 0.0,
+        "impact_precision": 0.0,
+        "test_file_hit": false
+      }
+    },
+    {
+      "id": "pr-click-01",
+      "repo": "pallets/click",
+      "number": 3866,
+      "title": "Deprecate parameter names that are: not a Python identifier, or a Python Keyword, or not lower-cased",
+      "difficulty": "medium",
+      "changed": [
+        {
+          "name": "_echo_aborted",
+          "file": "src/click/core.py",
+          "line": 103
+        },
+        {
+          "name": "Parameter.__init__",
+          "file": "src/click/core.py",
+          "line": 2406
+        },
+        {
+          "name": "Option._resolve_lazy_default",
+          "file": "src/click/core.py",
+          "line": 3321
+        },
+        {
+          "name": "Option.get_default",
+          "file": "src/click/core.py",
+          "line": 3389
+        },
+        {
+          "name": "Option.consume_value",
+          "file": "src/click/core.py",
+          "line": 3820
+        },
+        {
+          "name": "Option.process_value",
+          "file": "src/click/core.py",
+          "line": 3876
+        }
+      ],
+      "impact": [
+        {
+          "name": "echo",
+          "file": "src/click/utils.py",
+          "line": 240,
+          "relation": "callee",
+          "via": "_echo_aborted"
+        },
+        {
+          "name": "_NonClosingTextIOWrapper.__init__",
+          "file": "src/click/_compat.py",
+          "line": 60,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Group.__init__",
+          "file": "src/click/core.py",
+          "line": 1762,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "CommandCollection.__init__",
+          "file": "src/click/core.py",
+          "line": 2191,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Option.__init__",
+          "file": "src/click/core.py",
+          "line": 3149,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Argument.__init__",
+          "file": "src/click/core.py",
+          "line": 3909,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Parameter._parse_decls",
+          "file": "src/click/core.py",
+          "line": 2528,
+          "relation": "callee",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "_format_deprecated_label",
+          "file": "src/click/core.py",
+          "line": 132,
+          "relation": "callee",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Option.to_info_dict",
+          "file": "src/click/core.py",
+          "line": 3367,
+          "relation": "caller",
+          "via": "Option._resolve_lazy_default"
+        },
+        {
+          "name": "Context.invoke",
+          "file": "src/click/core.py",
+          "line": 880,
+          "relation": "caller",
+          "via": "Option.get_default"
+        },
+        {
+          "name": "Parameter.consume_value",
+          "file": "src/click/core.py",
+          "line": 2680,
+          "relation": "caller",
+          "via": "Option.get_default"
+        },
+        {
+          "name": "Option.get_help_extra",
+          "file": "src/click/core.py",
+          "line": 3614,
+          "relation": "caller",
+          "via": "Option.get_default"
+        },
+        {
+          "name": "Option.prompt_for_value",
+          "file": "src/click/core.py",
+          "line": 3698,
+          "relation": "caller",
+          "via": "Option.get_default"
+        },
+        {
+          "name": "Parameter.get_default",
+          "file": "src/click/core.py",
+          "line": 2635,
+          "relation": "callee",
+          "via": "Option.get_default"
+        },
+        {
+          "name": "Parameter.handle_parse_result",
+          "file": "src/click/core.py",
+          "line": 2929,
+          "relation": "caller",
+          "via": "Option.consume_value"
+        },
+        {
+          "name": "Parameter.process_value",
+          "file": "src/click/core.py",
+          "line": 2802,
+          "relation": "callee",
+          "via": "Option.process_value"
+        }
+      ],
+      "test_files": [
+        "tests/test_options.py",
+        "tests/test_context.py",
+        "tests/test_termui.py",
+        "tests/test_arguments.py",
+        "tests/test_testing.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_arguments.py",
+        "인덱스 커밋에 없는 파일: tests/test_deprecations.py",
+        "인덱스 커밋에 없는 파일: tests/test_options.py"
+      ],
+      "seconds": 0.114,
+      "metrics": {
+        "changed_recall": 0.0,
+        "impact_recall": 1.0,
+        "impact_precision": 0.08333333333333333,
+        "test_file_hit": true
+      }
+    },
+    {
+      "id": "pr-click-02",
+      "repo": "pallets/click",
+      "number": 3877,
+      "title": "Add `Parameter.spec` and deprecate `human_readable_name`",
+      "difficulty": "hard",
+      "changed": [
+        {
+          "name": "_echo_aborted",
+          "file": "src/click/core.py",
+          "line": 103
+        },
+        {
+          "name": "_outside_click_stacklevel",
+          "file": "src/click/core.py",
+          "line": 108
+        },
+        {
+          "name": "Parameter",
+          "file": "src/click/core.py",
+          "line": 2241
+        },
+        {
+          "name": "Parameter.__init__",
+          "file": "src/click/core.py",
+          "line": 2406
+        },
+        {
+          "name": "Parameter._check_name_is_usable",
+          "file": "src/click/core.py",
+          "line": 2532
+        },
+        {
+          "name": "Parameter.handle_parse_result",
+          "file": "src/click/core.py",
+          "line": 2929
+        },
+        {
+          "name": "Parameter.get_error_hint",
+          "file": "src/click/core.py",
+          "line": 3023
+        },
+        {
+          "name": "Argument.__init__",
+          "file": "src/click/core.py",
+          "line": 3909
+        },
+        {
+          "name": "Argument.get_usage_pieces",
+          "file": "src/click/core.py",
+          "line": 3984
+        },
+        {
+          "name": "Argument.get_help_record",
+          "file": "src/click/core.py",
+          "line": 3995
+        }
+      ],
+      "impact": [
+        {
+          "name": "echo",
+          "file": "src/click/utils.py",
+          "line": 240,
+          "relation": "callee",
+          "via": "_echo_aborted"
+        },
+        {
+          "name": "Parameter.__init_subclass__",
+          "file": "src/click/core.py",
+          "line": 2392,
+          "relation": "caller",
+          "via": "_outside_click_stacklevel"
+        },
+        {
+          "name": "Option._check_name_is_normalized",
+          "file": "src/click/core.py",
+          "line": 3429,
+          "relation": "caller",
+          "via": "_outside_click_stacklevel"
+        },
+        {
+          "name": "_NonClosingTextIOWrapper.__init__",
+          "file": "src/click/_compat.py",
+          "line": 60,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Group.__init__",
+          "file": "src/click/core.py",
+          "line": 1762,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "CommandCollection.__init__",
+          "file": "src/click/core.py",
+          "line": 2191,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Option.__init__",
+          "file": "src/click/core.py",
+          "line": 3149,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "ClickException.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 44,
+          "relation": "caller",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Parameter._parse_decls",
+          "file": "src/click/core.py",
+          "line": 2528,
+          "relation": "callee",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "_format_deprecated_label",
+          "file": "src/click/core.py",
+          "line": 132,
+          "relation": "callee",
+          "via": "Parameter.__init__"
+        },
+        {
+          "name": "Option._parse_decls",
+          "file": "src/click/core.py",
+          "line": 3449,
+          "relation": "caller",
+          "via": "Parameter._check_name_is_usable"
+        },
+        {
+          "name": "Argument._parse_decls",
+          "file": "src/click/core.py",
+          "line": 3963,
+          "relation": "caller",
+          "via": "Parameter._check_name_is_usable"
+        },
+        {
+          "name": "Command.parse_args",
+          "file": "src/click/core.py",
+          "line": 1396,
+          "relation": "caller",
+          "via": "Parameter.handle_parse_result"
+        },
+        {
+          "name": "Context.get_parameter_source",
+          "file": "src/click/core.py",
+          "line": 970,
+          "relation": "callee",
+          "via": "Parameter.handle_parse_result"
+        },
+        {
+          "name": "augment_usage_errors",
+          "file": "src/click/core.py",
+          "line": 154,
+          "relation": "callee",
+          "via": "Parameter.handle_parse_result"
+        },
+        {
+          "name": "Parameter.consume_value",
+          "file": "src/click/core.py",
+          "line": 2680,
+          "relation": "callee",
+          "via": "Parameter.handle_parse_result"
+        },
+        {
+          "name": "Option.get_error_hint",
+          "file": "src/click/core.py",
+          "line": 3423,
+          "relation": "caller",
+          "via": "Parameter.get_error_hint"
+        },
+        {
+          "name": "BadParameter.format_message",
+          "file": "src/click/exceptions.py",
+          "line": 146,
+          "relation": "caller",
+          "via": "Parameter.get_error_hint"
+        },
+        {
+          "name": "MissingParameter.format_message",
+          "file": "src/click/exceptions.py",
+          "line": 184,
+          "relation": "caller",
+          "via": "Parameter.get_error_hint"
+        },
+        {
+          "name": "UsageError.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 82,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "BadParameter.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 135,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "MissingParameter.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 173,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "NoSuchOption.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 241,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "NoSuchCommand.__init__",
+          "file": "src/click/exceptions.py",
+          "line": 277,
+          "relation": "caller",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "Context.__init__",
+          "file": "src/click/core.py",
+          "line": 370,
+          "relation": "callee",
+          "via": "Argument.__init__"
+        },
+        {
+          "name": "Context.command_path",
+          "file": "src/click/core.py",
+          "line": 745,
+          "relation": "caller",
+          "via": "Argument.get_usage_pieces"
+        },
+        {
+          "name": "Command.collect_usage_pieces",
+          "file": "src/click/core.py",
+          "line": 1196,
+          "relation": "caller",
+          "via": "Argument.get_usage_pieces"
+        },
+        {
+          "name": "Parameter.make_metavar",
+          "file": "src/click/core.py",
+          "line": 2620,
+          "relation": "callee",
+          "via": "Argument.get_usage_pieces"
+        },
+        {
+          "name": "Command.format_options",
+          "file": "src/click/core.py",
+          "line": 1325,
+          "relation": "caller",
+          "via": "Argument.get_help_record"
+        },
+        {
+          "name": "Command.format_arguments",
+          "file": "src/click/core.py",
+          "line": 1337,
+          "relation": "caller",
+          "via": "Argument.get_help_record"
+        }
+      ],
+      "test_files": [
+        "tests/test_options.py",
+        "tests/test_context.py",
+        "tests/test_termui.py",
+        "tests/test_arguments.py",
+        "tests/test_testing.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_arguments.py",
+        "인덱스 커밋에 없는 파일: tests/test_deprecations.py",
+        "인덱스 커밋에 없는 파일: tests/test_options.py"
+      ],
+      "seconds": 0.184,
+      "metrics": {
+        "changed_recall": 0.4,
+        "impact_recall": 0.75,
+        "impact_precision": 0.17647058823529413,
+        "test_file_hit": true
+      }
+    },
+    {
+      "id": "pr-click-03",
+      "repo": "pallets/click",
+      "number": 3884,
+      "title": "Fix `show_envvar` output for a sequence or an empty `envvar`",
+      "difficulty": "easy",
+      "changed": [
+        {
+          "name": "Option._infer_flag_kind",
+          "file": "src/click/core.py",
+          "line": 3249
+        },
+        {
+          "name": "Option._check_name_is_normalized",
+          "file": "src/click/core.py",
+          "line": 3429
+        }
+      ],
+      "impact": [
+        {
+          "name": "Option.__init__",
+          "file": "src/click/core.py",
+          "line": 3149,
+          "relation": "caller",
+          "via": "Option._infer_flag_kind"
+        },
+        {
+          "name": "Option._parse_decls",
+          "file": "src/click/core.py",
+          "line": 3449,
+          "relation": "caller",
+          "via": "Option._check_name_is_normalized"
+        },
+        {
+          "name": "_outside_click_stacklevel",
+          "file": "src/click/core.py",
+          "line": 108,
+          "relation": "callee",
+          "via": "Option._check_name_is_normalized"
+        }
+      ],
+      "test_files": [],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_options.py"
+      ],
+      "seconds": 0.048,
+      "metrics": {
+        "changed_recall": 0.0,
+        "impact_recall": 0.0,
+        "impact_precision": 0.0,
+        "test_file_hit": false
+      }
+    },
+    {
+      "id": "pr-rich-01",
+      "repo": "Textualize/rich",
+      "number": 3180,
+      "title": "Fix double-width characters disappearing when wrapping",
+      "difficulty": "medium",
+      "changed": [
+        {
+          "name": "words",
+          "file": "rich/_wrap.py",
+          "line": 12
+        },
+        {
+          "name": "_cell_len",
+          "file": "rich/cells.py",
+          "line": 113
+        }
+      ],
+      "impact": [
+        {
+          "name": "divide_line",
+          "file": "rich/_wrap.py",
+          "line": 26,
+          "relation": "caller",
+          "via": "words"
+        },
+        {
+          "name": "Palette.match",
+          "file": "rich/palette.py",
+          "line": 45,
+          "relation": "callee",
+          "via": "words"
+        },
+        {
+          "name": "Measurement.span",
+          "file": "rich/measure.py",
+          "line": 20,
+          "relation": "callee",
+          "via": "words"
+        },
+        {
+          "name": "group",
+          "file": "rich/console.py",
+          "line": 483,
+          "relation": "callee",
+          "via": "words"
+        },
+        {
+          "name": "cached_cell_len",
+          "file": "rich/cells.py",
+          "line": 82,
+          "relation": "caller",
+          "via": "_cell_len"
+        },
+        {
+          "name": "cell_len",
+          "file": "rich/cells.py",
+          "line": 98,
+          "relation": "caller",
+          "via": "_cell_len"
+        },
+        {
+          "name": "Segment.get_line_length",
+          "file": "rich/segment.py",
+          "line": 399,
+          "relation": "caller",
+          "via": "_cell_len"
+        },
+        {
+          "name": "Segment.divide",
+          "file": "rich/segment.py",
+          "line": 630,
+          "relation": "caller",
+          "via": "_cell_len"
+        },
+        {
+          "name": "get_character_cell_size",
+          "file": "rich/cells.py",
+          "line": 47,
+          "relation": "callee",
+          "via": "_cell_len"
+        }
+      ],
+      "test_files": [
+        "tests/test_text.py",
+        "tests/test_align.py",
+        "tests/test_pretty.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_cells.py",
+        "인덱스 커밋에 없는 파일: tests/test_text.py"
+      ],
+      "seconds": 0.027,
+      "metrics": {
+        "changed_recall": 0.3333333333333333,
+        "impact_recall": 0.0,
+        "impact_precision": 0.0,
+        "test_file_hit": true
+      }
+    },
+    {
+      "id": "pr-rich-02",
+      "repo": "Textualize/rich",
+      "number": 4070,
+      "title": "perf: reduce Console and RichHandler import time by deferring unused imports",
+      "difficulty": "hard",
+      "changed": [
+        {
+          "name": "_emoji_replace",
+          "file": "rich/_emoji_replace.py",
+          "line": 9
+        },
+        {
+          "name": "Console.render",
+          "file": "rich/console.py",
+          "line": 1294
+        },
+        {
+          "name": "Console._collect_renderables",
+          "file": "rich/console.py",
+          "line": 1500
+        },
+        {
+          "name": "Console.print_exception",
+          "file": "rich/console.py",
+          "line": 1873
+        },
+        {
+          "name": "Console._caller_frame_info",
+          "file": "rich/console.py",
+          "line": 1909
+        },
+        {
+          "name": "Console.log",
+          "file": "rich/console.py",
+          "line": 1947
+        },
+        {
+          "name": "Console.input",
+          "file": "rich/console.py",
+          "line": 2156
+        },
+        {
+          "name": "Console.export_html",
+          "file": "rich/console.py",
+          "line": 2244
+        },
+        {
+          "name": "Console.export_svg",
+          "file": "rich/console.py",
+          "line": 2352
+        },
+        {
+          "name": "Console.save_svg",
+          "file": "rich/console.py",
+          "line": 2606
+        },
+        {
+          "name": "Emoji",
+          "file": "rich/emoji.py",
+          "line": 20
+        },
+        {
+          "name": "Emoji.__init__",
+          "file": "rich/emoji.py",
+          "line": 25
+        },
+        {
+          "name": "RichHandler.emit",
+          "file": "rich/logging.py",
+          "line": 138
+        },
+        {
+          "name": "RichHandler.render",
+          "file": "rich/logging.py",
+          "line": 215
+        },
+        {
+          "name": "rich_cast",
+          "file": "rich/protocol.py",
+          "line": 18
+        },
+        {
+          "name": "auto.do_replace.auto_rich_repr",
+          "file": "rich/repr.py",
+          "line": 67
+        },
+        {
+          "name": "Theme.from_file",
+          "file": "rich/theme.py",
+          "line": 38
+        }
+      ],
+      "impact": [
+        {
+          "name": "Console.render_str",
+          "file": "rich/console.py",
+          "line": 1409,
+          "relation": "caller",
+          "via": "_emoji_replace"
+        },
+        {
+          "name": "Emoji.replace",
+          "file": "rich/emoji.py",
+          "line": 53,
+          "relation": "caller",
+          "via": "_emoji_replace"
+        },
+        {
+          "name": "TextSuite.time_render",
+          "file": "benchmarks/benchmarks.py",
+          "line": 40,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "TextSuite.time_render_unicode_heavy",
+          "file": "benchmarks/benchmarks.py",
+          "line": 60,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "Align.__rich_console__",
+          "file": "rich/align.py",
+          "line": 143,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "Console.render_lines",
+          "file": "rich/console.py",
+          "line": 1345,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "Console.print",
+          "file": "rich/console.py",
+          "line": 1652,
+          "relation": "caller",
+          "via": "Console.render"
+        },
+        {
+          "name": "ConsoleRenderable.__rich_console__",
+          "file": "rich/console.py",
+          "line": 260,
+          "relation": "callee",
+          "via": "Console.render"
+        },
+        {
+          "name": "NotRenderableError",
+          "file": "rich/errors.py",
+          "line": 21,
+          "relation": "callee",
+          "via": "Console.render"
+        },
+        {
+          "name": "ConsoleOptions.reset_height",
+          "file": "rich/console.py",
+          "line": 220,
+          "relation": "callee",
+          "via": "Console.render"
+        },
+        {
+          "name": "Text.append_text",
+          "file": "rich/text.py",
+          "line": 1008,
+          "relation": "callee",
+          "via": "Console._collect_renderables"
+        },
+        {
+          "name": "Console._collect_renderables.check_text",
+          "file": "rich/console.py",
+          "line": 1550,
+          "relation": "callee",
+          "via": "Console._collect_renderables"
+        },
+        {
+          "name": "Console._collect_renderables.is_expandable",
+          "file": "rich/console.py",
+          "line": 1526,
+          "relation": "callee",
+          "via": "Console._collect_renderables"
+        },
+        {
+          "name": "Traceback",
+          "file": "rich/traceback.py",
+          "line": 262,
+          "relation": "callee",
+          "via": "Console.print_exception"
+        },
+        {
+          "name": "NewLine",
+          "file": "rich/console.py",
+          "line": 280,
+          "relation": "callee",
+          "via": "Console.log"
+        },
+        {
+          "name": "Styled",
+          "file": "rich/styled.py",
+          "line": 11,
+          "relation": "callee",
+          "via": "Console.log"
+        },
+        {
+          "name": "render_scope",
+          "file": "rich/scope.py",
+          "line": 14,
+          "relation": "callee",
+          "via": "Console.log"
+        },
+        {
+          "name": "PromptBase.get_input",
+          "file": "rich/prompt.py",
+          "line": 194,
+          "relation": "caller",
+          "via": "Console.input"
+        },
+        {
+          "name": "Console.save_html",
+          "file": "rich/console.py",
+          "line": 2321,
+          "relation": "caller",
+          "via": "Console.export_html"
+        },
+        {
+          "name": "Segment.filter_control",
+          "file": "rich/segment.py",
+          "line": 228,
+          "relation": "callee",
+          "via": "Console.export_html"
+        },
+        {
+          "name": "Segment.simplify",
+          "file": "rich/segment.py",
+          "line": 551,
+          "relation": "callee",
+          "via": "Console.export_html"
+        },
+        {
+          "name": "Style.get_html_style",
+          "file": "rich/style.py",
+          "line": 564,
+          "relation": "callee",
+          "via": "Console.export_html"
+        },
+        {
+          "name": "Console.clear",
+          "file": "rich/console.py",
+          "line": 1146,
+          "relation": "callee",
+          "via": "Console.export_svg"
+        },
+        {
+          "name": "Text.join",
+          "file": "rich/text.py",
+          "line": 778,
+          "relation": "callee",
+          "via": "Console.export_svg"
+        },
+        {
+          "name": "Segment.split_and_crop_lines",
+          "file": "rich/segment.py",
+          "line": 307,
+          "relation": "callee",
+          "via": "Console.export_svg"
+        },
+        {
+          "name": "_RefreshThread.__init__",
+          "file": "rich/live.py",
+          "line": 25,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        },
+        {
+          "name": "RichHandler.__init__",
+          "file": "rich/logging.py",
+          "line": 71,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        },
+        {
+          "name": "Heading.__init__",
+          "file": "rich/markdown.py",
+          "line": 153,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        },
+        {
+          "name": "ImageItem.__init__",
+          "file": "rich/markdown.py",
+          "line": 443,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        },
+        {
+          "name": "_TrackThread.__init__",
+          "file": "rich/progress.py",
+          "line": 67,
+          "relation": "caller",
+          "via": "Emoji.__init__"
+        }
+      ],
+      "test_files": [
+        "tests/test_markup.py",
+        "tests/test_logging.py",
+        "tests/test_inspect.py",
+        "tests/test_emoji.py",
+        "tests/test_console.py"
+      ],
+      "notes": [
+        "인덱스 커밋에 없는 파일: tests/test_console.py",
+        "인덱스 커밋에 없는 파일: tests/test_syntax.py"
+      ],
+      "seconds": 0.158,
+      "metrics": {
+        "changed_recall": 1.0,
+        "impact_recall": 0.5,
+        "impact_precision": 0.12,
+        "test_file_hit": true
+      }
+    }
+  ],
+  "summary": {
+    "by_repo": {
+      "psf/requests": {
+        "n": 2,
+        "failed": 0,
+        "changed_recall": 0.25,
+        "impact_recall": 0.3333333333333333,
+        "impact_precision": 0.16666666666666666,
+        "test_file_hit": 0.5
+      },
+      "encode/httpx": {
+        "n": 1,
+        "failed": 0,
+        "changed_recall": 0.0,
+        "impact_recall": 0.0,
+        "impact_precision": 0.0,
+        "test_file_hit": 0.0
+      },
+      "pallets/click": {
+        "n": 3,
+        "failed": 0,
+        "changed_recall": 0.13333333333333333,
+        "impact_recall": 0.5833333333333334,
+        "impact_precision": 0.0866013071895425,
+        "test_file_hit": 0.6666666666666666
+      },
+      "Textualize/rich": {
+        "n": 2,
+        "failed": 0,
+        "changed_recall": 0.6666666666666666,
+        "impact_recall": 0.25,
+        "impact_precision": 0.06,
+        "test_file_hit": 1.0
+      }
+    },
+    "by_difficulty": {
+      "easy": {
+        "n": 3,
+        "failed": 0,
+        "changed_recall": 0.0,
+        "impact_recall": 0.0,
+        "impact_precision": 0.0,
+        "test_file_hit": 0.3333333333333333
+      },
+      "medium": {
+        "n": 3,
+        "failed": 0,
+        "changed_recall": 0.27777777777777773,
+        "impact_recall": 0.5555555555555555,
+        "impact_precision": 0.13888888888888887,
+        "test_file_hit": 0.6666666666666666
+      },
+      "hard": {
+        "n": 2,
+        "failed": 0,
+        "changed_recall": 0.7,
+        "impact_recall": 0.625,
+        "impact_precision": 0.14823529411764708,
+        "test_file_hit": 1.0
+      }
+    },
+    "overall": {
+      "n": 8,
+      "failed": 0,
+      "changed_recall": 0.2791666666666667,
+      "impact_recall": 0.3645833333333333,
+      "impact_precision": 0.0891421568627451,
+      "test_file_hit": 0.625
+    }
+  }
+}

@@ -1,0 +1,475 @@
+[
+  {
+    "id": "ns-requests-01",
+    "repo": "psf/requests",
+    "question": "리디렉트를 너무 많이 따라가면 어디서 예외가 나?",
+    "expect_reach": "SessionRedirectMixin.resolve_redirects",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 5,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 1,
+    "nudges": 1,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.3333333333333333,
+    "reached": true,
+    "reached_tail": true,
+    "chain_accuracy": 0.3333333333333333,
+    "tool_sequence": [
+      "find_definition",
+      "find_callers",
+      "find_definition",
+      "find_callees",
+      "read_code"
+    ],
+    "calls_before_first_read": 4,
+    "refs": [
+      "src/requests/sessions.py:186 [SessionRedirectMixin.resolve_redirects]",
+      "src/requests/sessions.py:208 [SessionRedirectMixin.resolve_redirects]",
+      "src/requests/sessions.py:217 [SessionRedirectMixin.resolve_redirects]"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 13302,
+        "output_tokens": 841
+      }
+    },
+    "cost": 0.041665,
+    "elapsed": 11.889405583962798
+  },
+  {
+    "id": "ns-requests-02",
+    "repo": "psf/requests",
+    "question": "요청을 보내기 전에 세션에 저장된 쿠키와 요청마다 넘긴 쿠키는 어디서 합쳐져?",
+    "expect_reach": "merge_cookies",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 4,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 2,
+    "nudges": 0,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.0,
+    "reached": true,
+    "reached_tail": true,
+    "chain_accuracy": 0.6666666666666666,
+    "tool_sequence": [
+      "find_definition",
+      "read_code",
+      "find_definition",
+      "read_code"
+    ],
+    "calls_before_first_read": 1,
+    "refs": [
+      "src/requests/sessions.py:623 [Session.request]",
+      "src/requests/sessions.py:635 [Session.request]",
+      "src/requests/sessions.py:531 [Session.prepare_request]"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 12234,
+        "output_tokens": 615
+      }
+    },
+    "cost": 0.036735,
+    "elapsed": 9.674572583986446
+  },
+  {
+    "id": "ns-requests-03",
+    "repo": "psf/requests",
+    "question": "환경 변수에 설정해 둔 프록시 주소는 어디서 읽어 와?",
+    "expect_reach": "get_environ_proxies",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 10,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 3,
+    "nudges": 0,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.3333333333333333,
+    "reached": false,
+    "reached_tail": false,
+    "chain_accuracy": 0.0,
+    "tool_sequence": [
+      "find_definition",
+      "search_code",
+      "find_definition",
+      "read_code",
+      "find_callers",
+      "find_definition",
+      "read_code",
+      "find_definition",
+      "read_code",
+      "find_callers"
+    ],
+    "calls_before_first_read": 3,
+    "refs": [
+      "src/requests/adapters.py:535 [HTTPAdapter.get_connection]",
+      "src/requests/utils.py:885 [select_proxy]",
+      "src/requests/adapters.py:545 [HTTPAdapter.get_connection]"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 34303,
+        "output_tokens": 788
+      }
+    },
+    "cost": 0.0936375,
+    "elapsed": 16.74333837488666
+  },
+  {
+    "id": "ns-httpx-01",
+    "repo": "encode/httpx",
+    "question": "리디렉트를 따라갈 때 다음 요청의 메서드가 바뀌는 건 어디서 정해져?",
+    "expect_reach": "BaseClient._redirect_method",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 9,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 2,
+    "nudges": 0,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 2,
+    "citations": 2,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 1.0,
+    "reached": true,
+    "reached_tail": true,
+    "chain_accuracy": 0.4,
+    "tool_sequence": [
+      "find_definition",
+      "search_code",
+      "find_definition",
+      "search_code",
+      "find_definition",
+      "read_code",
+      "find_callees",
+      "find_definition",
+      "read_code"
+    ],
+    "calls_before_first_read": 5,
+    "refs": [
+      "httpx/_client.py:475 [BaseClient._build_redirect_request]",
+      "httpx/_client.py:494 [BaseClient._redirect_method]"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 17034,
+        "output_tokens": 672
+      }
+    },
+    "cost": 0.049305,
+    "elapsed": 13.307935915887356
+  },
+  {
+    "id": "ns-httpx-02",
+    "repo": "encode/httpx",
+    "question": "압축돼서 온 응답 본문을 풀 때, 압축 방식에 맞는 해제기는 어디서 골라?",
+    "expect_reach": "Response._get_content_decoder",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 6,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 2,
+    "nudges": 0,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 4,
+    "citations": 4,
+    "validity": 1.0,
+    "specificity": 0.75,
+    "at_def": 0.0,
+    "reached": false,
+    "reached_tail": false,
+    "chain_accuracy": 0.0,
+    "tool_sequence": [
+      "find_definition",
+      "search_code",
+      "search_code",
+      "read_code",
+      "search_code",
+      "read_code"
+    ],
+    "calls_before_first_read": 3,
+    "refs": [
+      "httpx/_decoders.py:381",
+      "httpx/_models.py:706",
+      "httpx/_models.py:710",
+      "httpx/_models.py:720"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 11767,
+        "output_tokens": 679
+      }
+    },
+    "cost": 0.0362075,
+    "elapsed": 10.468900125008076
+  },
+  {
+    "id": "ns-click-01",
+    "repo": "pallets/click",
+    "question": "옵션을 명령줄에 안 주면 환경 변수에서 값을 읽어 오던데, 그건 어디서 해?",
+    "expect_reach": "Parameter.resolve_envvar_value",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 13,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 6,
+    "nudges": 0,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 5,
+    "citations": 5,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 1.0,
+    "reached": false,
+    "reached_tail": false,
+    "chain_accuracy": 0.3333333333333333,
+    "tool_sequence": [
+      "find_definition",
+      "read_code",
+      "find_callees",
+      "find_definition",
+      "read_code",
+      "find_definition",
+      "read_code",
+      "find_definition",
+      "read_code",
+      "find_definition",
+      "read_code",
+      "find_definition",
+      "read_code"
+    ],
+    "calls_before_first_read": 1,
+    "refs": [
+      "src/click/core.py:1515 [Command.main]",
+      "src/click/core.py:1359 [Command.make_context]",
+      "src/click/core.py:1396 [Command.parse_args]",
+      "src/click/core.py:2929 [Parameter.handle_parse_result]",
+      "src/click/core.py:2680 [Parameter.consume_value]"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 65028,
+        "output_tokens": 1123
+      }
+    },
+    "cost": 0.1738,
+    "elapsed": 21.534877457888797
+  },
+  {
+    "id": "ns-click-02",
+    "repo": "pallets/click",
+    "question": "값을 안 준 옵션에 대해 사용자에게 직접 입력을 물어보는 건 어디서 해?",
+    "expect_reach": "prompt",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 7,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 1,
+    "nudges": 0,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.3333333333333333,
+    "reached": true,
+    "reached_tail": true,
+    "chain_accuracy": 0.2,
+    "tool_sequence": [
+      "find_definition",
+      "search_code",
+      "search_code",
+      "search_code",
+      "search_code",
+      "find_definition",
+      "read_code"
+    ],
+    "calls_before_first_read": 6,
+    "refs": [
+      "src/click/termui.py:168 [prompt]",
+      "src/click/termui.py:272 [prompt]",
+      "src/click/termui.py:280 [prompt]"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 14923,
+        "output_tokens": 687
+      }
+    },
+    "cost": 0.0441775,
+    "elapsed": 15.383921041153371
+  },
+  {
+    "id": "ns-rich-01",
+    "repo": "Textualize/rich",
+    "question": "출력할 때 터미널 폭은 어디서 계산해? 환경 변수로 바꿀 수도 있어?",
+    "expect_reach": "Console.size",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 7,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 2,
+    "nudges": 0,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.0,
+    "reached": false,
+    "reached_tail": false,
+    "chain_accuracy": 0.0,
+    "tool_sequence": [
+      "find_definition",
+      "search_code",
+      "search_code",
+      "search_code",
+      "read_code",
+      "search_code",
+      "read_code"
+    ],
+    "calls_before_first_read": 4,
+    "refs": [
+      "rich/console.py:685 [Console.__init__]",
+      "rich/console.py:686 [Console.__init__]",
+      "rich/console.py:687 [Console.__init__]"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 15050,
+        "output_tokens": 653
+      }
+    },
+    "cost": 0.044155,
+    "elapsed": 12.046030083904043
+  },
+  {
+    "id": "ns-rich-02",
+    "repo": "Textualize/rich",
+    "question": "긴 문장을 출력하면 폭에 맞춰 줄을 나누는 건 어디서 해?",
+    "expect_reach": "divide_line",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 5,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 1,
+    "nudges": 0,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 4,
+    "citations": 4,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.25,
+    "reached": true,
+    "reached_tail": true,
+    "chain_accuracy": 0.2,
+    "tool_sequence": [
+      "find_definition",
+      "search_code",
+      "search_code",
+      "find_definition",
+      "read_code"
+    ],
+    "calls_before_first_read": 4,
+    "refs": [
+      "rich/text.py:1201 [wrap]",
+      "rich/text.py:1206 [wrap]",
+      "rich/text.py:1239 [wrap]",
+      "rich/text.py:1243 [wrap]"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 11509,
+        "output_tokens": 722
+      }
+    },
+    "cost": 0.0359925,
+    "elapsed": 10.365673792082816
+  },
+  {
+    "id": "ns-rich-03",
+    "repo": "Textualize/rich",
+    "question": "터미널이 256색까지만 지원하면 트루컬러 색은 어디서 가까운 색으로 바뀌어?",
+    "expect_reach": "Color.downgrade",
+    "agent_model": "quality",
+    "prompt": "v3",
+    "tool_calls": 4,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 2,
+    "nudges": 1,
+    "explore_blocked": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 0.6666666666666666,
+    "at_def": 0.6666666666666666,
+    "reached": false,
+    "reached_tail": false,
+    "chain_accuracy": 0.0,
+    "tool_sequence": [
+      "search_code",
+      "read_code",
+      "find_definition",
+      "read_code"
+    ],
+    "calls_before_first_read": 1,
+    "refs": [
+      "rich/_palettes.py:50",
+      "rich/palette.py:11 [Palette]",
+      "rich/palette.py:45 [Palette]"
+    ],
+    "tokens": {
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 14666,
+        "output_tokens": 993
+      }
+    },
+    "cost": 0.046595,
+    "elapsed": 13.907150249928236
+  }
+]

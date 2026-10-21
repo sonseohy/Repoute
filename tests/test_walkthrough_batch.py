@@ -171,3 +171,115 @@ def test_reached_missing_is_false():
     """어디에도 없으면 False (짧은 심볼 "send" 는 기대 이름을 포함하지 않으므로 미도달)."""
     answer = _answer(title="request 가 준비한다", explanation="그 뒤 전송", symbol="send")
     assert not batch.reached(answer, "Session.send")
+
+
+def _messages_with_blocks() -> list:
+    """find 2회 → find(탐색 차단) + read 실행 → 같은 범위 read(차단) 순서의 가짜 대화."""
+    first = [
+        {"name": "find_definition", "args": {}, "id": "f1"},
+        {"name": "find_references", "args": {}, "id": "f2"},
+    ]
+    second = [
+        {"name": "find_definition", "args": {}, "id": "f3"},
+        {"name": "read_code", "args": {}, "id": "r1"},
+    ]
+    third = [{"name": "read_code", "args": {}, "id": "r2"}]
+    return [
+        AIMessage(content="", tool_calls=first),
+        ToolMessage("a.py:1", tool_call_id="f1"),
+        ToolMessage("a.py:3", tool_call_id="f2"),
+        AIMessage(content="", tool_calls=second),
+        ToolMessage("읽기 없이 탐색만 6회 했습니다. 이제 read_code 로 ...", tool_call_id="f3"),
+        ToolMessage("1 def run():", tool_call_id="r1"),
+        AIMessage(content="", tool_calls=third),
+        ToolMessage("이미 읽은 범위입니다 (a.py 1~5줄).", tool_call_id="r2"),
+    ]
+
+
+def test_tool_sequence_marks_blocked_calls():
+    """도구 이름이 호출 순서대로 나오고, 실행 안 된 호출(탐색 차단·이미 읽은 범위)은 !blocked."""
+    assert batch.tool_sequence(_messages_with_blocks()) == [
+        "find_definition",
+        "find_references",
+        "find_definition!blocked",
+        "read_code",
+        "read_code!blocked",
+    ]
+
+
+def test_tool_sequence_marks_unanswered_and_error():
+    """답 ToolMessage 가 없는 호출은 !blocked, "도구 오류" 응답은 !error 로 표시한다."""
+    calls = [
+        {"name": "read_code", "args": {}, "id": "r1"},
+        {"name": "read_code", "args": {}, "id": "r2"},
+    ]
+    messages = [
+        AIMessage(content="", tool_calls=calls),
+        ToolMessage("도구 오류: x", tool_call_id="r1"),
+    ]
+    assert batch.tool_sequence(messages) == ["read_code!error", "read_code!blocked"]
+
+
+def test_calls_before_first_read_counts_blocked_attempts():
+    """첫 실행된 read_code 앞의 호출 수: 차단된 find 도 agent 의 시도로 센다 (3)."""
+    sequence = batch.tool_sequence(_messages_with_blocks())
+    assert batch.calls_before_first_read(sequence) == 3
+
+
+def test_calls_before_first_read_none_without_read():
+    """실행된 read_code 가 없으면(차단·오류 read 만 있어도) None."""
+    assert batch.calls_before_first_read(["find_definition", "find_references"]) is None
+    assert batch.calls_before_first_read(["find_definition", "read_code!error"]) is None
+    assert batch.calls_before_first_read([]) is None
+
+
+def test_chain_accuracy_none_without_expect_chain():
+    """item 에 expect_chain 이 없거나 비면 None (0.0 이 아니라 '모름')."""
+    refs = [("a.py", "Session.request"), ("a.py", "Session.send")]
+    assert batch.chain_accuracy(refs, {"expect_reach": "Session.send"}) is None
+    assert batch.chain_accuracy(refs, {"expect_chain": []}) is None
+
+
+def test_chain_accuracy_uses_metrics():
+    """expect_chain 이 있으면 인용 순서 체인과의 LCS 비율 (끝 이름 정규화): 2/3."""
+    refs = [("a.py", "request"), ("a.py", "request"), ("a.py", "Session.send"), ("b.py", None)]
+    item = {"expect_chain": ["Session.request", "Session.prepare_request", "Session.send"]}
+    assert batch.chain_accuracy(refs, item) == 2 / 3
+
+
+def test_reached_tail_accepts_short_name():
+    """끝 이름 매칭: 인용 심볼 "prepare_body" 로 "PreparedRequest.prepare_body" 도달 인정.
+
+    기존 reached(문자열 포함)는 같은 답을 미도달로 본다 — 두 값이 다른 경우.
+    """
+    answer = _answer(title="본문 준비", symbol="prepare_body")
+    item = {"expect_reach": "PreparedRequest.prepare_body"}
+    assert batch.reached_tail(answer, item)
+    assert not batch.reached(answer, item["expect_reach"])
+
+
+NEW = {"tool_sequence": ["find_definition", "read_code"], "reached_tail": True}
+
+
+def test_render_markdown_first_read_and_chain():
+    """새 지표가 있는 raw 면 요약 표 끝에 첫읽기까지(읽기 없음 건수)·체인 평균 칸이 붙는다."""
+    rows = [
+        {**ROWS[0], **NEW, "calls_before_first_read": 1, "chain_accuracy": 0.5},
+        {**ROWS[1], **NEW, "calls_before_first_read": 3, "chain_accuracy": 1.0},
+        {**ROWS[2], **NEW, "calls_before_first_read": None, "chain_accuracy": None},
+    ]
+    text = batch.render_markdown(rows, dataset="d.json", tag="wt-test")
+    assert "| 비용 합 | 첫읽기까지 | 체인 |" in text
+    assert "| a/x | n=2 | 75% | 75% | 50% | 1/2 (50%) |" in text  # 기존 칸 순서 유지
+    assert "| 2.0 (읽기 없음 0건) | 0.75 |" in text  # a/x 레포 평균
+    assert "| 2.0 (읽기 없음 1건) | 0.75 (n=2) |" in text  # 전체
+    assert "- x-01: find_definition → read_code" in text
+    assert "`d.json`" in text and "`wt-test`" in text
+    assert "- **끝 이름 도달**: 3/3 (100%) (기존 도달과 다른 질문: x-02)" in text
+
+
+def test_render_markdown_old_rows_show_dash():
+    """새 지표가 없던 raw(기록 10~13)도 그대로 렌더되고 새 칸은 "—" 다."""
+    text = batch.render_markdown(ROWS)
+    assert "| — | — |" in text
+    assert "## 도구 호출 순서" not in text

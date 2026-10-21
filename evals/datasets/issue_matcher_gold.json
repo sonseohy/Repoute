@@ -1,0 +1,515 @@
+[
+  {
+    "id": "im-requests-01",
+    "repo": "psf/requests",
+    "number": 7634,
+    "title": "Non-string form field names raise AttributeError when files are attached",
+    "url": "https://github.com/psf/requests/issues/7634",
+    "labels": [],
+    "gold_modules": [
+      "requests.models"
+    ],
+    "gold_symbols": [
+      {
+        "name": "RequestEncodingMixin._encode_files",
+        "file": "src/requests/models.py",
+        "line": 183
+      },
+      {
+        "name": "PreparedRequest.prepare_body",
+        "file": "src/requests/models.py",
+        "line": 576
+      }
+    ],
+    "note": "버그·재현 코드 있음. 본문이 _encode_files 의 RequestField(name=k) 를 지목 — 값처럼 필드 이름도 str() 처리해야 하고, 호출 경로 prepare_body 를 함께 읽음",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-requests-02",
+    "repo": "psf/requests",
+    "number": 7630,
+    "title": "Incorrect type annotation for iter_lines",
+    "url": "https://github.com/psf/requests/issues/7630",
+    "labels": [],
+    "gold_modules": [
+      "requests.models"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Response.iter_lines",
+        "file": "src/requests/models.py",
+        "line": 994
+      },
+      {
+        "name": "Response.iter_content",
+        "file": "src/requests/models.py",
+        "line": 914
+      }
+    ],
+    "note": "타입 주석 버그. iter_lines 의 chunk_size: int 를 int | None 으로(오버로드 2개 포함), 이미 int | None 인 iter_content 와 맞추는 수정",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-requests-03",
+    "repo": "psf/requests",
+    "number": 7629,
+    "title": "proxy_bypass_registry uses unanchored re.match (Windows proxy bypass)",
+    "url": "https://github.com/psf/requests/issues/7629",
+    "labels": [],
+    "gold_modules": [
+      "requests.utils"
+    ],
+    "gold_symbols": [
+      {
+        "name": "proxy_bypass_registry",
+        "file": "src/requests/utils.py",
+        "line": 99
+      },
+      {
+        "name": "proxy_bypass",
+        "file": "src/requests/utils.py",
+        "line": 137
+      }
+    ],
+    "note": "보안성 버그. 본문이 utils.proxy_bypass_registry 의 re.match 비앵커 매칭을 지목, 이를 부르는 proxy_bypass 까지 읽으면 영향 범위 확인",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-requests-04",
+    "repo": "psf/requests",
+    "number": 7564,
+    "title": "raise FileNotFoundError for missing TLS material",
+    "url": "https://github.com/psf/requests/issues/7564",
+    "labels": [],
+    "gold_modules": [
+      "requests.adapters"
+    ],
+    "gold_symbols": [
+      {
+        "name": "HTTPAdapter.cert_verify",
+        "file": "src/requests/adapters.py",
+        "line": 307
+      }
+    ],
+    "note": "작은 동작 변경 제안. 'Could not find the TLS ...' OSError 를 던지는 곳이 adapters.HTTPAdapter.cert_verify 한 곳",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-requests-05",
+    "repo": "psf/requests",
+    "number": 7223,
+    "title": "Chardet is used, when it is available, not when `[use-chardet-on-py3]`-extra is installed",
+    "url": "https://github.com/psf/requests/issues/7223",
+    "labels": [],
+    "gold_modules": [
+      "requests.compat",
+      "requests"
+    ],
+    "gold_symbols": [
+      {
+        "name": "_resolve_char_detection",
+        "file": "src/requests/compat.py",
+        "line": 36
+      },
+      {
+        "name": "check_compatibility",
+        "file": "src/requests/__init__.py",
+        "line": 60
+      }
+    ],
+    "note": "의존성 선택 로직 버그. chardet 를 import 가능하면 쓰는 compat._resolve_char_detection 과 버전 경고를 내는 __init__.check_compatibility 를 함께 바꿔야 함(패키징 정책 판단 필요)",
+    "difficulty": "medium"
+  },
+  {
+    "id": "im-httpx-01",
+    "repo": "encode/httpx",
+    "number": 3614,
+    "title": "Corruption of query parameter value when using base_url with query string",
+    "url": "https://github.com/encode/httpx/issues/3614",
+    "labels": [],
+    "gold_modules": [
+      "httpx._client",
+      "httpx._urls"
+    ],
+    "gold_symbols": [
+      {
+        "name": "BaseClient._merge_url",
+        "file": "httpx/_client.py",
+        "line": 391
+      },
+      {
+        "name": "BaseClient._enforce_trailing_slash",
+        "file": "httpx/_client.py",
+        "line": 234
+      }
+    ],
+    "note": "재현 코드 있는 버그. base_url 에 쿼리가 있으면 _enforce_trailing_slash/_merge_url 이 raw_path(경로+쿼리)에 '/' 를 붙여 쿼리 값이 'data=1/' 로 깨짐; URL 의 raw_path 정의(_urls)도 읽어야 함",
+    "difficulty": "medium"
+  },
+  {
+    "id": "im-httpx-02",
+    "repo": "encode/httpx",
+    "number": 3565,
+    "title": "Percent encoding `|` in paths",
+    "url": "https://github.com/encode/httpx/issues/3565",
+    "labels": [],
+    "gold_modules": [
+      "httpx._urlparse"
+    ],
+    "gold_symbols": [
+      {
+        "name": "urlparse",
+        "file": "httpx/_urlparse.py",
+        "line": 213
+      },
+      {
+        "name": "quote",
+        "file": "httpx/_urlparse.py",
+        "line": 497
+      }
+    ],
+    "note": "RFC 근거가 있는 버그. 본문이 httpx._urlparse.urlparse 를 지목 — 경로는 quote(path, safe=PATH_SAFE) 로 인코딩되므로 PATH_SAFE 에서 '|' 를 빼는 수정",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-httpx-03",
+    "repo": "encode/httpx",
+    "number": 3400,
+    "title": "Mention header name error message for invalid header encodings",
+    "url": "https://github.com/encode/httpx/issues/3400",
+    "labels": [],
+    "gold_modules": [
+      "httpx._models"
+    ],
+    "gold_symbols": [
+      {
+        "name": "_normalize_header_value",
+        "file": "httpx/_models.py",
+        "line": 74
+      },
+      {
+        "name": "Headers.__init__",
+        "file": "httpx/_models.py",
+        "line": 144
+      }
+    ],
+    "note": "에러 메시지 개선. 본문 트레이스백의 normalize_header_value 는 현재 _models._normalize_header_value 로 옮겨짐; 헤더 이름을 아는 Headers.__init__ 에서 감싸거나 이름을 넘겨야 함",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-httpx-04",
+    "repo": "encode/httpx",
+    "number": 3396,
+    "title": "Allow multipart requests without attaching files",
+    "url": "https://github.com/encode/httpx/issues/3396",
+    "labels": [],
+    "gold_modules": [
+      "httpx._content",
+      "httpx._multipart"
+    ],
+    "gold_symbols": [
+      {
+        "name": "encode_request",
+        "file": "httpx/_content.py",
+        "line": 186
+      },
+      {
+        "name": "encode_multipart_data",
+        "file": "httpx/_content.py",
+        "line": 152
+      }
+    ],
+    "note": "메인테이너 승인된 기능 요청. encode_request 의 'elif files:' 를 'files is not None' 판정으로 바꾸고 빈 files 로 MultipartStream 이 만들어지는지 확인",
+    "difficulty": "medium"
+  },
+  {
+    "id": "im-httpx-05",
+    "repo": "encode/httpx",
+    "number": 3586,
+    "title": "Client misses socket_options attribute",
+    "url": "https://github.com/encode/httpx/issues/3586",
+    "labels": [],
+    "gold_modules": [
+      "httpx._client",
+      "httpx._transports.default"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Client.__init__",
+        "file": "httpx/_client.py",
+        "line": 639
+      },
+      {
+        "name": "Client._init_transport",
+        "file": "httpx/_client.py",
+        "line": 718
+      },
+      {
+        "name": "Client._init_proxy_transport",
+        "file": "httpx/_client.py",
+        "line": 740
+      }
+    ],
+    "note": "기능 요청. Client 가 transport 를 만들 때 limits·http2 처럼 socket_options 도 넘기도록 생성자와 _init_*transport 를 바꾸고, HTTPTransport.__init__ 이 받는 인자 확인(AsyncClient 도 대칭)",
+    "difficulty": "medium"
+  },
+  {
+    "id": "im-click-01",
+    "repo": "pallets/click",
+    "number": 3888,
+    "title": "use the path_type to perform the other click.Path checks",
+    "url": "https://github.com/pallets/click/issues/3888",
+    "labels": [],
+    "gold_modules": [
+      "click.types"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Path.convert",
+        "file": "src/click/types.py",
+        "line": 1161
+      },
+      {
+        "name": "Path.coerce_path_result",
+        "file": "src/click/types.py",
+        "line": 1147
+      }
+    ],
+    "note": "기능 요청. Path.convert 의 exists/file_okay/dir_okay 검사가 os.stat·os.access 를 직접 써서 path_type 을 무시함 — coerce_path_result 와 함께 읽어야 함. 설계 판단 필요",
+    "difficulty": "hard"
+  },
+  {
+    "id": "im-click-02",
+    "repo": "pallets/click",
+    "number": 3652,
+    "title": "Automatically append ellipsis (`...`) to metavars when `multiple=True` in options",
+    "url": "https://github.com/pallets/click/issues/3652",
+    "labels": [
+      "help output"
+    ],
+    "gold_modules": [
+      "click.core"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Option.get_help_spec",
+        "file": "src/click/core.py",
+        "line": 3558
+      },
+      {
+        "name": "Parameter.make_metavar",
+        "file": "src/click/core.py",
+        "line": 2620
+      }
+    ],
+    "note": "help output 라벨 기능 요청. 도움말 왼쪽 열을 만드는 Option.get_help_spec 의 _write_opts 가 make_metavar 를 부르고, nargs 일 때만 '...' 를 붙이는 make_metavar 를 multiple 까지 확장",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-click-03",
+    "repo": "pallets/click",
+    "number": 3362,
+    "title": "`HelpFormatter.write_usage` breaks options at a hyphen",
+    "url": "https://github.com/pallets/click/issues/3362",
+    "labels": [
+      "help output"
+    ],
+    "gold_modules": [
+      "click.formatting",
+      "click._textwrap"
+    ],
+    "gold_symbols": [
+      {
+        "name": "HelpFormatter.write_usage",
+        "file": "src/click/formatting.py",
+        "line": 158
+      },
+      {
+        "name": "wrap_text",
+        "file": "src/click/formatting.py",
+        "line": 31
+      }
+    ],
+    "note": "help output 라벨 버그, 재현 코드 있음. write_usage → wrap_text → TextWrapper(textwrap 기본 break_on_hyphens=True) 경로라 wrap_text 에서 하이픈 분리를 끄는 수정",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-click-04",
+    "repo": "pallets/click",
+    "number": 2753,
+    "title": "get_parameter_source does not work with invoke or forward",
+    "url": "https://github.com/pallets/click/issues/2753",
+    "labels": [
+      "parsing"
+    ],
+    "gold_modules": [
+      "click.core"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Context.invoke",
+        "file": "src/click/core.py",
+        "line": 887
+      },
+      {
+        "name": "Context.get_parameter_source",
+        "file": "src/click/core.py",
+        "line": 970
+      },
+      {
+        "name": "Context.set_parameter_source",
+        "file": "src/click/core.py",
+        "line": 961
+      }
+    ],
+    "note": "parsing 라벨 버그. Context.invoke 가 하위 컨텍스트에 기본값을 채울 때 set_parameter_source 를 부르지 않아 get_parameter_source 가 None — forward 도 invoke 를 거침",
+    "difficulty": "medium"
+  },
+  {
+    "id": "im-click-05",
+    "repo": "pallets/click",
+    "number": 2740,
+    "title": "Display exception notes when raising `ClickException`",
+    "url": "https://github.com/pallets/click/issues/2740",
+    "labels": [
+      "parsing"
+    ],
+    "gold_modules": [
+      "click.exceptions"
+    ],
+    "gold_symbols": [
+      {
+        "name": "ClickException.show",
+        "file": "src/click/exceptions.py",
+        "line": 57
+      },
+      {
+        "name": "ClickException.format_message",
+        "file": "src/click/exceptions.py",
+        "line": 51
+      }
+    ],
+    "note": "parsing 라벨 기능 요청. 'Error: foo' 를 출력하는 ClickException.show 에서 __notes__ 를 덧붙이면 됨(하위 클래스 UsageError.show 도 확인)",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-rich-01",
+    "repo": "Textualize/rich",
+    "number": 4238,
+    "title": "[BUG] Traceback.extract loops forever when __cause__ and __context__ form a cycle",
+    "url": "https://github.com/Textualize/rich/issues/4238",
+    "labels": [],
+    "gold_modules": [
+      "rich.traceback"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Traceback.extract",
+        "file": "rich/traceback.py",
+        "line": 433
+      }
+    ],
+    "note": "재현 설명이 구체적인 버그. Traceback.extract 의 __cause__/__context__ 추적 루프에 방문 집합(id) 검사를 넣는 수정",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-rich-02",
+    "repo": "Textualize/rich",
+    "number": 4237,
+    "title": "[BUG] Text negative integer indexing drops span styles",
+    "url": "https://github.com/Textualize/rich/issues/4237",
+    "labels": [],
+    "gold_modules": [
+      "rich.text"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Text.__getitem__",
+        "file": "rich/text.py",
+        "line": 198
+      }
+    ],
+    "note": "버그, 본문이 rich/text.py:198-209 __getitem__ 을 지목. 음수 인덱스를 len 기준으로 정규화한 뒤 span 과 비교",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-rich-03",
+    "repo": "Textualize/rich",
+    "number": 4216,
+    "title": "Console.print(text) silently drops Text's own justify unless justify= is also passed to print()",
+    "url": "https://github.com/Textualize/rich/issues/4216",
+    "labels": [],
+    "gold_modules": [
+      "rich.console",
+      "rich.text"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Console._collect_renderables",
+        "file": "rich/console.py",
+        "line": 1500
+      },
+      {
+        "name": "Text.join",
+        "file": "rich/text.py",
+        "line": 778
+      },
+      {
+        "name": "Text.__rich_console__",
+        "file": "rich/text.py",
+        "line": 689
+      }
+    ],
+    "note": "버그, 재현 코드 있음. Console.print 가 Text 를 _collect_renderables 에서 Text(sep, justify=justify).join(...) 으로 합치며 Text 자신의 justify 를 잃음 — Text.__rich_console__ 의 우선순위와 비교해야 해 원인 추적이 필요",
+    "difficulty": "hard"
+  },
+  {
+    "id": "im-rich-04",
+    "repo": "Textualize/rich",
+    "number": 4214,
+    "title": "[BUG] `Columns(width=...)` raises `ZeroDivisionError` when the requested width does not fit",
+    "url": "https://github.com/Textualize/rich/issues/4214",
+    "labels": [
+      "Needs triage"
+    ],
+    "gold_modules": [
+      "rich.columns"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Columns.__rich_console__",
+        "file": "rich/columns.py",
+        "line": 62
+      }
+    ],
+    "note": "버그, 본문이 columns.py __rich_console__ 의 column_count = max_width // (width + padding) 을 지목. 0 일 때 최소 1 로 막는 수정",
+    "difficulty": "easy"
+  },
+  {
+    "id": "im-rich-05",
+    "repo": "Textualize/rich",
+    "number": 4208,
+    "title": "[BUG]Console.save_text clears recorded output when file write fails",
+    "url": "https://github.com/Textualize/rich/issues/4208",
+    "labels": [
+      "Needs triage"
+    ],
+    "gold_modules": [
+      "rich.console"
+    ],
+    "gold_symbols": [
+      {
+        "name": "Console.save_text",
+        "file": "rich/console.py",
+        "line": 2224
+      },
+      {
+        "name": "Console.export_text",
+        "file": "rich/console.py",
+        "line": 2192
+      }
+    ],
+    "note": "버그. save_text 가 파일을 열기 전에 export_text(clear=clear) 로 버퍼를 지움 — 쓰기 성공 후 비우도록 순서 변경(save_html·save_svg 도 같은 패턴)",
+    "difficulty": "easy"
+  }
+]

@@ -1,0 +1,502 @@
+[
+  {
+    "id": "pr-requests-01",
+    "repo": "psf/requests",
+    "number": 6767,
+    "title": "Revert caching a default SSLContext",
+    "url": "https://github.com/psf/requests/pull/6767",
+    "merged_at": "2025-06-13T16:42:08Z",
+    "changed_files": [
+      "src/requests/adapters.py"
+    ],
+    "changed_symbols": [
+      {
+        "name": "_urllib3_request_context",
+        "file": "src/requests/adapters.py",
+        "line": 85
+      },
+      {
+        "name": "HTTPAdapter.cert_verify",
+        "file": "src/requests/adapters.py",
+        "line": 307
+      }
+    ],
+    "gold_impact_symbols": [
+      {
+        "name": "HTTPAdapter.send",
+        "file": "src/requests/adapters.py",
+        "line": 634
+      },
+      {
+        "name": "HTTPAdapter.build_connection_pool_key_attributes",
+        "file": "src/requests/adapters.py",
+        "line": 403
+      },
+      {
+        "name": "HTTPAdapter.get_connection_with_tls_context",
+        "file": "src/requests/adapters.py",
+        "line": 455
+      }
+    ],
+    "gold_impact_modules": [
+      "requests.adapters"
+    ],
+    "gold_test_files": [
+      "tests/test_requests.py"
+    ],
+    "summary_ko": "기본 SSLContext 캐싱 되돌리기 — 모듈 로드 시 만들던 _preloaded_ssl_context 를 없애고, cert_verify 가 verify=True 일 때도 기본 CA 번들 경로를 직접 지정하도록 복원",
+    "note": "모듈 수준 코드(_preloaded_ssl_context 생성 try 블록, create_urllib3_context import)도 지웠지만 심볼이 아니라 제외. send 는 cert_verify 직접 호출자, build_connection_pool_key_attributes 는 _urllib3_request_context 직접 호출자, get_connection_with_tls_context 는 그 위 호출자(2단계, 연결 풀 키가 바뀌는 곳이라 포함)",
+    "difficulty": "medium"
+  },
+  {
+    "id": "pr-requests-02",
+    "repo": "psf/requests",
+    "number": 6963,
+    "title": "fix CVE 2024 47081: manual url parsing leads to netloc credentials leak",
+    "url": "https://github.com/psf/requests/pull/6963",
+    "merged_at": "2025-06-05T14:55:33Z",
+    "changed_files": [
+      "src/requests/utils.py",
+      "tests/test_utils.py"
+    ],
+    "changed_symbols": [
+      {
+        "name": "get_netrc_auth",
+        "file": "src/requests/utils.py",
+        "line": 231
+      }
+    ],
+    "gold_impact_symbols": [
+      {
+        "name": "SessionRedirectMixin.rebuild_auth",
+        "file": "src/requests/sessions.py",
+        "line": 309
+      },
+      {
+        "name": "Session.prepare_request",
+        "file": "src/requests/sessions.py",
+        "line": 511
+      }
+    ],
+    "gold_impact_modules": [
+      "requests.sessions",
+      "requests.utils"
+    ],
+    "gold_test_files": [
+      "tests/test_utils.py",
+      "tests/test_requests.py"
+    ],
+    "summary_ko": "CVE-2024-47081 수정(URL 수동 파싱으로 netrc 자격 증명 유출) — get_netrc_auth 의 netrc 위치 탐색을 단순화하고 TestGetNetrcAuth 테스트 추가",
+    "note": "files API diff 에는 expanduser 의 KeyError 처리 제거만 보인다(호스트 추출은 인덱스 커밋에서 urlparse(url).hostname). PR 이 tests/test_utils.py 를 직접 고침. test_requests.py 는 sessions.get_netrc_auth 를 mock 하는 리디렉트 테스트",
+    "difficulty": "easy"
+  },
+  {
+    "id": "pr-httpx-01",
+    "repo": "encode/httpx",
+    "number": 3699,
+    "title": "Expose `FunctionAuth` in `__all__`",
+    "url": "https://github.com/encode/httpx/pull/3699",
+    "merged_at": "2025-12-10T14:58:48Z",
+    "changed_files": [
+      "CHANGELOG.md",
+      "httpx/__init__.py",
+      "httpx/_auth.py"
+    ],
+    "changed_symbols": [
+      {
+        "name": "FunctionAuth",
+        "file": "httpx/_auth.py",
+        "line": 113
+      }
+    ],
+    "gold_impact_symbols": [
+      {
+        "name": "BaseClient._build_auth",
+        "file": "httpx/_client.py",
+        "line": 445
+      },
+      {
+        "name": "BaseClient._build_request_auth",
+        "file": "httpx/_client.py",
+        "line": 457
+      }
+    ],
+    "gold_impact_modules": [
+      "httpx._client",
+      "httpx._auth",
+      "httpx"
+    ],
+    "gold_test_files": [
+      "tests/test_exported_members.py",
+      "tests/client/test_auth.py"
+    ],
+    "summary_ko": "FunctionAuth 를 __all__ 에 공개 — httpx/__init__.py 와 httpx/_auth.py 의 __all__ 에 FunctionAuth 추가",
+    "note": "diff 는 모듈 수준 __all__ 줄만 건드려 감싸는 함수·클래스가 없다. 규칙 예외로 공개 범위가 바뀐 클래스 FunctionAuth 를 변경 심볼로 적었다. 직접 호출자는 _build_auth 하나라 그 호출자 _build_request_auth(2단계)를 더했다. test_exported_members.py 는 __all__ 공개 목록을 검사",
+    "difficulty": "easy"
+  },
+  {
+    "id": "pr-click-01",
+    "repo": "pallets/click",
+    "number": 3866,
+    "title": "Deprecate parameter names that are: not a Python identifier, or a Python Keyword, or not lower-cased",
+    "url": "https://github.com/pallets/click/pull/3866",
+    "merged_at": "2026-09-23T04:07:18Z",
+    "changed_files": [
+      "CHANGES.md",
+      "docs/upgrade-guides.md",
+      "pyproject.toml",
+      "src/click/core.py",
+      "tests/test_arguments.py",
+      "tests/test_deprecations.py",
+      "tests/test_options.py",
+      "uv.lock"
+    ],
+    "changed_symbols": [
+      {
+        "name": "_outside_click_stacklevel",
+        "file": "src/click/core.py",
+        "line": 108
+      },
+      {
+        "name": "Parameter._check_name_is_usable",
+        "file": "src/click/core.py",
+        "line": 2532
+      },
+      {
+        "name": "Option._check_name_is_normalized",
+        "file": "src/click/core.py",
+        "line": 3429
+      },
+      {
+        "name": "Option._parse_decls",
+        "file": "src/click/core.py",
+        "line": 3449
+      },
+      {
+        "name": "Argument._parse_decls",
+        "file": "src/click/core.py",
+        "line": 3963
+      }
+    ],
+    "gold_impact_symbols": [
+      {
+        "name": "Parameter.__init__",
+        "file": "src/click/core.py",
+        "line": 2406
+      },
+      {
+        "name": "Option.__init__",
+        "file": "src/click/core.py",
+        "line": 3149
+      },
+      {
+        "name": "Argument.__init__",
+        "file": "src/click/core.py",
+        "line": 3909
+      }
+    ],
+    "gold_impact_modules": [
+      "click.core"
+    ],
+    "gold_test_files": [
+      "tests/test_deprecations.py",
+      "tests/test_arguments.py",
+      "tests/test_options.py"
+    ],
+    "summary_ko": "파라미터 이름 폐기 예고 — 파이썬 식별자가 아니거나 키워드이거나 소문자가 아닌 이름에 DeprecationWarning 을 내도록 _parse_decls 에 검사 추가",
+    "note": "_outside_click_stacklevel·_check_name_is_usable·_check_name_is_normalized 는 이 PR 이 새로 만든 함수지만 인덱스 커밋(#3877, 이 PR 뒤)에 있어 포함. 직접 호출자는 _parse_decls 를 부르는 Parameter.__init__ 이고, Option.__init__·Argument.__init__ 은 super().__init__ 로 그것을 부르는 2단계 호출자(사용자가 옵션을 선언하는 곳). 세 테스트 파일 모두 PR 이 고침",
+    "difficulty": "medium"
+  },
+  {
+    "id": "pr-click-02",
+    "repo": "pallets/click",
+    "number": 3877,
+    "title": "Add `Parameter.spec` and deprecate `human_readable_name`",
+    "url": "https://github.com/pallets/click/pull/3877",
+    "merged_at": "2026-10-04T22:19:54Z",
+    "changed_files": [
+      "CHANGES.md",
+      "docs/parameters.md",
+      "docs/upgrade-guides.md",
+      "src/click/core.py",
+      "tests/test_arguments.py",
+      "tests/test_deprecations.py",
+      "tests/test_options.py"
+    ],
+    "changed_symbols": [
+      {
+        "name": "Parameter.spec",
+        "file": "src/click/core.py",
+        "line": 2570
+      },
+      {
+        "name": "Parameter.human_readable_name",
+        "file": "src/click/core.py",
+        "line": 2586
+      },
+      {
+        "name": "Parameter.get_help_spec",
+        "file": "src/click/core.py",
+        "line": 2605
+      },
+      {
+        "name": "Argument.spec",
+        "file": "src/click/core.py",
+        "line": 3932
+      },
+      {
+        "name": "Parameter.handle_parse_result",
+        "file": "src/click/core.py",
+        "line": 2929
+      },
+      {
+        "name": "Parameter.get_error_hint",
+        "file": "src/click/core.py",
+        "line": 3023
+      }
+    ],
+    "gold_impact_symbols": [
+      {
+        "name": "Option.get_help_record",
+        "file": "src/click/core.py",
+        "line": 3589
+      },
+      {
+        "name": "Command.format_arguments",
+        "file": "src/click/core.py",
+        "line": 1337
+      },
+      {
+        "name": "Command.parse_args",
+        "file": "src/click/core.py",
+        "line": 1396
+      },
+      {
+        "name": "BadParameter.format_message",
+        "file": "src/click/exceptions.py",
+        "line": 146
+      },
+      {
+        "name": "MissingParameter.format_message",
+        "file": "src/click/exceptions.py",
+        "line": 184
+      }
+    ],
+    "gold_impact_modules": [
+      "click.core",
+      "click.exceptions"
+    ],
+    "gold_test_files": [
+      "tests/test_options.py",
+      "tests/test_arguments.py",
+      "tests/test_deprecations.py"
+    ],
+    "summary_ko": "Parameter.spec 추가와 human_readable_name 폐기 예고 — 사용자에게 보이는 이름을 spec 으로 통일하고 오류·도움말이 spec 을 읽게 바꿈",
+    "note": "인덱스 커밋 2247b35 가 바로 이 PR 의 머지 커밋이라 줄 번호가 정확히 맞는다. 변경 심볼 상한 6 때문에 Parameter.__init_subclass__·Parameter.__init__(오류 문구)·Argument.get_help_spec·Argument.get_help_record·Argument.get_error_hint·_outside_click_stacklevel(skip 인자) 는 여기에만 적음. spec·human_readable_name 은 property 라 calls 테이블에 호출이 없다 — 정적 호출 그래프로는 이 영향이 안 보임. Command.format_arguments 는 바뀐 Argument.get_help_record 의 호출자",
+    "difficulty": "hard"
+  },
+  {
+    "id": "pr-click-03",
+    "repo": "pallets/click",
+    "number": 3884,
+    "title": "Fix `show_envvar` output for a sequence or an empty `envvar`",
+    "url": "https://github.com/pallets/click/pull/3884",
+    "merged_at": "2026-10-06T20:59:00Z",
+    "changed_files": [
+      "CHANGES.md",
+      "src/click/core.py",
+      "tests/test_options.py"
+    ],
+    "changed_symbols": [
+      {
+        "name": "Option.get_error_hint",
+        "file": "src/click/core.py",
+        "line": 3423
+      },
+      {
+        "name": "Option.get_help_extra",
+        "file": "src/click/core.py",
+        "line": 3614
+      }
+    ],
+    "gold_impact_symbols": [
+      {
+        "name": "Option.get_help_record",
+        "file": "src/click/core.py",
+        "line": 3589
+      },
+      {
+        "name": "BadParameter.format_message",
+        "file": "src/click/exceptions.py",
+        "line": 146
+      },
+      {
+        "name": "MissingParameter.format_message",
+        "file": "src/click/exceptions.py",
+        "line": 184
+      }
+    ],
+    "gold_impact_modules": [
+      "click.core",
+      "click.exceptions"
+    ],
+    "gold_test_files": [
+      "tests/test_options.py"
+    ],
+    "summary_ko": "envvar 가 시퀀스이거나 비어 있을 때 show_envvar 출력 수정 — 오류 힌트가 환경 변수 여러 개를 각각 따옴표로 나열하고, 빈 envvar 는 없는 것과 같이 처리",
+    "note": "인덱스 커밋 뒤에 머지된 PR 이라 diff 의 옛 줄 기준으로 인덱스 소스에서 같은 코드를 찾아 매핑. PR 이 tests/test_options.py 에 test_show_envvar_empty·test_missing_envvar_sequence 추가",
+    "difficulty": "easy"
+  },
+  {
+    "id": "pr-rich-01",
+    "repo": "Textualize/rich",
+    "number": 3180,
+    "title": "Fix double-width characters disappearing when wrapping",
+    "url": "https://github.com/Textualize/rich/pull/3180",
+    "merged_at": "2023-11-14T10:03:55Z",
+    "changed_files": [
+      ".gitignore",
+      "CHANGELOG.md",
+      "rich/_wrap.py",
+      "rich/cells.py",
+      "tests/test_cells.py",
+      "tests/test_text.py"
+    ],
+    "changed_symbols": [
+      {
+        "name": "words",
+        "file": "rich/_wrap.py",
+        "line": 12
+      },
+      {
+        "name": "divide_line",
+        "file": "rich/_wrap.py",
+        "line": 26
+      },
+      {
+        "name": "chop_cells",
+        "file": "rich/cells.py",
+        "line": 326
+      }
+    ],
+    "gold_impact_symbols": [
+      {
+        "name": "Text.wrap",
+        "file": "rich/text.py",
+        "line": 1201
+      },
+      {
+        "name": "Text.__rich_console__",
+        "file": "rich/text.py",
+        "line": 689
+      }
+    ],
+    "gold_impact_modules": [
+      "rich.text",
+      "rich._wrap",
+      "rich.cells"
+    ],
+    "gold_test_files": [
+      "tests/test_text.py",
+      "tests/test_cells.py"
+    ],
+    "summary_ko": "줄바꿈 시 두 칸 폭 문자(CJK)가 사라지는 버그 수정 — divide_line 의 남은 폭 계산과 chop_cells 의 접기 순서를 고침",
+    "note": "2023 년 PR 이라 인덱스 커밋에서는 chop_cells 등이 이후에 더 바뀌었다(심볼 이름 기준 라벨). words 는 타입 힌트·docstring 만 바뀜. 직접 호출자는 divide_line 을 부르는 Text.wrap 하나뿐이라 그 호출자 Text.__rich_console__(2단계)를 더함. 두 테스트 파일 모두 PR 이 고침",
+    "difficulty": "medium"
+  },
+  {
+    "id": "pr-rich-02",
+    "repo": "Textualize/rich",
+    "number": 4070,
+    "title": "perf: reduce Console and RichHandler import time by deferring unused imports",
+    "url": "https://github.com/Textualize/rich/pull/4070",
+    "merged_at": "2026-04-11T02:38:58Z",
+    "changed_files": [
+      "CHANGELOG.md",
+      "CONTRIBUTORS.md",
+      "rich/_emoji_replace.py",
+      "rich/console.py",
+      "rich/emoji.py",
+      "rich/logging.py",
+      "rich/protocol.py",
+      "rich/repr.py",
+      "rich/segment.py",
+      "rich/syntax.py",
+      "rich/theme.py",
+      "tests/test_console.py",
+      "tests/test_syntax.py"
+    ],
+    "changed_symbols": [
+      {
+        "name": "Console._caller_frame_info",
+        "file": "rich/console.py",
+        "line": 1909
+      },
+      {
+        "name": "Console._collect_renderables",
+        "file": "rich/console.py",
+        "line": 1500
+      },
+      {
+        "name": "rich_cast",
+        "file": "rich/protocol.py",
+        "line": 18
+      },
+      {
+        "name": "_emoji_replace",
+        "file": "rich/_emoji_replace.py",
+        "line": 9
+      },
+      {
+        "name": "RichHandler.render",
+        "file": "rich/logging.py",
+        "line": 215
+      }
+    ],
+    "gold_impact_symbols": [
+      {
+        "name": "Console.log",
+        "file": "rich/console.py",
+        "line": 1947
+      },
+      {
+        "name": "Console.print",
+        "file": "rich/console.py",
+        "line": 1652
+      },
+      {
+        "name": "Console.render_str",
+        "file": "rich/console.py",
+        "line": 1409
+      },
+      {
+        "name": "Measurement.get",
+        "file": "rich/measure.py",
+        "line": 79
+      },
+      {
+        "name": "Emoji.replace",
+        "file": "rich/emoji.py",
+        "line": 53
+      },
+      {
+        "name": "RichHandler.emit",
+        "file": "rich/logging.py",
+        "line": 138
+      }
+    ],
+    "gold_impact_modules": [
+      "rich.console",
+      "rich.logging",
+      "rich.measure",
+      "rich.emoji"
+    ],
+    "gold_test_files": [
+      "tests/test_console.py",
+      "tests/test_logging.py"
+    ],
+    "summary_ko": "Console·RichHandler import 시간 단축 — inspect·pretty·scope·getpass·html·zlib·traceback·_emoji_codes 등을 쓰는 함수 안으로 지연 import 하고 isclass 를 isinstance(x, type) 로 바꿈",
+    "note": "여러 함수에 지연 import 만 넣은 넓은 PR. 상한 때문에 Console.render·Console.input·Console.export_html·Console.export_svg·Emoji.__init__ 도 바뀐 것을 여기에만 적음. 모듈 함수 _svg_hash 는 삭제돼 인덱스에 없음. Console.log·RichHandler.emit 도 PR 이 지연 import 를 넣었지만 동작 변화는 호출하는 _caller_frame_info(기본 인자 None)·render 쪽이라 영향 심볼로 둠",
+    "difficulty": "hard"
+  }
+]

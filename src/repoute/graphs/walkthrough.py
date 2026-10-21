@@ -31,6 +31,11 @@ EXPLORE_BLOCK = (
     "읽기 없이 탐색만 {used}회 했습니다. 이제 read_code 로 코드를 읽으세요. "
     "직전 find_definition 결과 줄 끝의 read_code(...) 를 그대로 호출하면 됩니다."
 )
+# search_symbols 가 켜졌을 때만 쓰는 차단 문구. 기본(도구 5개)은 위 문구 그대로라 before 측정과 같다
+EXPLORE_BLOCK_SEARCH = (
+    "읽기 없이 탐색만 {used}회 했습니다. 이제 read_code 로 코드를 읽으세요. "
+    "직전 find_definition·search_symbols 결과 줄 끝의 read_code(...) 를 그대로 호출하면 됩니다."
+)
 
 
 class Step(BaseModel):
@@ -125,10 +130,12 @@ def tools_node(state: WalkState, tools: list) -> dict:
     실행하지 않고 "read_code 로 읽으라" 를 돌려준다. 상한 전에 반드시 발동하는 과정 강제
     (troubleshooting 20): 넛지는 답하려 할 때만 작동해 탐색만 하다 상한에 걸리는 실행을 못 잡는다.
     거부도 호출 수를 소모해서, 계속 탐색만 하면 무한 루프 없이 MAX_TOOL_CALLS 에서 끝난다.
+    search_symbols(옵트인)도 read_code 가 아니므로 탐색으로 센다.
     읽은 범위는 호출을 처리하면서 갱신하므로, 같은 메시지에서 read_code 가 먼저 성공하면
     뒤따르는 find_* 는 실행된다.
     """
     by_name = {t.name: t for t in tools}
+    block = EXPLORE_BLOCK_SEARCH if "search_symbols" in by_name else EXPLORE_BLOCK
     used = state.get("tool_calls", 0)
     ranges = list(state.get("read_ranges", []))
     explore_blocked = state.get("explore_blocked", 0)
@@ -146,7 +153,7 @@ def tools_node(state: WalkState, tools: list) -> dict:
             results.append(ToolMessage("실행 안 함: 상한 초과·없는 도구", tool_call_id=call_id))
             continue
         if not ranges and used >= MAX_EXPLORE_WITHOUT_READ and call["name"] != "read_code":
-            results.append(ToolMessage(EXPLORE_BLOCK.format(used=used), tool_call_id=call_id))
+            results.append(ToolMessage(block.format(used=used), tool_call_id=call_id))
             used += 1  # 예산은 소모한다: 거부만 반복해도 상한에서 끝난다
             explore_blocked += 1
             continue
@@ -258,8 +265,11 @@ def build_walkthrough_graph(
 
     checkpointer 를 주면 같은 thread_id 로 대화를 이어 갈 수 있다 (wave12).
     agent_model("fast" | "quality") 은 agent 노드만 바꾼다. finalize 는 항상 quality.
+    deps 에 embedder·embedding_store 가 둘 다 있으면 도구 search_symbols 가 붙는다(옵트인).
     """
-    tools = make_code_tools(deps.index.db, deps.index.info.path)
+    tools = make_code_tools(
+        deps.index.db, deps.index.info.path, deps.embedding_store, deps.embedder
+    )
     builder = StateGraph(WalkState)
     agent_node = partial(agent, deps=deps, tools=tools, prompts=prompts, agent_model=agent_model)
     builder.add_node("agent", agent_node)
