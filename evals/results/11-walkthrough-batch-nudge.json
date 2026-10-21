@@ -1,0 +1,771 @@
+[
+  {
+    "id": "requests-01",
+    "repo": "psf/requests",
+    "question": "requests.get()을 호출하면 내부에서 무슨 일이 일어나? 요청이 실제로 전송되는 곳까지 따라가 줘.",
+    "expect_reach": "Session.send",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 12,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 5,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 6,
+    "citations": 6,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.0,
+    "reached": true,
+    "refs": [
+      "src/requests/api.py:87 [get]",
+      "src/requests/sessions.py:623 [Session.request]",
+      "src/requests/sessions.py:635 [Session.request]",
+      "src/requests/sessions.py:641 [Session.request]",
+      "src/requests/sessions.py:651 [Session.request]",
+      "src/requests/sessions.py:784 [Session.send]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 45283,
+        "output_tokens": 708
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 8251,
+        "output_tokens": 530
+      }
+    },
+    "cost": 0.03314475,
+    "elapsed": 21.971352625172585
+  },
+  {
+    "id": "requests-02",
+    "repo": "psf/requests",
+    "question": "Session.request()는 보낼 요청 객체를 어떻게 준비해?",
+    "expect_reach": "PreparedRequest.prepare",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 11,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 5,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 4,
+    "citations": 8,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.5,
+    "reached": false,
+    "refs": [
+      "src/requests/sessions.py:623 [Session.request]",
+      "src/requests/models.py:284 [Request]",
+      "src/requests/sessions.py:635 [Session.request]",
+      "src/requests/sessions.py:511 [Session.prepare_request]",
+      "src/requests/sessions.py:641 [Session.request]",
+      "src/requests/sessions.py:831 [Session.merge_environment_settings]",
+      "src/requests/sessions.py:651 [Session.request]",
+      "src/requests/sessions.py:752 [Session.send]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 15113,
+        "output_tokens": 827
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 6736,
+        "output_tokens": 424
+      }
+    },
+    "cost": 0.02384315,
+    "elapsed": 14.432493374915794
+  },
+  {
+    "id": "requests-03",
+    "repo": "psf/requests",
+    "question": "requests.post(url, json=data)로 넘긴 데이터는 어디서 요청 본문으로 직렬화돼?",
+    "expect_reach": "PreparedRequest.prepare_body",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 15,
+    "retries": 2,
+    "blocked": 0,
+    "read_code_calls": 0,
+    "nudges": 0,
+    "final_errors": 3,
+    "strict_pass": false,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 1.0,
+    "reached": false,
+    "refs": [
+      "src/requests/sessions.py:695 [Session.post]",
+      "src/requests/sessions.py:557 [Session.request]",
+      "src/requests/sessions.py:511 [Session.prepare_request]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 28324,
+        "output_tokens": 254
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 9699,
+        "output_tokens": 879
+      }
+    },
+    "cost": 0.0374385,
+    "elapsed": 23.716489667072892
+  },
+  {
+    "id": "requests-04",
+    "repo": "psf/requests",
+    "question": "requests.get(url, auth=('user', 'pass'))를 하면 Authorization 헤더 값은 어디서 만들어져?",
+    "expect_reach": "_basic_auth_str",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 12,
+    "retries": 0,
+    "blocked": 1,
+    "read_code_calls": 4,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 4,
+    "citations": 4,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 1.0,
+    "reached": false,
+    "refs": [
+      "src/requests/api.py:74 [get]",
+      "src/requests/api.py:24 [request]",
+      "src/requests/sessions.py:395 [Session]",
+      "src/requests/sessions.py:752 [send]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 46916,
+        "output_tokens": 654
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 6970,
+        "output_tokens": 439
+      }
+    },
+    "cost": 0.0292448,
+    "elapsed": 20.01551220798865
+  },
+  {
+    "id": "requests-05",
+    "repo": "psf/requests",
+    "question": "requests.get(url, timeout=1)에서 연결 시간이 초과되면 ConnectTimeout 예외는 어디서 발생해?",
+    "expect_reach": "HTTPAdapter.send",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 14,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 3,
+    "nudges": 1,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 5,
+    "citations": 5,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.8,
+    "reached": true,
+    "refs": [
+      "src/requests/adapters.py:634 [send]",
+      "src/requests/adapters.py:634 [send]",
+      "src/requests/adapters.py:634 [send]",
+      "src/requests/adapters.py:717 [send]",
+      "src/requests/exceptions.py:91 [ConnectTimeout]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 24931,
+        "output_tokens": 896
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 5020,
+        "output_tokens": 440
+      }
+    },
+    "cost": 0.02122725,
+    "elapsed": 20.842993916012347
+  },
+  {
+    "id": "httpx-01",
+    "repo": "encode/httpx",
+    "question": "httpx.get()을 호출하면 내부에서 무슨 일이 일어나? 클라이언트가 요청을 보내는 곳까지 따라가 줘.",
+    "expect_reach": "Client.send",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 15,
+    "retries": 2,
+    "blocked": 0,
+    "read_code_calls": 0,
+    "nudges": 0,
+    "final_errors": 6,
+    "strict_pass": false,
+    "steps": 6,
+    "citations": 0,
+    "validity": 0.0,
+    "specificity": 0.0,
+    "at_def": 0.0,
+    "reached": false,
+    "refs": [],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 27806,
+        "output_tokens": 269
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 7608,
+        "output_tokens": 1131
+      }
+    },
+    "cost": 0.0346623,
+    "elapsed": 28.85569429094903
+  },
+  {
+    "id": "httpx-02",
+    "repo": "encode/httpx",
+    "question": "Client.send()는 인증(auth)을 어떻게 처리해?",
+    "expect_reach": "Client._send_handling_auth",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 7,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 3,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 3,
+    "citations": 4,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.0,
+    "reached": true,
+    "refs": [
+      "httpx/_client.py:912 [Client.send]",
+      "httpx/_client.py:914 [Client.send]",
+      "httpx/_client.py:937 [Client._send_handling_auth]",
+      "httpx/_client.py:939 [Client._send_handling_auth]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 9216,
+        "output_tokens": 458
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 2273,
+        "output_tokens": 329
+      }
+    },
+    "cost": 0.010629699999999999,
+    "elapsed": 12.348629915853962
+  },
+  {
+    "id": "httpx-03",
+    "repo": "encode/httpx",
+    "question": "client.post(url, json=data)의 json 인자는 어디서 요청 본문 바이트로 인코딩돼?",
+    "expect_reach": "encode_json",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 15,
+    "retries": 2,
+    "blocked": 0,
+    "read_code_calls": 0,
+    "nudges": 0,
+    "final_errors": 3,
+    "strict_pass": false,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 1.0,
+    "reached": false,
+    "refs": [
+      "httpx/_client.py:1123 [Client.post]",
+      "httpx/_client.py:771 [Client.request]",
+      "httpx/_models.py:468 [Request.read]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 24775,
+        "output_tokens": 285
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 7085,
+        "output_tokens": 1016
+      }
+    },
+    "cost": 0.03175975,
+    "elapsed": 23.448691416997463
+  },
+  {
+    "id": "httpx-04",
+    "repo": "encode/httpx",
+    "question": "리디렉트를 너무 많이 따라가면 TooManyRedirects 예외는 어디서 발생해?",
+    "expect_reach": "Client._send_handling_redirects",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 8,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 2,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 2,
+    "citations": 2,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 1.0,
+    "reached": true,
+    "refs": [
+      "httpx/_client.py:964 [Client._send_handling_redirects]",
+      "httpx/_client.py:1679 [AsyncClient._send_handling_redirects]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 7756,
+        "output_tokens": 660
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 2875,
+        "output_tokens": 290
+      }
+    },
+    "cost": 0.011646899999999998,
+    "elapsed": 14.846838833065704
+  },
+  {
+    "id": "httpx-05",
+    "repo": "encode/httpx",
+    "question": "httpx.get()에서 연결 시간이 초과되면 httpcore 의 예외가 httpx.ConnectTimeout 으로 어디서 바뀌어?",
+    "expect_reach": "map_httpcore_exceptions",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 15,
+    "retries": 1,
+    "blocked": 0,
+    "read_code_calls": 0,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": false,
+    "steps": 0,
+    "citations": 0,
+    "validity": 0.0,
+    "specificity": 0.0,
+    "at_def": 0.0,
+    "reached": false,
+    "refs": [],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 27687,
+        "output_tokens": 276
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4933,
+        "output_tokens": 486
+      }
+    },
+    "cost": 0.02151115,
+    "elapsed": 21.60487504210323
+  },
+  {
+    "id": "click-01",
+    "repo": "pallets/click",
+    "question": "@click.command 로 만든 명령 cli()를 호출하면 내부에서 무슨 일이 일어나? 내 함수가 불리는 곳까지 따라가 줘.",
+    "expect_reach": "Command.invoke",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 15,
+    "retries": 1,
+    "blocked": 0,
+    "read_code_calls": 4,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 4,
+    "citations": 4,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.25,
+    "reached": false,
+    "refs": [
+      "src/click/core.py:697",
+      "src/click/decorators.py:208 [command]",
+      "src/click/decorators.py:217 [command]",
+      "src/click/core.py:1885"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 28474,
+        "output_tokens": 688
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 7369,
+        "output_tokens": 756
+      }
+    },
+    "cost": 0.030666399999999996,
+    "elapsed": 22.373848791001365
+  },
+  {
+    "id": "click-02",
+    "repo": "pallets/click",
+    "question": "Command.make_context()는 컨텍스트를 만든 뒤 명령줄 인자를 어떻게 처리해?",
+    "expect_reach": "Command.parse_args",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 8,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 4,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 5,
+    "citations": 5,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.0,
+    "reached": false,
+    "refs": [
+      "src/click/core.py:1390 [make_context]",
+      "src/click/core.py:1393 [make_context]",
+      "src/click/core.py:1400 [parse_args]",
+      "src/click/core.py:1404 [parse_args]",
+      "src/click/core.py:1394 [make_context]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 10837,
+        "output_tokens": 685
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 3424,
+        "output_tokens": 489
+      }
+    },
+    "cost": 0.01548655,
+    "elapsed": 13.351243250072002
+  },
+  {
+    "id": "click-03",
+    "repo": "pallets/click",
+    "question": "옵션에 type=int 를 주면 문자열 값의 타입 변환은 어디서 일어나?",
+    "expect_reach": "Parameter.type_cast_value",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 8,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 2,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.3333333333333333,
+    "reached": false,
+    "refs": [
+      "src/click/core.py:3150 [Option.__init__]",
+      "src/click/core.py:3204 [Option.__init__]",
+      "src/click/core.py:3282 [Option._pick_type]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 23967,
+        "output_tokens": 547
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 5486,
+        "output_tokens": 300
+      }
+    },
+    "cost": 0.02063825,
+    "elapsed": 13.79777529090643
+  },
+  {
+    "id": "click-04",
+    "repo": "pallets/click",
+    "question": "Group 에서 없는 하위 명령 이름을 입력하면 NoSuchCommand 예외는 어디서 발생해?",
+    "expect_reach": "Group.resolve_command",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 10,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 4,
+    "nudges": 1,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 4,
+    "citations": 7,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.42857142857142855,
+    "reached": true,
+    "refs": [
+      "src/click/core.py:2123 [Group.resolve_command]",
+      "src/click/utils.py:52 [make_str]",
+      "src/click/core.py:2126 [Group.resolve_command]",
+      "src/click/core.py:1991 [Group.get_command]",
+      "src/click/core.py:2130 [Group.resolve_command]",
+      "src/click/core.py:2143 [Group.resolve_command]",
+      "src/click/exceptions.py:268 [NoSuchCommand]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 11779,
+        "output_tokens": 843
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 3191,
+        "output_tokens": 465
+      }
+    },
+    "cost": 0.01490015,
+    "elapsed": 17.509768499992788
+  },
+  {
+    "id": "click-05",
+    "repo": "pallets/click",
+    "question": "required=True 인 옵션을 빠뜨리면 MissingParameter 예외는 어디서 발생하고, 에러 메시지는 어디서 출력돼?",
+    "expect_reach": "Parameter.process_value",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 15,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 2,
+    "nudges": 1,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.6666666666666666,
+    "reached": true,
+    "refs": [
+      "src/click/core.py:2802 [Parameter.process_value]",
+      "src/click/core.py:2826 [Parameter.process_value]",
+      "src/click/exceptions.py:159 [MissingParameter]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 25062,
+        "output_tokens": 955
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4625,
+        "output_tokens": 322
+      }
+    },
+    "cost": 0.0191148,
+    "elapsed": 22.622014875058085
+  },
+  {
+    "id": "rich-01",
+    "repo": "Textualize/rich",
+    "question": "rich.print()를 호출하면 내부에서 무슨 일이 일어나?",
+    "expect_reach": "Console.print",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 15,
+    "retries": 2,
+    "blocked": 0,
+    "read_code_calls": 0,
+    "nudges": 0,
+    "final_errors": 2,
+    "strict_pass": false,
+    "steps": 2,
+    "citations": 2,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.5,
+    "reached": true,
+    "refs": [
+      "rich/__init__.py:73",
+      "rich/console.py:1652"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 28116,
+        "output_tokens": 276
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 8424,
+        "output_tokens": 1086
+      }
+    },
+    "cost": 0.036302999999999995,
+    "elapsed": 24.02759729209356
+  },
+  {
+    "id": "rich-02",
+    "repo": "Textualize/rich",
+    "question": "Console.print()에 넘긴 문자열의 [bold] 같은 마크업은 어디서 Text 로 바뀌어?",
+    "expect_reach": "Console.render_str",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 8,
+    "retries": 0,
+    "blocked": 0,
+    "read_code_calls": 1,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 5,
+    "citations": 5,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.6,
+    "reached": false,
+    "refs": [
+      "rich/markup.py:106 [render]",
+      "rich/markup.py:106 [render]",
+      "rich/markup.py:106 [render]",
+      "rich/markup.py:153 [render]",
+      "rich/markup.py:231 [render]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 15266,
+        "output_tokens": 538
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4351,
+        "output_tokens": 446
+      }
+    },
+    "cost": 0.0179502,
+    "elapsed": 14.920323624974117
+  },
+  {
+    "id": "rich-03",
+    "repo": "Textualize/rich",
+    "question": "Console.print()가 만든 Segment 들은 어떻게 터미널(파일)에 쓰여?",
+    "expect_reach": "Console._write_buffer",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 15,
+    "retries": 2,
+    "blocked": 0,
+    "read_code_calls": 0,
+    "nudges": 0,
+    "final_errors": 3,
+    "strict_pass": false,
+    "steps": 3,
+    "citations": 3,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.6666666666666666,
+    "reached": false,
+    "refs": [
+      "rich/console.py:1652 [Console.print]",
+      "rich/text.py:732 [Text.render]",
+      "rich/segment.py:61 [Segment]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 26345,
+        "output_tokens": 285
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 9729,
+        "output_tokens": 792
+      }
+    },
+    "cost": 0.03636525,
+    "elapsed": 20.383592416998
+  },
+  {
+    "id": "rich-04",
+    "repo": "Textualize/rich",
+    "question": "Table 을 출력하면 각 열의 너비는 어디서 계산돼?",
+    "expect_reach": "Table._calculate_column_widths",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 15,
+    "retries": 2,
+    "blocked": 0,
+    "read_code_calls": 0,
+    "nudges": 0,
+    "final_errors": 3,
+    "strict_pass": false,
+    "steps": 3,
+    "citations": 0,
+    "validity": 0.0,
+    "specificity": 0.0,
+    "at_def": 0.0,
+    "reached": false,
+    "refs": [],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 46621,
+        "output_tokens": 238
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 16452,
+        "output_tokens": 691
+      }
+    },
+    "cost": 0.05517595,
+    "elapsed": 23.91663641599007
+  },
+  {
+    "id": "rich-05",
+    "repo": "Textualize/rich",
+    "question": "Console.print_exception()은 예외의 스택 프레임 정보를 어디서 어떻게 모아?",
+    "expect_reach": "Traceback.extract",
+    "agent_model": "fast",
+    "prompt": "v3",
+    "tool_calls": 6,
+    "retries": 0,
+    "blocked": 1,
+    "read_code_calls": 2,
+    "nudges": 0,
+    "final_errors": 0,
+    "strict_pass": true,
+    "steps": 4,
+    "citations": 5,
+    "validity": 1.0,
+    "specificity": 1.0,
+    "at_def": 0.2,
+    "reached": false,
+    "refs": [
+      "rich/console.py:1897 [Console.print_exception]",
+      "rich/console.py:1897 [Console.print_exception]",
+      "rich/traceback.py:262 [Traceback]",
+      "rich/traceback.py:316 [Traceback]",
+      "rich/traceback.py:321 [Traceback]"
+    ],
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 19652,
+        "output_tokens": 452
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4991,
+        "output_tokens": 425
+      }
+    },
+    "cost": 0.0199465,
+    "elapsed": 12.683767208829522
+  }
+]

@@ -2,7 +2,7 @@
 
 from repoute.indexing.parser import parse_repo
 from repoute.indexing.symbols import SymbolDB
-from repoute.tools.code_tools import make_code_tools
+from repoute.tools.code_tools import _name_candidates, make_code_tools
 
 APP_SOURCE = """\
 import os
@@ -38,11 +38,35 @@ def build_tools(tmp_path) -> dict:
 
 
 def test_find_definition(tmp_path):
-    """find_definition 은 "파일:줄범위"와 종류를 알려 주고, 없는 이름은 "찾지 못함"."""
+    """find_definition 은 "파일:줄범위"·종류·def 줄 인용 힌트를 주고, 없는 이름은 "찾지 못함"."""
     tools = build_tools(tmp_path)
     out = tools["find_definition"].invoke({"name": "create_app"})
     assert "src/app/main.py:4-5" in out and "function" in out
+    assert "인용: src/app/main.py:4" in out  # def 줄(line_start) 인용 힌트 (기록 08 관찰 4)
     assert "찾지 못함" in tools["find_definition"].invoke({"name": "missing"})
+
+
+def test_name_candidates():
+    """점 붙은 이름은 Class.method → 끝 이름 순으로 후보를 만들고, 점이 없으면 후보가 없다."""
+    assert _name_candidates("a.b.C.m") == ["C.m", "m"]
+    assert _name_candidates("Session.request") == ["request"]
+    assert _name_candidates("get") == []
+
+
+def test_find_definition_retries_dotted_name(tmp_path):
+    """모듈 경로가 붙은 이름도 끝 이름으로 다시 찾고, 안내 줄과 read_code 호출 힌트를 준다."""
+    tools = build_tools(tmp_path)
+    out = tools["find_definition"].invoke({"name": "app.main.create_app"})
+    assert out.splitlines()[0] == "('app.main.create_app' 은 없어 'create_app' 으로 찾음)"
+    assert "src/app/main.py:4-5" in out
+    assert '→ read_code("src/app/main.py", 4, 5)' in out  # 범위를 그대로 복사해 쓰게
+
+
+def test_find_definition_dotted_missing(tmp_path):
+    """후보로 다시 찾아도 없는 이름은 여전히 "찾지 못함"이고 안내 줄은 붙지 않는다."""
+    tools = build_tools(tmp_path)
+    out = tools["find_definition"].invoke({"name": "pkg.mod.Nope.missing"})
+    assert out == "'pkg.mod.Nope.missing' 정의를 찾지 못함"
 
 
 def test_callers_and_callees(tmp_path):

@@ -19,6 +19,18 @@ def _join(lines: list[str], limit: int = MAX_RESULTS) -> str:
     return "\n".join(lines)
 
 
+def _name_candidates(name: str) -> list[str]:
+    """점 붙은 이름이 실패했을 때 다시 물어볼 이름들 (troubleshooting 18).
+
+    "a.b.C.m" → ["C.m", "m"] (Class.method 다음 끝 이름). 점이 없으면 빈 목록.
+    """
+    parts = name.split(".")
+    if len(parts) < 2:
+        return []
+    candidates = [".".join(parts[-2:])] if len(parts) > 2 else []
+    return candidates + [parts[-1]]
+
+
 def make_code_tools(db: SymbolDB, root: Path) -> list:
     """인덱스(db)와 레포 루트(root)를 붙여 LangChain 도구 5개를 만든다 (Phase 3 에이전트가 사용)."""
     root = root.resolve()
@@ -27,12 +39,24 @@ def make_code_tools(db: SymbolDB, root: Path) -> list:
     @tool
     def find_definition(name: str) -> str:
         """함수·클래스·메서드가 어느 파일 몇 줄에 정의돼 있는지 찾을 때 쓴다.
-        name은 심볼 이름("create_app", "App.run", 메서드 끝 이름 "run"도 가능)."""
+        name은 모듈 경로 없이 심볼 이름만 쓴다(예: "get", "Session.request", 끝 이름 "run").
+        결과 줄 끝의 read_code(...) 호출을 그대로 쓰면 정의 전체를 한 번에 읽는다."""
+        note = ""
+        symbols = db.find_definition(name)
+        for candidate in [] if symbols else _name_candidates(name):
+            symbols = db.find_definition(candidate)
+            if symbols:  # 모듈 경로가 붙어 실패한 이름을 뒷부분으로 다시 찾았다
+                note = f"('{name}' 은 없어 '{candidate}' 으로 찾음)"
+                break
         lines = [
             f"{s.file}:{s.line_start}-{s.line_end}  {s.kind}  {s.name}"
-            for s in db.find_definition(name)
+            f'  → read_code("{s.file}", {s.line_start}, {s.line_end})'
+            f"  인용: {s.file}:{s.line_start}"  # 정의는 def/class 줄로 인용하라는 데이터 힌트
+            for s in symbols
         ]
-        return _join(lines) if lines else f"'{name}' 정의를 찾지 못함"
+        if not lines:
+            return f"'{name}' 정의를 찾지 못함"
+        return "\n".join(([note] if note else []) + [_join(lines)])
 
     @tool
     def find_callers(name: str) -> str:
@@ -43,7 +67,8 @@ def make_code_tools(db: SymbolDB, root: Path) -> list:
 
     @tool
     def find_callees(symbol_name: str) -> str:
-        """어떤 함수·메서드가 안에서 무엇을 호출하는지 따라갈 때 쓴다.
+        """어떤 함수·메서드가 안에서 무엇을 호출하는지 볼 때 쓴다.
+        다음으로 따라갈 함수를 고르는 용도.
         symbol_name은 정의된 전체 이름(예: "create_app", "App.run")."""
         calls = db.find_callees(symbol_name)
         lines = [f"{c.file}:{c.line}  {c.caller} -> {c.callee}" for c in calls]
@@ -52,7 +77,9 @@ def make_code_tools(db: SymbolDB, root: Path) -> list:
     @tool
     def read_code(file: str, start: int, end: int) -> str:
         """파일의 실제 코드를 줄 번호와 함께 읽을 때 쓴다(인용 근거).
-        file은 레포 루트 기준 경로, start·end는 1부터 세는 줄 번호(end 포함, 최대 200줄)."""
+        file은 레포 루트 기준 경로, start·end는 1부터 세는 줄 번호(end 포함, 최대 200줄).
+        정의를 찾았으면 그 line_start~line_end 범위를 한 번에 읽어라. 최대 200줄.
+        20줄씩 나눠 읽지 말 것."""
         path = (root / file).resolve()
         if not path.is_relative_to(root):
             return "레포 밖 경로라 읽을 수 없음"  # "../../etc/passwd" 같은 경로 탈출 방지
