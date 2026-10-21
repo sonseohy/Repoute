@@ -18,6 +18,7 @@ SKIP_DIRS = {
     "tests",
     "test",
     "docs",
+    "docs_src",  # fastapi 문서 예제 코드. 예제의 import 가 PageRank 를 덮는다 (기록 01·14)
     "examples",
 }
 

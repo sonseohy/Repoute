@@ -73,3 +73,10 @@ def test_parse_repo_skips(tmp_path):
     write(tmp_path, "tests/test_main.py", "def test_x():\n    pass\n")
     write(tmp_path, ".venv/lib/thing.py", "x = 1\n")
     assert [p.file for p in parse_repo(tmp_path)] == ["src/app/__init__.py", "src/app/main.py"]
+
+
+def test_parse_repo_skips_docs_src(tmp_path):
+    """docs_src/ 아래 예제 코드(fastapi 문서 예제)는 인덱싱하지 않는다."""
+    write(tmp_path, "src/app/main.py", APP_SOURCE)
+    write(tmp_path, "docs_src/tutorial/app.py", "from app import main\n")
+    assert [p.file for p in parse_repo(tmp_path)] == ["src/app/main.py"]
