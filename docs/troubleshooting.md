@@ -62,7 +62,7 @@
 ## 10. 진입점 휴리스틱이 디버그 함수를 고름 — `requests/help.py:main` (Phase 2)
 - **증상**: requests 의 진입점으로 `help.py:126 main` 이 뽑힘. 실제 진입은 `api.py` 의 `get/post` 또는 `__init__.py` 의 공개 API.
 - **원인**: 이름이 `main` 이면 무조건 후보. 라이브러리형 레포(CLI 가 아닌)는 `main` 이 진입점이 아니다.
-- **측정됨(기록 14)**: gold 19개 중 1개만 맞음, `entrypoint_recall` 0.05 (n=5). **부분 해결(기록 15)**: `__init__.py` export 기반 후보 +3, 공개 클래스 핵심 메서드 +2, 경로·비공개 감점 → recall@10 0.58, @5 0.43. 남은 문제: +3 동점 60개를 파일 이름순으로 가르는 운 의존, CLI `main` 이 라이브러리에서 1위(httpx `_main.py`, fastapi `cli.py`) — 원인은 `[project.scripts]` +3 (두 레포 모두 편의 CLI 를 scripts 에 등록). LLM 도 그 후보를 그대로 고른다(18: recall 0.32). 다음: 라이브러리 신호(`__init__` export 多)가 있으면 scripts 가산 축소, `cli`/`_main`/`__main__` 경로 감점 강화.
+- **측정됨(기록 14)**: gold 19개 중 1개만 맞음, `entrypoint_recall` 0.05 (n=5). **부분 해결(기록 15)**: `__init__.py` export 기반 후보 +3, 공개 클래스 핵심 메서드 +2, 경로·비공개 감점 → recall@10 0.58, @5 0.43. 남은 문제: +3 동점 60개를 파일 이름순으로 가르는 운 의존, CLI `main` 이 라이브러리에서 1위(httpx `_main.py`, fastapi `cli.py`) — 원인은 `[project.scripts]` +3 (두 레포 모두 편의 CLI 를 scripts 에 등록). LLM 도 그 후보를 그대로 고른다(18: recall 0.32). **해결(기록 19)**: 라이브러리 신호(export ≥ 5)면 scripts +3 → +1, `cli`/`_main`/`__main__` 경로 −3 → httpx 1위 `request`, fastapi 1위 `FastAPI`, 1위 적중 1/5 → 3/5. 동점 운 의존(recall@5 0.43)은 그대로 — 호출 그래프 동점 가르기가 다음.
 
 ## 11. 읽기 순서가 PageRank 순위를 그대로 따라감 (Phase 2)
 - **증상**: requests 읽기 순서 1~3위가 PageRank 1~3위(compat, models, structures)와 같음. 사람은 `api.py → sessions.py → adapters.py` 흐름을 먼저 읽는다.
