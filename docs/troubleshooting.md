@@ -62,12 +62,12 @@
 ## 10. 진입점 휴리스틱이 디버그 함수를 고름 — `requests/help.py:main` (Phase 2)
 - **증상**: requests 의 진입점으로 `help.py:126 main` 이 뽑힘. 실제 진입은 `api.py` 의 `get/post` 또는 `__init__.py` 의 공개 API.
 - **원인**: 이름이 `main` 이면 무조건 후보. 라이브러리형 레포(CLI 가 아닌)는 `main` 이 진입점이 아니다.
-- **측정됨(기록 14)**: gold 19개 중 1개만 맞음, `entrypoint_recall` 0.05 (n=5). **부분 해결(기록 15)**: `__init__.py` export 기반 후보 +3, 공개 클래스 핵심 메서드 +2, 경로·비공개 감점 → recall@10 0.58, @5 0.43. 남은 문제: +3 동점 60개를 파일 이름순으로 가르는 운 의존, CLI `main` 이 라이브러리에서 1위(httpx `_main.py`, fastapi `cli.py`). 다음: 호출 그래프로 동점 가르기, scripts 없는 레포에서 `main` 가산 제거.
+- **측정됨(기록 14)**: gold 19개 중 1개만 맞음, `entrypoint_recall` 0.05 (n=5). **부분 해결(기록 15)**: `__init__.py` export 기반 후보 +3, 공개 클래스 핵심 메서드 +2, 경로·비공개 감점 → recall@10 0.58, @5 0.43. 남은 문제: +3 동점 60개를 파일 이름순으로 가르는 운 의존, CLI `main` 이 라이브러리에서 1위(httpx `_main.py`, fastapi `cli.py`) — 원인은 `[project.scripts]` +3 (두 레포 모두 편의 CLI 를 scripts 에 등록). LLM 도 그 후보를 그대로 고른다(18: recall 0.32). 다음: 라이브러리 신호(`__init__` export 多)가 있으면 scripts 가산 축소, `cli`/`_main`/`__main__` 경로 감점 강화.
 
 ## 11. 읽기 순서가 PageRank 순위를 그대로 따라감 (Phase 2)
 - **증상**: requests 읽기 순서 1~3위가 PageRank 1~3위(compat, models, structures)와 같음. 사람은 `api.py → sessions.py → adapters.py` 흐름을 먼저 읽는다.
 - **원인**: 프롬프트가 "PageRank 상위"를 핵심 모듈로 제시하고, 모델이 그 순서를 거의 그대로 쓴다. 의존 관계 순서와 학습 순서는 다르다.
-- **측정됨(기록 14·16)**: PageRank 상위 5 의 `core_module_precision@5` 0.24, LLM 합성 뒤에도 0.32 (n=5). gold 핵심 모듈은 PageRank 13~31위. **LLM 은 입력 순서를 재배열하지 않으므로**(16) 랭킹 자체를 바꿔야 한다. **부분 해결(기록 17)**: 역방향 개인화 PageRank + `__init__` 허브 감쇠 → 정적 p@5 0.60. 효과는 "방향"(조립하는 모듈이 위로)에서 나왔고 시드 효과는 미확인, n=5 과적합 경고. 그래프 연결 후 LLM 재측정 예정. 후보: 진입점 모듈을 시드로 한 개인화 PageRank, 하부 부품(compat·types·utils) 감점. 인용이 100% 유효해도 출발점이 맞다는 뜻은 아니라는 구분이 수치로 확정됨.
+- **측정됨(기록 14·16)**: PageRank 상위 5 의 `core_module_precision@5` 0.24, LLM 합성 뒤에도 0.32 (n=5). gold 핵심 모듈은 PageRank 13~31위. **LLM 은 입력 순서를 재배열하지 않으므로**(16) 랭킹 자체를 바꿔야 한다. **해결(기록 17·18)**: 역방향 개인화 PageRank + `__init__` 허브 감쇠 → 정적 p@5 0.60, 그래프 연결 후 LLM 출력 **0.68**(click 1.0). 프롬프트는 바꾸지 않았다 — 입력을 고치면 출력이 따라온다. 남은 것: rich 후퇴(약한 진입점 시드 전파, 10번과 연결), n=5 과적합 경고. 후보: 진입점 모듈을 시드로 한 개인화 PageRank, 하부 부품(compat·types·utils) 감점. 인용이 100% 유효해도 출발점이 맞다는 뜻은 아니라는 구분이 수치로 확정됨.
 
 ## 12. 파서의 알려진 한계 (Phase 1, 설계상 수용)
 - 호출은 이름 기준이라 `a.save()` 와 `b.save()` 를 구분 못 함. 내장 함수도 섞임.

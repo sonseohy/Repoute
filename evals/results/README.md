@@ -21,6 +21,7 @@
 | [15](15-entrypoints-v2.md) | entrypoints-v2 | 공개 API export 기반 진입점 후보·점수, docs_src 제외 | 정적 entrypoint_recall@10 **0.05 → 0.58**, @5 0.43 (동점 처리가 운에 의존, fastapi 76파일) | 5 | static_baseline.py (LLM 미사용) | — | (커밋 후 기재) |
 | [16](16-reading-guide-gold.md) | reading-guide-gold (E1 실측) | 읽기 지도 LLM 출력(v3 + 진입점 v2 + docs_src 제외)을 gold 로 채점 | entrypoint_recall **0.27**, core_module_p@5 **0.32** (정적 0.24), 인용 100%. 읽기 순서가 PageRank 순서를 그대로 따름 | 5 | e4 스크립트 gold 채점, LangSmith 교차 | 태그 `prompt-v3` | (커밋 후 기재) |
 | [17](17-ranking-v2.md) | ranking-v2 | 역방향 개인화 PageRank + `__init__` 감쇠 (22개 변형 비교) | 정적 core_module_p@5 **0.24 → 0.60** (시드 효과 미확인, 과적합 경고) | 5 | static_baseline.py | — | (커밋 후 기재) |
+| [18](18-reading-guide-rank-v2.md) | reading-guide-rank-v2 | 랭킹 v2 연결 후 읽기 지도 vs gold, 첫 LangSmith Experiment | core_module_p@5 **0.32 → 0.68**, entrypoint_recall 0.27 → 0.32 (scripts `main` 문제), 인용 100% | 5 | langsmith_eval.py (evaluate) | Experiment `reading-guide-gold-v3-13bfef5b` | (커밋 후 기재) |
 
 ## 이름 규칙
 
