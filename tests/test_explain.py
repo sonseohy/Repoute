@@ -6,7 +6,14 @@ from pathlib import Path
 
 import pytest
 
-from repoute.indexing.explain import Explanation, SymbolSpan, enclosing_symbol, explain_symbol
+from repoute.indexing.explain import (
+    Explanation,
+    SymbolSpan,
+    enclosing_symbol,
+    explain_symbol,
+    normalize_watch,
+    watch_ref_issues,
+)
 from repoute.indexing.parser import parse_repo
 from repoute.indexing.symbols import SymbolDB
 from repoute.prompts import explain_v1, explain_v2
@@ -204,3 +211,54 @@ def test_explain_long_symbol_is_truncated(tmp_path):
     result, _ = explain_symbol(fake, root, span, tmp_path / "e.sqlite", "o/n@abc1234")
     assert result.what == "(앞 200줄 기준) 긴 함수."
     assert "  200| " in fake.prompts[0] and "  201| " not in fake.prompts[0]
+
+
+def test_normalize_merges_split_refs():
+    """줄 참조 "(줄 N)" 만 있는 항목은 바로 앞 설명 항목 끝에 붙는다 (httpx get/request 결함)."""
+    watch = ["return x", "(줄 195)", "y = 1", "(줄 177)"]
+    assert normalize_watch(watch, 170, 200) == ["return x (줄 195)", "y = 1 (줄 177)"]
+
+
+def test_normalize_drops_leading_ref_only_item():
+    """앞 항목이 없는 "(줄 N)" 단독 항목은 붙일 곳이 없어 버린다."""
+    assert normalize_watch(["(줄 5)", "return x (줄 6)"], 1, 10) == ["return x (줄 6)"]
+
+
+def test_normalize_fixes_thousands():
+    """천 자리가 잘린 줄 번호는 line_start 의 천 단위를 더해 범위 안이면 보정한다."""
+    assert normalize_watch(["ctx = ... (줄 390)"], 1359, 1394) == ["ctx = ... (줄 1390)"]
+    assert normalize_watch(["루프 (줄 386~393)"], 1359, 1394) == ["루프 (줄 1386~1393)"]
+
+
+def test_normalize_keeps_unfixable_thousands():
+    """보정값(1688)도 범위(1683~1685) 밖이면 지어내지 않고 원문 그대로 둔다."""
+    watch = ["호출 (줄 1686~688)"]
+    assert normalize_watch(watch, 1683, 1685) == watch
+    assert watch_ref_issues(watch, 1683, 1685) == 1
+
+
+def test_normalize_keeps_out_of_range_ref():
+    """범위 밖이면서 보정도 안 되는 참조는 지우지 않고 남기며, watch_ref_issues 로 센다."""
+    watch = ["대입 (줄 50)", "반환 (줄 12)", "참조 없음"]
+    assert normalize_watch(watch, 10, 20) == watch
+    assert watch_ref_issues(watch, 10, 20) == 2  # 범위 밖 1 + 참조 없음 1
+
+
+def test_normalize_caps_at_four():
+    """5개 이상이면 앞 4개만 남긴다 (첫 항목이 핵심 로직이라 앞쪽 유지)."""
+    watch = [f"항목{i} (줄 {i})" for i in range(1, 7)]
+    assert normalize_watch(watch, 1, 10) == watch[:4]
+
+
+def test_explain_symbol_normalizes_watch(tmp_path, repo):
+    """LLM 이 쪼개진 watch 를 돌려줘도 정규화된 watch 가 반환되고 캐시에도 저장된다."""
+    root, db = repo
+    span = enclosing_symbol(db, root, "shop.py", 12)  # Cart.add, 11~13
+    raw = ["self.total += helper(price)", "(줄 12)", "return self.total", "(줄 13)"]
+    fake = FakeLLM([Explanation(what="가격을 더한다.", watch=raw)])
+    cache = tmp_path / "e.sqlite"
+    first, _ = explain_symbol(fake, root, span, cache, "o/n@abc1234")
+    second, cached = explain_symbol(fake, root, span, cache, "o/n@abc1234")
+    expected = ["self.total += helper(price) (줄 12)", "return self.total (줄 13)"]
+    assert first.watch == expected and second.watch == expected and cached
+    assert len(fake.prompts) == 1

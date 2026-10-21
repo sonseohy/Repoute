@@ -6,8 +6,11 @@
 
 실행:
   uv run python evals/experiments/explain_quality.py --dry-run   # 대상·예상 호출 수만
-  uv run python evals/experiments/explain_quality.py             # v1·v2, 판정 켬
-  uv run python evals/experiments/explain_quality.py --prompts v2 --no-judge --no-cache
+  uv run python evals/experiments/explain_quality.py             # v1·v2, 판정 끔
+  uv run python evals/experiments/explain_quality.py --prompts v2 --judge --no-cache
+
+판정은 기본 끔 (기록 22: 판정 모델의 변별력이 0 이었다). watch 는 explain_symbol 이
+normalize_watch 로 후처리한 결과만 잰다 (meta.postprocess).
 """
 
 import argparse
@@ -339,8 +342,8 @@ def main() -> None:
     parser.add_argument(
         "--judge",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="watch 첫 항목 핵심 로직 판정 (fast 모델, 기본 켬)",
+        default=False,
+        help="watch 첫 항목 핵심 로직 판정 (fast 모델, 기본 끔 — 기록 22 변별력 0)",
     )
     parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스 캐시")
     parser.add_argument("--cache-path", default=DEFAULT_CACHE, help="이 스크립트 전용 설명 캐시")
@@ -428,6 +431,7 @@ def main() -> None:
             "provider": s.provider,
             "cache_path": str(cache_path),
             "judge_limitation": JUDGE_LIMIT,
+            "postprocess": "normalize_watch v1",  # explain_symbol 이 watch 를 후처리한 뒤 잰다
         },
         "skipped": skipped,
         "rows": rows,
@@ -443,6 +447,7 @@ def main() -> None:
         "- ref_validity·has_ref_rate 는 심볼별 비율의 평균, 나머지는 해당 심볼 수 / 잴 수 있는 수."
     )
     print("- first_is_def_or_doc 는 낮을수록 좋다 (첫 항목이 def/class 줄·docstring 이면 True).")
+    print("- 후처리 적용: normalize_watch v1 (쪼개진 줄 참조 병합, 천 단위 보정, 4개 상한).")
     print(f"- 판정 한계: {JUDGE_LIMIT}")
     failed = [r for r in rows if "error" in r]
     if failed:

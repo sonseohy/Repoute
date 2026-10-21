@@ -1,0 +1,686 @@
+{
+  "model": "gpt-4o-mini",
+  "date": "2026-10-21",
+  "tag": "ui-baseline-intents",
+  "dataset": "evals/datasets/supervisor_intents.json",
+  "summary": {
+    "n": 30,
+    "failed": 0,
+    "llm_correct": 29,
+    "final_correct": 28,
+    "llm_accuracy": 0.9666666666666667,
+    "final_accuracy": 0.9333333333333333,
+    "per_kind": {
+      "map": {
+        "total": 9,
+        "llm_correct": 8,
+        "final_correct": 9
+      },
+      "ask": {
+        "total": 9,
+        "llm_correct": 9,
+        "final_correct": 7
+      },
+      "next": {
+        "total": 6,
+        "llm_correct": 6,
+        "final_correct": 6
+      },
+      "chat": {
+        "total": 6,
+        "llm_correct": 6,
+        "final_correct": 6
+      }
+    },
+    "confusion": {
+      "map": {
+        "map": 9,
+        "ask": 0,
+        "next": 0,
+        "chat": 0
+      },
+      "ask": {
+        "map": 2,
+        "ask": 7,
+        "next": 0,
+        "chat": 0
+      },
+      "next": {
+        "map": 0,
+        "ask": 0,
+        "next": 6,
+        "chat": 0
+      },
+      "chat": {
+        "map": 0,
+        "ask": 0,
+        "next": 0,
+        "chat": 6
+      }
+    },
+    "gate_applied": 3,
+    "gate_fixed": 1,
+    "gate_broke": 2,
+    "symbolless_ask": [
+      {
+        "id": "si-13",
+        "message": "리디렉트 처리는 어디서 해?",
+        "llm_kind": "ask",
+        "final_kind": "map",
+        "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음"
+      },
+      {
+        "id": "si-14",
+        "message": "인증 헤더는 어떤 순서로 붙어?",
+        "llm_kind": "ask",
+        "final_kind": "map",
+        "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음"
+      }
+    ],
+    "total_cost": 0.0026446499999999993,
+    "avg_cost": 8.815499999999997e-05,
+    "avg_elapsed": 1.0355504777825748
+  },
+  "rows": [
+    {
+      "id": "si-01",
+      "message": "이 레포 구조 설명해줘",
+      "has_guide": false,
+      "expected": "map",
+      "llm_kind": "map",
+      "final_kind": "map",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 467,
+          "output_tokens": 22
+        }
+      },
+      "cost": 8.325e-05,
+      "elapsed": 1.1051147079560906
+    },
+    {
+      "id": "si-02",
+      "message": "어디서부터 봐야 해?",
+      "has_guide": false,
+      "expected": "map",
+      "llm_kind": "map",
+      "final_kind": "map",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 468,
+          "output_tokens": 22
+        }
+      },
+      "cost": 8.340000000000001e-05,
+      "elapsed": 1.0328660421073437
+    },
+    {
+      "id": "si-03",
+      "message": "처음 보는 사람이 읽을 순서 알려줘",
+      "has_guide": false,
+      "expected": "map",
+      "llm_kind": "map",
+      "final_kind": "map",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 470,
+          "output_tokens": 29
+        }
+      },
+      "cost": 8.790000000000001e-05,
+      "elapsed": 1.0504483750555664
+    },
+    {
+      "id": "si-04",
+      "message": "https://github.com/psf/requests",
+      "has_guide": false,
+      "expected": "map",
+      "llm_kind": "map",
+      "final_kind": "map",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 469,
+          "output_tokens": 28
+        }
+      },
+      "cost": 8.714999999999999e-05,
+      "elapsed": 0.9113616251852363
+    },
+    {
+      "id": "si-05",
+      "message": "핵심 모듈이 뭐야?",
+      "has_guide": false,
+      "expected": "map",
+      "llm_kind": "map",
+      "final_kind": "map",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 469,
+          "output_tokens": 26
+        }
+      },
+      "cost": 8.594999999999999e-05,
+      "elapsed": 0.918420874979347
+    },
+    {
+      "id": "si-06",
+      "message": "다음",
+      "has_guide": false,
+      "expected": "map",
+      "llm_kind": "next",
+      "final_kind": "map",
+      "gate_reason": "이 대화에 읽기 지도가 없어 다음 단계를 고를 수 없음",
+      "llm_correct": false,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 462,
+          "output_tokens": 23
+        }
+      },
+      "cost": 8.31e-05,
+      "elapsed": 0.9722149998415262
+    },
+    {
+      "id": "si-07",
+      "message": "이 프로젝트 진입점이 어디야?",
+      "has_guide": false,
+      "expected": "map",
+      "llm_kind": "map",
+      "final_kind": "map",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 468,
+          "output_tokens": 28
+        }
+      },
+      "cost": 8.7e-05,
+      "elapsed": 0.9583011670038104
+    },
+    {
+      "id": "si-08",
+      "message": "Where should I start reading this codebase?",
+      "has_guide": false,
+      "expected": "map",
+      "llm_kind": "map",
+      "final_kind": "map",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 468,
+          "output_tokens": 22
+        }
+      },
+      "cost": 8.340000000000001e-05,
+      "elapsed": 1.0503669581376016
+    },
+    {
+      "id": "si-09",
+      "message": "그럼 전체 흐름을 큰 그림으로 다시 보여줘",
+      "has_guide": true,
+      "expected": "map",
+      "llm_kind": "map",
+      "final_kind": "map",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 510,
+          "output_tokens": 40
+        }
+      },
+      "cost": 0.0001005,
+      "elapsed": 1.3033053339459002
+    },
+    {
+      "id": "si-10",
+      "message": "Session.send() 가 뭐해?",
+      "has_guide": false,
+      "expected": "ask",
+      "llm_kind": "ask",
+      "final_kind": "ask",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 466,
+          "output_tokens": 30
+        }
+      },
+      "cost": 8.79e-05,
+      "elapsed": 0.9247996248304844
+    },
+    {
+      "id": "si-11",
+      "message": "requests.get 호출하면 내부에서 뭐가 일어나?",
+      "has_guide": false,
+      "expected": "ask",
+      "llm_kind": "ask",
+      "final_kind": "ask",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 470,
+          "output_tokens": 28
+        }
+      },
+      "cost": 8.73e-05,
+      "elapsed": 1.1770795830525458
+    },
+    {
+      "id": "si-12",
+      "message": "retry 로직은 어디 있어?",
+      "has_guide": false,
+      "expected": "ask",
+      "llm_kind": "ask",
+      "final_kind": "ask",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 466,
+          "output_tokens": 28
+        }
+      },
+      "cost": 8.669999999999999e-05,
+      "elapsed": 1.3525910000316799
+    },
+    {
+      "id": "si-13",
+      "message": "리디렉트 처리는 어디서 해?",
+      "has_guide": false,
+      "expected": "ask",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "llm_correct": true,
+      "final_correct": false,
+      "symbolless_ask": true,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 469,
+          "output_tokens": 31
+        }
+      },
+      "cost": 8.895e-05,
+      "elapsed": 1.0967630411032587
+    },
+    {
+      "id": "si-14",
+      "message": "인증 헤더는 어떤 순서로 붙어?",
+      "has_guide": true,
+      "expected": "ask",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "llm_correct": true,
+      "final_correct": false,
+      "symbolless_ask": true,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 504,
+          "output_tokens": 27
+        }
+      },
+      "cost": 9.18e-05,
+      "elapsed": 0.9164157919585705
+    },
+    {
+      "id": "si-15",
+      "message": "click.command 데코레이터가 함수를 어떻게 바꿔?",
+      "has_guide": false,
+      "expected": "ask",
+      "llm_kind": "ask",
+      "final_kind": "ask",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 474,
+          "output_tokens": 25
+        }
+      },
+      "cost": 8.609999999999999e-05,
+      "elapsed": 0.9019237919710577
+    },
+    {
+      "id": "si-16",
+      "message": "Console.print 부르면 어떤 순서로 실행돼?",
+      "has_guide": true,
+      "expected": "ask",
+      "llm_kind": "ask",
+      "final_kind": "ask",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 503,
+          "output_tokens": 27
+        }
+      },
+      "cost": 9.165e-05,
+      "elapsed": 1.294047041097656
+    },
+    {
+      "id": "si-17",
+      "message": "What does HTTPAdapter.send do?",
+      "has_guide": false,
+      "expected": "ask",
+      "llm_kind": "ask",
+      "final_kind": "ask",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 466,
+          "output_tokens": 30
+        }
+      },
+      "cost": 8.79e-05,
+      "elapsed": 0.9594418748747557
+    },
+    {
+      "id": "si-18",
+      "message": "거기 나온 Session.request 따라가 줘",
+      "has_guide": true,
+      "expected": "ask",
+      "llm_kind": "ask",
+      "final_kind": "ask",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 500,
+          "output_tokens": 30
+        }
+      },
+      "cost": 9.3e-05,
+      "elapsed": 1.0861161248758435
+    },
+    {
+      "id": "si-19",
+      "message": "다음",
+      "has_guide": true,
+      "expected": "next",
+      "llm_kind": "next",
+      "final_kind": "next",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 495,
+          "output_tokens": 23
+        }
+      },
+      "cost": 8.805e-05,
+      "elapsed": 0.9775929590687156
+    },
+    {
+      "id": "si-20",
+      "message": "그다음은?",
+      "has_guide": true,
+      "expected": "next",
+      "llm_kind": "next",
+      "final_kind": "next",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 494,
+          "output_tokens": 25
+        }
+      },
+      "cost": 8.91e-05,
+      "elapsed": 0.851650791009888
+    },
+    {
+      "id": "si-21",
+      "message": "다음 파일 알려줘",
+      "has_guide": true,
+      "expected": "next",
+      "llm_kind": "next",
+      "final_kind": "next",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 502,
+          "output_tokens": 23
+        }
+      },
+      "cost": 8.91e-05,
+      "elapsed": 0.9848526250571012
+    },
+    {
+      "id": "si-22",
+      "message": "8번 다음에 뭐 봐야 해?",
+      "has_guide": true,
+      "expected": "next",
+      "llm_kind": "next",
+      "final_kind": "next",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 501,
+          "output_tokens": 25
+        }
+      },
+      "cost": 9.015e-05,
+      "elapsed": 0.9001120000611991
+    },
+    {
+      "id": "si-23",
+      "message": "3단계까지 봤어 다음은",
+      "has_guide": true,
+      "expected": "next",
+      "llm_kind": "next",
+      "final_kind": "next",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 503,
+          "output_tokens": 23
+        }
+      },
+      "cost": 8.925e-05,
+      "elapsed": 0.9091860840562731
+    },
+    {
+      "id": "si-24",
+      "message": "이어서",
+      "has_guide": true,
+      "expected": "next",
+      "llm_kind": "next",
+      "final_kind": "next",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 492,
+          "output_tokens": 25
+        }
+      },
+      "cost": 8.88e-05,
+      "elapsed": 1.059437375050038
+    },
+    {
+      "id": "si-25",
+      "message": "고마워",
+      "has_guide": true,
+      "expected": "chat",
+      "llm_kind": "chat",
+      "final_kind": "chat",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 494,
+          "output_tokens": 28
+        }
+      },
+      "cost": 9.089999999999999e-05,
+      "elapsed": 0.9399891670327634
+    },
+    {
+      "id": "si-26",
+      "message": "안녕",
+      "has_guide": false,
+      "expected": "chat",
+      "llm_kind": "chat",
+      "final_kind": "chat",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 462,
+          "output_tokens": 24
+        }
+      },
+      "cost": 8.369999999999999e-05,
+      "elapsed": 1.2045998750254512
+    },
+    {
+      "id": "si-27",
+      "message": "너 뭐 할 수 있어?",
+      "has_guide": false,
+      "expected": "chat",
+      "llm_kind": "chat",
+      "final_kind": "chat",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 465,
+          "output_tokens": 20
+        }
+      },
+      "cost": 8.175e-05,
+      "elapsed": 1.0350172920152545
+    },
+    {
+      "id": "si-28",
+      "message": "이 도구 어떻게 써?",
+      "has_guide": false,
+      "expected": "chat",
+      "llm_kind": "chat",
+      "final_kind": "chat",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 466,
+          "output_tokens": 29
+        }
+      },
+      "cost": 8.729999999999998e-05,
+      "elapsed": 1.0056998329237103
+    },
+    {
+      "id": "si-29",
+      "message": "LangGraph 가 뭐야?",
+      "has_guide": false,
+      "expected": "chat",
+      "llm_kind": "chat",
+      "final_kind": "chat",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 465,
+          "output_tokens": 31
+        }
+      },
+      "cost": 8.834999999999999e-05,
+      "elapsed": 1.0527422910090536
+    },
+    {
+      "id": "si-30",
+      "message": "ㅋㅋ",
+      "has_guide": true,
+      "expected": "chat",
+      "llm_kind": "chat",
+      "final_kind": "chat",
+      "gate_reason": null,
+      "llm_correct": true,
+      "final_correct": true,
+      "symbolless_ask": false,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 499,
+          "output_tokens": 34
+        }
+      },
+      "cost": 9.525e-05,
+      "elapsed": 1.1340560831595212
+    }
+  ]
+}

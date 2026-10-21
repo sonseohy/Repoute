@@ -1,0 +1,1947 @@
+{
+  "meta": {
+    "date": "2026-10-21",
+    "dataset": "evals/datasets/walkthrough_questions.json",
+    "prompts": [
+      "v1",
+      "v2"
+    ],
+    "explain_model": "gpt-4o-mini",
+    "judge_model": "gpt-4o-mini",
+    "provider": "openai",
+    "cache_path": ".repoute_cache/evals/explain_quality.sqlite",
+    "judge_limitation": "판정 모델(fast)이 설명 모델과 같은 계열이라 같은 편향을 공유할 수 있다 (자기 평가 경향). 판정은 사람 판정이 아닌 보조 지표로만 본다."
+  },
+  "skipped": [
+    {
+      "repo": "psf/requests@611c616",
+      "file": "src/requests/sessions.py",
+      "line": 635,
+      "reason": "중복 심볼 Session.request"
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "file": "httpx/_client.py",
+      "line": 914,
+      "reason": "중복 심볼 Client.send"
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "file": "src/click/core.py",
+      "line": 1592,
+      "reason": "중복 심볼 Command.main"
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "file": "rich/__init__.py",
+      "line": 74,
+      "reason": "중복 심볼 print"
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "file": "rich/console.py",
+      "line": 1704,
+      "reason": "중복 심볼 Console.print"
+    }
+  ],
+  "rows": [
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 87,
+      "symbol": "get",
+      "kind": "function",
+      "file": "src/requests/api.py",
+      "line_start": 74,
+      "line_end": 87,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 URL에 GET 요청을 보내고, 그에 대한 응답을 반환합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 87)",
+          "호출하는 중요 함수 (줄 87)"
+        ],
+        "docstring_ko": "주어진 URL에 GET 요청을 보내고 응답 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 GET 요청을 보내고 그 결과를 반환하는 핵심 로직을 포함하고 있습니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 955,
+            "output_tokens": 73
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 624,
+            "output_tokens": 32
+          }
+        }
+      },
+      "cost": 0.00029985
+    },
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 87,
+      "symbol": "get",
+      "kind": "function",
+      "file": "src/requests/api.py",
+      "line_start": 74,
+      "line_end": 87,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 URL에 GET 요청을 보내고, 그에 대한 응답을 반환합니다.",
+        "watch": [
+          "핵심 로직: GET 요청을 보내는 부분 (줄 87)",
+          "함수의 매개변수와 반환값을 설명하는 docstring (줄 77~85)",
+          "요청을 실제로 처리하는 request 함수 호출 (줄 87)"
+        ],
+        "docstring_ko": "주어진 URL에 GET 요청을 보내고 응답 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 GET 요청을 실제로 수행하는 request 함수를 호출하여 결과를 반환하므로 핵심 로직에 해당합니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 970,
+            "output_tokens": 107
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 630,
+            "output_tokens": 38
+          }
+        }
+      },
+      "cost": 0.000327
+    },
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 71,
+      "symbol": "request",
+      "kind": "function",
+      "file": "src/requests/api.py",
+      "line_start": 24,
+      "line_end": 71,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 HTTP 요청을 생성하고 전송하여 서버로부터 응답을 받는 역할을 합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 70)",
+          "호출하는 중요 함수 (줄 71)"
+        ],
+        "docstring_ko": "HTTP 요청을 생성하고 전송하여 응답 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "줄 70은 세션을 사용하여 실제 HTTP 요청을 보내고 그 결과를 반환하므로 이 함수의 핵심 로직입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1700,
+            "output_tokens": 73
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1369,
+            "output_tokens": 39
+          }
+        }
+      },
+      "cost": 0.00052755
+    },
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 71,
+      "symbol": "request",
+      "kind": "function",
+      "file": "src/requests/api.py",
+      "line_start": 24,
+      "line_end": 71,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 HTTP 요청을 생성하고 전송하여 서버로부터 응답을 받는 역할을 합니다.",
+        "watch": [
+          "return session.request(method=method, url=url, **kwargs) (줄 71)",
+          "with sessions.Session() as session: (줄 70)",
+          "def request( (줄 24)",
+          "\"\"\"Constructs and sends a :class:`Request <Request>`. (줄 27)"
+        ],
+        "docstring_ko": "이 함수는 HTTP 요청을 생성하고 전송하여 응답 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 세션을 통해 실제 HTTP 요청을 수행하고 그 결과를 반환하므로 이 함수의 핵심 로직입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1715,
+            "output_tokens": 116
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1377,
+            "output_tokens": 38
+          }
+        }
+      },
+      "cost": 0.0005562
+    },
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 651,
+      "symbol": "Session.request",
+      "kind": "method",
+      "file": "src/requests/sessions.py",
+      "line_start": 557,
+      "line_end": 653,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 HTTP 요청을 생성하고 준비한 후 서버에 전송하여 응답을 반환합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 623~651)",
+          "호출하는 중요 함수 (줄 635)",
+          "주의할 분기·예외 (줄 619~620)"
+        ],
+        "docstring_ko": "HTTP 요청을 생성하고 서버에 전송하여 응답 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄들은 요청을 생성하고 전송하여 응답을 반환하는 핵심 로직을 포함하고 있기 때문에 이 메서드의 결과를 실제로 만드는 줄입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 2075,
+            "output_tokens": 92
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1746,
+            "output_tokens": 47
+          }
+        }
+      },
+      "cost": 0.0006565499999999999
+    },
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 651,
+      "symbol": "Session.request",
+      "kind": "method",
+      "file": "src/requests/sessions.py",
+      "line_start": 557,
+      "line_end": 653,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 HTTP 요청을 생성하고 준비한 후 서버에 전송하여 응답을 반환합니다.",
+        "watch": [
+          "resp = self.send(prep, **send_kwargs) (줄 651)",
+          "req = Request( (줄 623~634)",
+          "prep = self.prepare_request(req) (줄 635)",
+          "settings = self.merge_environment_settings( (줄 641)"
+        ],
+        "docstring_ko": "HTTP 요청을 생성하고 서버에 전송하여 응답 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 요청을 실제로 전송하고 응답을 반환하는 핵심 로직을 포함하고 있습니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 2090,
+            "output_tokens": 107
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1750,
+            "output_tokens": 33
+          }
+        }
+      },
+      "cost": 0.00066
+    },
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 541,
+      "symbol": "Session.prepare_request",
+      "kind": "method",
+      "file": "src/requests/sessions.py",
+      "line_start": 511,
+      "line_end": 555,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 주어진 요청(Request) 객체를 기반으로 준비된 요청(PreparedRequest) 객체를 생성하여 반환합니다. 이 과정에서 세션(Session)의 설정과 요청의 설정을 병합합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 540~554)",
+          "주의할 분기·예외 (줄 537~538)",
+          "호출하는 중요 함수 (줄 541)"
+        ],
+        "docstring_ko": "요청 객체를 받아 준비된 요청 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄들은 PreparedRequest 객체를 생성하고 설정하는 핵심 로직으로, 메서드의 반환값을 실제로 만드는 부분이기 때문입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1278,
+            "output_tokens": 109
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 949,
+            "output_tokens": 43
+          }
+        }
+      },
+      "cost": 0.00042524999999999996
+    },
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 541,
+      "symbol": "Session.prepare_request",
+      "kind": "method",
+      "file": "src/requests/sessions.py",
+      "line_start": 511,
+      "line_end": 555,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 주어진 요청(Request) 객체를 기반으로 준비된 요청(PreparedRequest) 객체를 생성하여 반환합니다. 이 과정에서 세션(Session)의 설정과 요청의 설정을 병합하여 최종 요청을 준비합니다.",
+        "watch": [
+          "p.prepare(...) 호출로 최종 요청을 준비하는 핵심 로직 (줄 540~554)",
+          "cookies가 CookieJar가 아닐 경우 변환하는 부분 (줄 527~528)",
+          "환경의 기본 인증을 설정하는 부분 (줄 535~538)",
+          "헤더와 파라미터를 병합하는 merge_setting 함수 호출 (줄 547, 550)"
+        ],
+        "docstring_ko": "요청 객체를 준비하여 전송할 준비가 된 PreparedRequest 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 0.75,
+        "has_ref_rate": 0.75,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "p.prepare(...) 호출은 PreparedRequest 객체를 생성하고 설정하는 핵심 로직으로, 이 메서드의 반환값을 실제로 만드는 줄입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1293,
+            "output_tokens": 164
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 959,
+            "output_tokens": 42
+          }
+        }
+      },
+      "cost": 0.00046139999999999994
+    },
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 134,
+      "symbol": "post",
+      "kind": "function",
+      "file": "src/requests/api.py",
+      "line_start": 117,
+      "line_end": 134,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 URL로 POST 요청을 보내는 역할을 합니다. 요청의 본문에 포함할 데이터나 JSON 객체를 선택적으로 전달할 수 있습니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 134)",
+          "호출하는 중요 함수 (줄 134)",
+          "주의할 분기·예외 (줄 121)"
+        ],
+        "docstring_ko": "주어진 URL로 POST 요청을 보내고, 요청의 본문에 데이터를 포함하여 응답 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 POST 요청을 실제로 수행하고 결과를 반환하는 핵심 로직을 포함하고 있습니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1016,
+            "output_tokens": 108
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 685,
+            "output_tokens": 33
+          }
+        }
+      },
+      "cost": 0.00033975
+    },
+    {
+      "repo": "psf/requests@611c616",
+      "evidence_line": 134,
+      "symbol": "post",
+      "kind": "function",
+      "file": "src/requests/api.py",
+      "line_start": 117,
+      "line_end": 134,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 URL로 POST 요청을 보내고, 그 결과로 응답 객체를 반환합니다.",
+        "watch": [
+          "핵심 로직: POST 요청을 보내는 부분 (줄 134)",
+          "함수의 매개변수와 반환값을 설명하는 docstring (줄 123~132)",
+          "POST 요청을 실제로 수행하는 request 함수 호출 (줄 134)",
+          "옵션 인자를 받는 kwargs 처리 (줄 121)"
+        ],
+        "docstring_ko": "주어진 URL로 POST 요청을 보내고 응답 객체를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "줄 134는 POST 요청을 실제로 보내는 핵심 로직으로, 결과를 생성하는 함수 호출을 포함하고 있습니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1031,
+            "output_tokens": 122
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 691,
+            "output_tokens": 37
+          }
+        }
+      },
+      "cost": 0.00035370000000000003
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 195,
+      "symbol": "get",
+      "kind": "function",
+      "file": "httpx/_api.py",
+      "line_start": 174,
+      "line_end": 207,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 URL에 대해 `GET` 요청을 보내고, 서버로부터의 응답을 반환합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 195)",
+          "호출하는 중요 함수 (줄 195)",
+          "주의할 분기·예외 (줄 192)"
+        ],
+        "docstring_ko": "GET 요청을 보내며, 요청 본문을 포함하지 않습니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 GET 요청을 수행하고 결과를 반환하는 핵심 로직으로, 실제로 함수의 결과를 생성하는 역할을 한다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1125,
+            "output_tokens": 88
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 794,
+            "output_tokens": 40
+          }
+        }
+      },
+      "cost": 0.00036465
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 195,
+      "symbol": "get",
+      "kind": "function",
+      "file": "httpx/_api.py",
+      "line_start": 174,
+      "line_end": 207,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 URL에 대해 `GET` 요청을 보내고, 그 결과를 응답으로 반환합니다.",
+        "watch": [
+          "return request(...)",
+          "(줄 195)",
+          "params: QueryParamTypes | None = None",
+          "(줄 177)",
+          "headers: HeaderTypes | None = None",
+          "(줄 178)",
+          "timeout: TimeoutTypes = DEFAULT_TIMEOUT_CONFIG",
+          "(줄 184)"
+        ],
+        "docstring_ko": "GET 요청을 보내며, 요청에 필요한 여러 파라미터를 받을 수 있습니다."
+      },
+      "metrics": {
+        "ref_validity": 0.5,
+        "has_ref_rate": 0.5,
+        "count_ok": false,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": null
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 GET 요청을 수행하고 그 결과를 반환하는 핵심 로직을 포함하고 있습니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1140,
+            "output_tokens": 112
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 788,
+            "output_tokens": 32
+          }
+        }
+      },
+      "cost": 0.00037559999999999997
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 102,
+      "symbol": "request",
+      "kind": "function",
+      "file": "httpx/_api.py",
+      "line_start": 39,
+      "line_end": 120,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 HTTP 요청을 보내는 역할을 하며, 다양한 매개변수를 통해 요청의 세부 사항을 설정할 수 있습니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 102~120)",
+          "호출하는 중요 함수 (줄 109)"
+        ],
+        "docstring_ko": "HTTP 요청을 보내며, 다양한 매개변수를 받아서 응답을 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄들은 Client 객체를 사용하여 실제 HTTP 요청을 보내고 그 결과를 반환하는 핵심 로직을 포함하고 있습니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1781,
+            "output_tokens": 86
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1452,
+            "output_tokens": 38
+          }
+        }
+      },
+      "cost": 0.00055935
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 102,
+      "symbol": "request",
+      "kind": "function",
+      "file": "httpx/_api.py",
+      "line_start": 39,
+      "line_end": 120,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 HTTP 요청을 보내고 그에 대한 응답을 반환합니다. 다양한 요청 옵션을 설정할 수 있어 유연한 사용이 가능합니다.",
+        "watch": [
+          "return client.request(...)",
+          "(줄 110~120)",
+          "with Client(...)",
+          "(줄 102~108)",
+          "def request(...)",
+          "(줄 39)"
+        ],
+        "docstring_ko": "HTTP 요청을 보내고 응답을 반환합니다. 여러 가지 파라미터를 통해 요청을 구성할 수 있습니다."
+      },
+      "metrics": {
+        "ref_validity": 0.5,
+        "has_ref_rate": 0.5,
+        "count_ok": false,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": null
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 클라이언트의 요청을 실제로 수행하고 결과를 반환하므로 함수의 핵심 로직입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1796,
+            "output_tokens": 105
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1445,
+            "output_tokens": 36
+          }
+        }
+      },
+      "cost": 0.00057075
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 812,
+      "symbol": "Client.request",
+      "kind": "method",
+      "file": "httpx/_client.py",
+      "line_start": 771,
+      "line_end": 825,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 HTTP 요청을 생성하고 전송하는 역할을 합니다. 다양한 요청 옵션을 받아서 요청을 구성하고, 이를 서버에 보내고 응답을 반환합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 812~824)",
+          "호출하는 중요 함수 (줄 812)",
+          "호출하는 중요 함수 (줄 825)",
+          "주의할 분기·예외 (줄 804~810)"
+        ],
+        "docstring_ko": "요청을 구성하고 전송하여 응답을 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄들은 요청을 생성하고 전송하는 핵심 로직으로, 실제로 결과를 만드는 중요한 역할을 한다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1364,
+            "output_tokens": 115
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1035,
+            "output_tokens": 36
+          }
+        }
+      },
+      "cost": 0.00045045
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 812,
+      "symbol": "Client.request",
+      "kind": "method",
+      "file": "httpx/_client.py",
+      "line_start": 771,
+      "line_end": 825,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 HTTP 요청을 생성하고 전송하여 서버로부터 응답을 받는 역할을 합니다.",
+        "watch": [
+          "request = self.build_request(...)(줄 812)",
+          "warnings.warn(message, DeprecationWarning, stacklevel=2)(줄 810)",
+          "return self.send(request, auth=auth, follow_redirects=follow_redirects)(줄 825)"
+        ],
+        "docstring_ko": "요청을 생성하고 전송하여 응답을 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 요청을 생성하는 핵심 로직으로, 이후의 send 메서드 호출에 필요한 request 객체를 만듭니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1379,
+            "output_tokens": 103
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1034,
+            "output_tokens": 39
+          }
+        }
+      },
+      "cost": 0.00044715
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 912,
+      "symbol": "Client.send",
+      "kind": "method",
+      "file": "httpx/_client.py",
+      "line_start": 879,
+      "line_end": 928,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 HTTP 요청을 전송하고, 요청이 수정되지 않은 채로 응답을 반환합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 914~919)",
+          "주의할 분기·예외 (줄 900~901)",
+          "호출하는 중요 함수 (줄 912)"
+        ],
+        "docstring_ko": "요청을 전송하고 응답을 반환합니다. 요청은 수정되지 않고 그대로 전송됩니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 요청을 처리하고 응답을 반환하는 핵심 로직으로, 실제로 결과를 생성하는 중요한 부분입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1261,
+            "output_tokens": 98
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 932,
+            "output_tokens": 38
+          }
+        }
+      },
+      "cost": 0.00041055
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 912,
+      "symbol": "Client.send",
+      "kind": "method",
+      "file": "httpx/_client.py",
+      "line_start": 879,
+      "line_end": 928,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 HTTP 요청을 그대로 전송하고, 요청에 대한 응답을 반환합니다.",
+        "watch": [
+          "response = self._send_handling_auth(request, auth=auth, follow_redirects=follow_redirects, history=[])",
+          "if self._state == ClientState.CLOSED:",
+          "self._set_timeout(request)",
+          "response.read() (줄 922)"
+        ],
+        "docstring_ko": "요청을 전송하고 응답을 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 0.25,
+        "has_ref_rate": 0.25,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": null
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 요청을 처리하고 응답을 생성하는 핵심 로직으로, 실제로 결과를 반환하는 중요한 역할을 한다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1276,
+            "output_tokens": 98
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 945,
+            "output_tokens": 38
+          }
+        }
+      },
+      "cost": 0.00041475
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 937,
+      "symbol": "Client._send_handling_auth",
+      "kind": "method",
+      "file": "httpx/_client.py",
+      "line_start": 930,
+      "line_end": 962,
+      "has_docstring": false,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 인증 흐름을 처리하면서 요청을 보내고, 리다이렉트를 관리하여 최종 응답을 반환합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 942~946)",
+          "주의할 분기·예외 (줄 948~960)",
+          "호출하는 중요 함수 (줄 937)"
+        ],
+        "docstring_ko": ""
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄들은 요청을 보내고 응답을 처리하는 핵심 로직으로, 최종적으로 반환값을 생성하는 중요한 역할을 한다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1058,
+            "output_tokens": 83
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 729,
+            "output_tokens": 41
+          }
+        }
+      },
+      "cost": 0.00034245
+    },
+    {
+      "repo": "encode/httpx@b5addb6",
+      "evidence_line": 937,
+      "symbol": "Client._send_handling_auth",
+      "kind": "method",
+      "file": "httpx/_client.py",
+      "line_start": 930,
+      "line_end": 962,
+      "has_docstring": false,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 인증 흐름을 처리하면서 요청을 보내고, 리다이렉트를 관리하여 최종 응답을 반환합니다.",
+        "watch": [
+          "response = self._send_handling_redirects(request, follow_redirects=follow_redirects, history=history) (줄 942)",
+          "next_request = auth_flow.send(response) (줄 949)",
+          "response.close() (줄 959)",
+          "auth_flow.close() (줄 962)"
+        ],
+        "docstring_ko": ""
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 요청을 보내고 응답을 처리하는 핵심 로직으로, 메서드의 결과를 생성하는 중요한 역할을 한다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1073,
+            "output_tokens": 121
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 745,
+            "output_tokens": 41
+          }
+        }
+      },
+      "cost": 0.0003699
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 248,
+      "symbol": "command.decorator",
+      "kind": "function",
+      "file": "src/click/decorators.py",
+      "line_start": 217,
+      "line_end": 250,
+      "has_docstring": false,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 함수를 명령어로 변환하는 데 사용됩니다. 함수가 이미 명령어로 변환된 경우 오류를 발생시키고, 함수의 매개변수와 도움말을 설정하여 새로운 명령어 객체를 생성합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 248)",
+          "주의할 분기·예외 (줄 218)",
+          "호출하는 중요 함수 (줄 225)",
+          "핵심 로직 줄 (줄 240)"
+        ],
+        "docstring_ko": ""
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "줄 248은 command 객체를 생성하고 반환하여 이 함수의 주요 결과를 만들어내는 핵심 로직입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1156,
+            "output_tokens": 135
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 825,
+            "output_tokens": 35
+          }
+        }
+      },
+      "cost": 0.00039915
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 248,
+      "symbol": "command.decorator",
+      "kind": "function",
+      "file": "src/click/decorators.py",
+      "line_start": 217,
+      "line_end": 250,
+      "has_docstring": false,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 함수를 명령어로 변환하는 데 사용됩니다. 함수가 이미 명령어로 변환된 경우 오류를 발생시키고, 함수의 매개변수와 도움말을 설정하여 새로운 명령어 객체를 생성합니다.",
+        "watch": [
+          "cmd = cls(name=cmd_name, callback=f, params=params, **attrs) (줄 248)",
+          "if isinstance(f, Command): (줄 218)",
+          "decorator_params = f.__click_params__ (줄 225)",
+          "if attrs.get(\"help\") is None: (줄 232)"
+        ],
+        "docstring_ko": ""
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 명령어 객체를 생성하여 반환하는 핵심 로직으로, 함수의 결과를 실제로 만드는 줄입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1171,
+            "output_tokens": 152
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 837,
+            "output_tokens": 38
+          }
+        }
+      },
+      "cost": 0.0004152
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 1685,
+      "symbol": "Command.__call__",
+      "kind": "method",
+      "file": "src/click/core.py",
+      "line_start": 1683,
+      "line_end": 1685,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 Command 객체를 호출할 때 main 메서드를 대신 호출하는 역할을 합니다. 즉, Command 객체를 함수처럼 사용할 수 있게 해줍니다.",
+        "watch": [
+          "호출하는 중요 함수 (줄 1685)"
+        ],
+        "docstring_ko": "이 메서드는 main 메서드의 별칭입니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": false,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 실제로 main 메서드를 호출하여 결과를 생성하므로 핵심 로직에 해당합니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 812,
+            "output_tokens": 73
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 481,
+            "output_tokens": 33
+          }
+        }
+      },
+      "cost": 0.00025754999999999994
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 1685,
+      "symbol": "Command.__call__",
+      "kind": "method",
+      "file": "src/click/core.py",
+      "line_start": 1683,
+      "line_end": 1685,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 `main` 메서드를 호출하는 역할을 합니다. 즉, 이 메서드를 호출하면 내부적으로 `main` 메서드가 실행됩니다.",
+        "watch": [
+          "return self.main(*args, **kwargs) (줄 1685)",
+          "def main(self, *args: t.Any, **kwargs: t.Any) -> t.Any: (줄 1686~688)",
+          "def __init__(self, ...): (줄 1670~1680)"
+        ],
+        "docstring_ko": "이 메서드는 인자를 받아서 `main` 메서드를 호출하여 결과를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 0.3333333333333333,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 메서드의 반환값을 생성하는 핵심 로직으로, 실제로 main 메서드를 호출하여 결과를 반환하기 때문이다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 827,
+            "output_tokens": 132
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 486,
+            "output_tokens": 41
+          }
+        }
+      },
+      "cost": 0.00030075
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 1591,
+      "symbol": "Command.main",
+      "kind": "method",
+      "file": "src/click/core.py",
+      "line_start": 1515,
+      "line_end": 1649,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 명령줄 애플리케이션을 실행하는 방법을 제공하며, 주어진 인수들을 파싱하여 프로그램을 실행합니다. 실행 후에는 항상 애플리케이션을 종료하며, 종료를 원하지 않을 경우 `SystemExit` 예외를 처리해야 합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 1515~1649)",
+          "주의할 분기·예외 (줄 1603~1612)",
+          "호출하는 중요 함수 (줄 1591)"
+        ],
+        "docstring_ko": "이 메서드는 명령줄 애플리케이션을 실행하며, 인수를 받아 처리한 후 종료 코드를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": true
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 메서드는 명령어를 실행하고 종료 코드를 반환하는 핵심 로직을 포함하고 있으며, 예외 처리 및 결과 반환을 통해 실제 동작을 수행한다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 2481,
+            "output_tokens": 148
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 2154,
+            "output_tokens": 48
+          }
+        }
+      },
+      "cost": 0.0008128499999999999
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 1591,
+      "symbol": "Command.main",
+      "kind": "method",
+      "file": "src/click/core.py",
+      "line_start": 1515,
+      "line_end": 1649,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 명령줄 애플리케이션을 실행하는 방법을 제공하며, 주어진 인수에 따라 프로그램을 실행하고 종료합니다.",
+        "watch": [
+          "ctx.exit() 호출로 프로그램 종료 (줄 1602)",
+          "args가 None일 때 sys.argv[1:] 사용 (줄 1567)",
+          "standalone_mode에 따라 예외 처리 방식이 달라짐 (줄 1593~1594)",
+          "self._main_shell_completion 호출로 셸 완성 요청 처리 (줄 1578)"
+        ],
+        "docstring_ko": "이 메서드는 명령줄 애플리케이션을 실행하며, 인수를 받아 처리하고 종료 코드를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "ctx.exit() 호출은 프로그램의 종료를 직접적으로 유발하며, 이는 이 메서드의 핵심적인 부수효과로 간주될 수 있다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 2496,
+            "output_tokens": 147
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 2153,
+            "output_tokens": 44
+          }
+        }
+      },
+      "cost": 0.0008119499999999999
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 1446,
+      "symbol": "Command.invoke",
+      "kind": "method",
+      "file": "src/click/core.py",
+      "line_start": 1432,
+      "line_end": 1446,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 주어진 컨텍스트(ctx)를 기반으로 연결된 콜백 함수를 호출합니다. 만약 콜백이 존재하지 않으면 아무것도 하지 않습니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 1445)",
+          "주의할 분기·예외 (줄 1436~444)",
+          "호출하는 중요 함수 (줄 1446)"
+        ],
+        "docstring_ko": "주어진 컨텍스트를 통해 연결된 콜백을 올바르게 호출하는 기능을 수행합니다."
+      },
+      "metrics": {
+        "ref_validity": 0.6666666666666666,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "줄 1445는 ctx.invoke(self.callback, **ctx.params) 호출을 통해 실제로 명령을 실행하고 결과를 반환하므로 핵심 로직입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 939,
+            "output_tokens": 115
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 609,
+            "output_tokens": 44
+          }
+        }
+      },
+      "cost": 0.0003276
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 1446,
+      "symbol": "Command.invoke",
+      "kind": "method",
+      "file": "src/click/core.py",
+      "line_start": 1432,
+      "line_end": 1446,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 주어진 컨텍스트(ctx)를 기반으로 연결된 콜백 함수를 호출합니다. 만약 콜백이 존재하지 않으면 아무 작업도 수행하지 않습니다.",
+        "watch": [
+          "return ctx.invoke(self.callback, **ctx.params) (줄 1446)",
+          "if self.deprecated: (줄 1436)",
+          "echo(style(message, fg=\"red\"), err=True) (줄 1443)",
+          "if self.callback is not None: (줄 1445)"
+        ],
+        "docstring_ko": "주어진 컨텍스트에 따라 연결된 콜백을 올바르게 호출합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 ctx.invoke를 호출하여 실제로 명령을 실행하고 결과를 반환하므로 핵심 로직입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 954,
+            "output_tokens": 133
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 614,
+            "output_tokens": 35
+          }
+        }
+      },
+      "cost": 0.000336
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 1393,
+      "symbol": "Command.make_context",
+      "kind": "method",
+      "file": "src/click/core.py",
+      "line_start": 1359,
+      "line_end": 1394,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 주어진 정보 이름과 인자를 바탕으로 새로운 Context 객체를 생성하고, 인자를 파싱하는 작업을 수행합니다. 실제 명령어의 콜백은 호출하지 않습니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 390)",
+          "호출하는 중요 함수 (줄 393)",
+          "주의할 분기·예외 (줄 387~388)"
+        ],
+        "docstring_ko": "정보 이름과 인자를 받아 새로운 Context 객체를 생성하고, 인자를 파싱하여 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 0.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 Context 객체를 생성하고 반환하는 핵심 로직으로, 메서드의 결과를 실제로 만드는 부분입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1204,
+            "output_tokens": 115
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 873,
+            "output_tokens": 38
+          }
+        }
+      },
+      "cost": 0.00040335
+    },
+    {
+      "repo": "pallets/click@2247b35",
+      "evidence_line": 1393,
+      "symbol": "Command.make_context",
+      "kind": "method",
+      "file": "src/click/core.py",
+      "line_start": 1359,
+      "line_end": 1394,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 주어진 정보 이름과 인수를 바탕으로 새로운 Context 객체를 생성하고, 인수 파싱을 시작합니다. 실제 명령어 콜백은 호출하지 않습니다.",
+        "watch": [
+          "ctx = self.context_class(self, info_name=info_name, parent=parent, **extra) (줄 390)",
+          "self.parse_args(ctx, args) (줄 393)",
+          "for key, value in self.context_settings.items(): (줄 386)"
+        ],
+        "docstring_ko": "정보 이름과 인수로 새로운 Context를 생성하고, 인수 파싱을 시작합니다."
+      },
+      "metrics": {
+        "ref_validity": 0.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 새로운 Context 객체를 생성하여 메서드의 반환값을 결정하는 핵심 로직이다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1219,
+            "output_tokens": 128
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 888,
+            "output_tokens": 33
+          }
+        }
+      },
+      "cost": 0.00041265
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 73,
+      "symbol": "print",
+      "kind": "function",
+      "file": "rich/__init__.py",
+      "line_start": 53,
+      "line_end": 74,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 객체들을 출력하는 역할을 하며, 기본적으로 내장 print 함수와 동일한 기능을 제공합니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 73)",
+          "호출하는 중요 함수 (줄 74)"
+        ],
+        "docstring_ko": "위치 인자로 전달된 객체들을 출력하며, 다양한 출력 옵션을 제공합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "줄 73은 콘솔에 객체를 출력하는 핵심 로직을 수행하므로 이 함수의 결과를 실제로 만드는 줄입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1057,
+            "output_tokens": 79
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 726,
+            "output_tokens": 39
+          }
+        }
+      },
+      "cost": 0.00033825
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 73,
+      "symbol": "print",
+      "kind": "function",
+      "file": "rich/__init__.py",
+      "line_start": 53,
+      "line_end": 74,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 함수는 주어진 객체들을 출력하는 역할을 하며, 기본적으로 내장 print 함수와 동일한 기능을 제공합니다.",
+        "watch": [
+          "return write_console.print(*objects, sep=sep, end=end) (줄 74)",
+          "write_console = get_console() if file is None else Console(file=file) (줄 73)",
+          "sep (str, optional): Separator between printed objects. Defaults to \" \". (줄 65)",
+          "flush (bool, optional): Has no effect as Rich always flushes output. Defaults to False. (줄 68)"
+        ],
+        "docstring_ko": "위치 인자로 전달된 객체들을 출력하는 함수입니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 실제로 콘솔에 객체를 출력하는 핵심 로직을 수행하므로 핵심 로직 줄입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1072,
+            "output_tokens": 141
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 735,
+            "output_tokens": 37
+          }
+        }
+      },
+      "cost": 0.00037785
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 1705,
+      "symbol": "Console.print",
+      "kind": "method",
+      "file": "rich/console.py",
+      "line_start": 1652,
+      "line_end": 1756,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 콘솔에 다양한 객체를 출력하는 기능을 제공합니다. 출력 형식, 스타일, 줄 바꿈 방식 등을 설정할 수 있습니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 1690~1756)",
+          "주의할 분기·예외 (줄 1689~1693)",
+          "호출하는 중요 함수 (줄 1705)",
+          "호출하는 중요 함수 (줄 1716)"
+        ],
+        "docstring_ko": "콘솔에 객체를 출력하며, 다양한 출력 옵션을 설정할 수 있습니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄들은 콘솔에 출력할 내용을 실제로 생성하고 처리하는 핵심 로직을 포함하고 있습니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 2121,
+            "output_tokens": 118
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1794,
+            "output_tokens": 33
+          }
+        }
+      },
+      "cost": 0.00067785
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 1705,
+      "symbol": "Console.print",
+      "kind": "method",
+      "file": "rich/console.py",
+      "line_start": 1652,
+      "line_end": 1756,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 콘솔에 다양한 객체를 출력하는 기능을 제공합니다. 출력 형식, 스타일, 줄 바꿈 방식 등을 설정할 수 있습니다.",
+        "watch": [
+          "self._collect_renderables(objects, sep, end, justify=justify, emoji=emoji, markup=markup, highlight=highlight) (줄 1705)",
+          "if not objects: (줄 1689~1689)",
+          "self._buffer.extend(new_segments) (줄 1756)",
+          "self.options.update(...) (줄 1716)"
+        ],
+        "docstring_ko": "콘솔에 객체를 출력하며, 다양한 출력 옵션을 설정할 수 있습니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 주어진 객체들을 렌더링하기 위한 준비 작업을 수행하며, 실제 출력 결과를 생성하는 데 필요한 렌더러를 수집하는 핵심 로직입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 2136,
+            "output_tokens": 134
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1813,
+            "output_tokens": 50
+          }
+        }
+      },
+      "cost": 0.0007027499999999999
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 1560,
+      "symbol": "Console._collect_renderables",
+      "kind": "method",
+      "file": "rich/console.py",
+      "line_start": 1500,
+      "line_end": 1587,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 여러 개의 렌더러블 객체와 텍스트를 하나의 렌더러블로 결합하여 반환합니다. 이를 통해 콘솔에 출력할 내용을 구성할 수 있습니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 1556~1587)",
+          "주의할 분기·예외 (줄 1540~1544)",
+          "호출하는 중요 함수 (줄 1560~1566)"
+        ],
+        "docstring_ko": "여러 렌더러블과 텍스트를 결합하여 하나의 렌더러블 리스트를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄들은 주어진 객체들을 처리하여 최종적으로 renderables 리스트를 생성하고 반환하는 핵심 로직을 포함하고 있습니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1770,
+            "output_tokens": 132
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1443,
+            "output_tokens": 38
+          }
+        }
+      },
+      "cost": 0.00058395
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 1560,
+      "symbol": "Console._collect_renderables",
+      "kind": "method",
+      "file": "rich/console.py",
+      "line_start": 1500,
+      "line_end": 1587,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 여러 개의 렌더러블 객체와 텍스트를 하나의 렌더러블로 결합하여 반환합니다. 이를 통해 콘솔에 출력할 내용을 구성할 수 있습니다.",
+        "watch": [
+          "return renderables (줄 1587)",
+          "check_text() (줄 1581)",
+          "self.render_str() (줄 1560~1566)",
+          "is_expandable(renderable) (줄 1573)"
+        ],
+        "docstring_ko": "여러 렌더러블과 텍스트를 결합하여 하나의 렌더러블 리스트를 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄은 메서드의 최종 결과인 renderables 리스트를 반환하여, 메서드의 핵심 기능인 여러 개의 렌더러블을 결합하는 결과를 생성합니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1785,
+            "output_tokens": 131
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1438,
+            "output_tokens": 52
+          }
+        }
+      },
+      "cost": 0.00059325
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 1442,
+      "symbol": "Console.render_str",
+      "kind": "method",
+      "file": "rich/console.py",
+      "line_start": 1409,
+      "line_end": 1468,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 주어진 문자열을 텍스트 인스턴스로 변환하여 콘솔에 출력할 수 있도록 준비합니다. 스타일, 정렬, 오버플로우 처리, 이모지 및 마크업 사용 여부 등을 설정할 수 있습니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 1417~1468)",
+          "주의할 분기·예외 (줄 1437~1466)",
+          "호출하는 중요 함수 (줄 1442~1444)"
+        ],
+        "docstring_ko": "문자열을 받아 텍스트 인스턴스로 변환하여 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": true
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "이 줄들은 최종적으로 rich_text를 생성하고 반환하는 핵심 로직을 포함하고 있습니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1510,
+            "output_tokens": 133
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1183,
+            "output_tokens": 31
+          }
+        }
+      },
+      "cost": 0.00050235
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 1442,
+      "symbol": "Console.render_str",
+      "kind": "method",
+      "file": "rich/console.py",
+      "line_start": 1409,
+      "line_end": 1468,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 주어진 문자열을 텍스트 인스턴스로 변환하여 콘솔에 출력할 수 있도록 준비합니다. 스타일, 정렬, 오버플로우 처리 등 다양한 옵션을 지원합니다.",
+        "watch": [
+          "rich_text = render_markup(...)(줄 1442~1448)",
+          "rich_text = Text(...)(줄 1451~1460)",
+          "if _highlighter is not None:(줄 1462)",
+          "return rich_text(줄 1468)"
+        ],
+        "docstring_ko": "문자열을 받아 텍스트 인스턴스로 변환하여 반환합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "render_markup 함수 호출을 통해 rich_text 객체를 생성하고, 이는 최종 반환값에 직접적으로 영향을 미치는 핵심 로직입니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1525,
+            "output_tokens": 131
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 1184,
+            "output_tokens": 39
+          }
+        }
+      },
+      "cost": 0.0005083500000000001
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 864,
+      "symbol": "Console.__exit__",
+      "kind": "method",
+      "file": "rich/console.py",
+      "line_start": 862,
+      "line_end": 864,
+      "has_docstring": true,
+      "prompt": "v1",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 버퍼 컨텍스트를 종료하는 역할을 합니다. 예를 들어, with 문을 사용하여 리소스를 안전하게 해제할 때 호출됩니다.",
+        "watch": [
+          "핵심 로직 줄 (줄 864)",
+          "호출하는 중요 함수 (줄 863)"
+        ],
+        "docstring_ko": "버퍼 컨텍스트를 종료합니다."
+      },
+      "metrics": {
+        "ref_validity": 1.0,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "해당 줄은 버퍼를 종료하는 핵심 로직을 수행하므로 결과를 실제로 만드는 줄이다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 804,
+            "output_tokens": 81
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 473,
+            "output_tokens": 34
+          }
+        }
+      },
+      "cost": 0.00026055
+    },
+    {
+      "repo": "Textualize/rich@9d8f9a3",
+      "evidence_line": 864,
+      "symbol": "Console.__exit__",
+      "kind": "method",
+      "file": "rich/console.py",
+      "line_start": 862,
+      "line_end": 864,
+      "has_docstring": true,
+      "prompt": "v2",
+      "cached": false,
+      "explanation": {
+        "what": "이 메서드는 버퍼 컨텍스트를 종료하는 역할을 합니다. 주로 with 문을 사용하여 리소스를 안전하게 해제할 때 호출됩니다.",
+        "watch": [
+          "self._exit_buffer() (줄 864)",
+          "def __enter__(self) (줄 860~861)",
+          "class Console (줄 850~851)",
+          "def _exit_buffer(self) (줄 870~871)"
+        ],
+        "docstring_ko": "버퍼 컨텍스트를 종료하는 메서드입니다."
+      },
+      "metrics": {
+        "ref_validity": 0.25,
+        "has_ref_rate": 1.0,
+        "count_ok": true,
+        "docstring_ko_ok": true,
+        "first_is_def_or_doc": false
+      },
+      "judge": {
+        "core_logic": true,
+        "reason": "self._exit_buffer()는 메서드의 주요 기능인 버퍼 종료를 수행하므로 핵심 로직에 해당합니다."
+      },
+      "tokens": {
+        "explain": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 819,
+            "output_tokens": 109
+          }
+        },
+        "judge": {
+          "gpt-4o-mini-2024-07-18": {
+            "input_tokens": 473,
+            "output_tokens": 37
+          }
+        }
+      },
+      "cost": 0.0002814
+    }
+  ]
+}

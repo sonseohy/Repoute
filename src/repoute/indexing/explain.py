@@ -2,6 +2,7 @@
 
 import ast
 import json
+import re
 import sqlite3
 from dataclasses import dataclass
 from pathlib import Path
@@ -11,6 +12,10 @@ from pydantic import BaseModel, Field
 from repoute.indexing.symbols import SymbolDB
 from repoute.prompts import explain_v2
 from repoute.tools.code_tools import MAX_READ_LINES
+
+# watch 항목의 "(줄 N)" 또는 "(줄 N~M)". evals/experiments/explain_quality.py 의 것과 같다.
+LINE_REF_RE = re.compile(r"\(줄\s*(\d+)(?:\s*[~\-–]\s*(\d+))?\)")
+WATCH_MAX = 4  # 프롬프트 규칙은 2~4개. 첫 항목이 핵심 로직이므로 넘치면 앞쪽을 남긴다
 
 CACHE_SCHEMA = """
 CREATE TABLE IF NOT EXISTS explanations (
@@ -85,6 +90,56 @@ def _numbered_code(root: Path, span: SymbolSpan) -> tuple[str, bool]:
     return code, span.line_end > end
 
 
+def _fix_thousands(n: int, line_start: int, line_end: int) -> int:
+    """범위 밖 줄 번호 n 에 천 단위(line_start 의 천 자리)를 더해 범위 안이 되면 그 값, 아니면 n.
+
+    모델이 "1390" 을 "390" 처럼 앞자리를 잘라 쓰는 결함 보정. 범위 안이 안 되면 지어내지 않는다.
+    """
+    if line_start <= n <= line_end:
+        return n
+    fixed = n + (line_start // 1000) * 1000
+    return fixed if line_start <= fixed <= line_end else n
+
+
+def normalize_watch(watch: list[str], line_start: int, line_end: int) -> list[str]:
+    """LLM 이 만든 watch 의 형식 결함을 결정론적으로 고친다 (LLM 없음).
+
+    (a) "(줄 N)" 만 있는 항목은 바로 앞 항목 끝에 붙인다 (앞 항목이 없으면 버린다).
+    (b) 범위 밖 줄 번호는 천 단위를 더해 범위 안이 되면 바꾼다 (N, M 각각).
+    (c) 그래도 범위 밖인 참조는 지우지 않는다 (watch_ref_issues 로 셀 수 있다).
+    (d) WATCH_MAX 개를 넘으면 앞쪽만 남긴다.
+    """
+    merged: list[str] = []
+    for item in watch:
+        ref_only = LINE_REF_RE.search(item) and not LINE_REF_RE.sub("", item).strip()
+        if not ref_only:
+            merged.append(item)
+        elif merged:  # 앞 항목이 없으면 이 참조는 버린다
+            merged[-1] = f"{merged[-1].rstrip()} {item.strip()}"
+
+    def fix(m: re.Match) -> str:
+        a, b = int(m.group(1)), int(m.group(2) or m.group(1))
+        fa, fb = _fix_thousands(a, line_start, line_end), _fix_thousands(b, line_start, line_end)
+        if (fa, fb) == (a, b):
+            return m.group(0)  # 바꿀 게 없으면 원문 그대로
+        return f"(줄 {fa})" if m.group(2) is None else f"(줄 {fa}~{fb})"
+
+    return [LINE_REF_RE.sub(fix, item) for item in merged][:WATCH_MAX]
+
+
+def watch_ref_issues(watch: list[str], line_start: int, line_end: int) -> int:
+    """줄 참조가 없거나 참조 중 하나라도 범위 [line_start, line_end] 밖인 항목 수.
+
+    explain_quality.py 의 ref_validity 와 같은 기준(항목 단위)이다.
+    """
+    issues = 0
+    for item in watch:
+        refs = [(int(a), int(b or a)) for a, b in LINE_REF_RE.findall(item)]
+        if not refs or not all(line_start <= a <= b <= line_end for a, b in refs):
+            issues += 1
+    return issues
+
+
 def _ensure_schema(conn: sqlite3.Connection) -> None:
     """캐시 테이블을 만든다. 옛 DB(prompt_version 컬럼 없음)는 새 PK 로 옮긴다.
 
@@ -136,10 +191,14 @@ def explain_symbol(
         # docstring_ko 가 NULL 인 옛 행은 docstring 이 있을 때만 다시 만든다
         if row is not None and (row[2] is not None or not span.docstring):
             what, watch = row[0], json.loads(row[1])
+            # 후처리 도입 전에 저장된 행도 같은 모양으로 (멱등이라 안전)
+            watch = normalize_watch(watch, span.line_start, span.line_end)
             return Explanation(what=what, watch=watch, docstring_ko=row[2] or ""), True
         code, truncated = _numbered_code(root, span)
         prompt = prompts.EXPLAIN.format(name=span.name, kind=span.kind, file=span.file, code=code)
         result = llm.with_structured_output(Explanation).invoke(prompt)
+        watch = normalize_watch(result.watch, span.line_start, span.line_end)
+        result = result.model_copy(update={"watch": watch})
         if not span.docstring:  # docstring 이 없는데 지어낸 번역은 버린다
             result = result.model_copy(update={"docstring_ko": ""})
         if truncated:  # 긴 심볼은 앞부분만 봤다는 것을 알린다

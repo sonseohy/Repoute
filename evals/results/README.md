@@ -25,6 +25,7 @@
 | [19](19-entrypoints-v3.md) | entrypoints-v3 | 라이브러리 신호로 scripts 가산 축소, CLI 경로 감점 (효과 없는 규칙 3개 제거) | 1위 gold 적중 1/5 → 3/5, CLI main 제거, 정적 p@5 0.60 → 0.64, recall 0.58/0.43 유지 | 5 | static_baseline.py | — | (커밋 후 기재) |
 | [20](20-reading-guide-v3-entrypoints.md) | reading-guide-v3-entrypoints | 진입점 v3 반영 후 Experiment 재실행 (18 과 Compare) | entrypoint_recall **0.32 → 0.53**, core p@5 0.68 → 0.72, 인용 100%. Phase 4 누적: 진입점 0.05→0.53, 핵심 0.24→0.72 | 5 | langsmith_eval.py | Experiment `reading-guide-gold-v3-d42ebe4b` | (커밋 후 기재) |
 | [21](21-walkthrough-qa-experiment.md) | walkthrough-qa-experiment | walkthrough-qa 첫 Experiment (quality, 5개) | reached 0.60, chain 0.43, strict 1.0, 질문당 $0.079 — 기록 13(n=20)과 일관 | 5 | langsmith_eval.py | Experiment `walkthrough-qa-v3-quality-0ae83013` | (커밋 후 기재) |
+| [22](22-ui-baselines.md) | ui-baselines | Supervisor 의도 분류 + /explain 설명 품질 첫 측정 (v1 vs v2) | 분류 LLM 97% / 게이트 후 93% (오류 2건은 "식별자 없는 ask → map" 게이트). 설명 v1 은 항목 56/56 이 카테고리 이름 복사, v2 는 0/82·실제 코드 줄, 줄 참조 유효 93% → 89%(형식 흐트러짐), 천 단위 잘림 7건. 결정론적 후처리 후 문제 항목 v1 4→0, v2 19→9 ($0) | 30 메시지 / 20 심볼 | 전용 스크립트 2개, 결정론적 지표 (fast 판정은 변별력 0) | 태그 `ui-baseline-intents` | (커밋 후 기재) |
 
 ## 이름 규칙
 
