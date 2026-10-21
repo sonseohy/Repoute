@@ -4,6 +4,7 @@
 """
 
 import json
+import sqlite3
 import subprocess
 
 import pytest
@@ -245,6 +246,18 @@ def test_symbol(tmp_path, repo_url):
         "docstring": None,
     }
     assert outside.status_code == 404
+
+
+def test_symbol_ignores_embedding_db(tmp_path, repo_url):
+    """인덱스보다 나중에 만든 심볼 임베딩 파일(.emb.sqlite)이 있어도 /symbol 은 심볼 DB 를 연다."""
+    with _client(tmp_path) as client:
+        client.post("/repos", json={"url": repo_url})
+        index_dir = tmp_path / "cache" / "index"
+        (sym_db,) = index_dir.glob("owner__name@*.sqlite")
+        sqlite3.connect(sym_db.with_suffix(".emb.sqlite")).close()  # 더 최근 mtime 의 빈 DB
+        response = client.get("/repos/owner/name/symbol?file=app/main.py&line=5")
+    assert response.status_code == 200
+    assert response.json()["name"] == "run"
 
 
 def test_explain_cached(tmp_path, repo_url):
