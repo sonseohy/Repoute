@@ -45,6 +45,14 @@ README 의 핵심 수치를 측정 방법 · 데이터셋 · 평가자 · 실패
 
 **LangSmith Experiment**: `langsmith_eval.py` 가 `evaluate()` 로 돌려 예제별 점수와 트레이스를 묶는다. `reading-guide-gold-v3-13bfef5b`(18) ↔ `…-d42ebe4b`(20) 를 Compare 뷰로 비교, `walkthrough-qa-v3-quality-0ae83013`(21, n=5: reached 0.60, chain 0.43, strict 1.0).
 
+<img src="images/langsmith-compare.png" width="760" alt="LangSmith Compare: A(d42ebe4b, 기록 20) 와 B(13bfef5b, 기록 18) 의 citation_validity · core_module_precision · entrypoint_recall, 지연 · 토큰 · 비용">
+
+읽기 지도 Compare 뷰. **A = 개선 후 `…-d42ebe4b`(기록 20), B = 개선 전 `…-13bfef5b`(기록 18)**. 인용 유효성은 둘 다 1.0, 핵심 모듈 p@5 0.72 vs 0.68, 진입점 recall 0.53 vs 0.32. 지연 · 토큰 · 비용은 거의 같다 — 정확도 향상이 비용 증가 없이 정적 입력 변경에서 나왔다.
+
+<img src="images/langsmith-compare-walkthrough-repeat.png" width="760" alt="LangSmith Compare: walkthrough-qa 같은 설정 두 번 실행, reached 0.6 · strict 1.0 은 같고 call_chain_accuracy 0.43 vs 0.37">
+
+따라가기 Compare 뷰는 개선 전후가 아니라 **같은 설정(quality agent, 프롬프트 v3, 같은 질문 5개)을 두 번 돌린 것**이다(`…-0ae83013` vs `…-7244be10`, 기록 21 의 중복 실행). reached 0.6 · strict 1.0 은 같았지만 call_chain_accuracy 는 0.43 vs 0.37 로 0.06 흔들렸다. n=5 에서 이 정도 차이는 개선으로 읽으면 안 된다는 근거로 남긴다.
+
 **CI 회귀 게이트**: `.github/workflows/eval-regression.yml` 이 `src/` 또는 `evals/` 가 바뀐 PR 에서 gold 레포 5개를 실제로 돌려(1회 약 $0.10), 평균이 기준치(citation_validity 1.0 / core_module_p5 0.5 / entrypoint_recall 0.2) 아래면 실패한다. 기준치는 기록 18(1.0 / 0.68 / 0.32, n=5)에서 여유를 둔 값이고, 측정 기록을 링크한 PR 로만 바꾼다. 규칙은 [docs/conventions.md](conventions.md).
 
 **주요 실험 요약** — 전체 26건은 [evals/results/README.md](../evals/results/README.md)
@@ -64,6 +72,14 @@ README 의 핵심 수치를 측정 방법 · 데이터셋 · 평가자 · 실패
 | 23 → 24 | `search_symbols` 추가 + 게이트 완화 | 도달 5 → 6/10 (끝 이름 5 → 8), 첫 read_code 까지 3.2 → 2.0, $0.060 → $0.045 | 10 |
 | 25 | Issue Matcher (MCP + 임베딩 매칭) | p@3 0.85, hit@3 0.90. MCP 도구 토큰 12.8k → 1.2k | 20 |
 | 26 | PR Coach 정적 단계: hunk 함수 문맥 우선, 피호출자 제외 | 변경 재현 28% → 56%, 영향 재현 36% → 64%, 정밀 9% → 40%, 테스트 hit 62% → 75% | 8 |
+
+**개발 전체 사용량** (LangSmith 프로젝트 `repoute-dev`, 최근 7일, 날짜는 UTC)
+
+<img src="images/langsmith-project-overview.png" width="760" alt="LangSmith repoute-dev 프로젝트 개요: 모델 호출 2,034회(gpt-4o-mini 70%, gpt-4o 30%), 도구 호출 1,247회, 트레이스 434개, 오류율 0.46%, 토큰 4.6M, 총비용 $5.07">
+
+- 트레이스 434개, 토큰 4.6M, **총비용 $5.07**, 오류율 0.46%. 개발 · 배치 실험 · 리허설을 모두 합친 값이다. `evaluate()` Experiment 는 별도 프로젝트로 남아 여기에 들어가지 않는다.
+- 모델 호출 2,034회 중 gpt-4o-mini 70% · gpt-4o 30%. 분류 · 요약 · 설명은 fast, 합성 · 따라가기 agent 만 quality 로 나눈 결과다.
+- 도구 호출 1,247회 중 `find_definition` 34% · `read_code` 28% · `find_callees` 25%. `search_symbols` 는 10회(<1%)뿐이다 — 배치 실험 대부분은 이 도구를 넣기 전에 돌렸고(CLI 에서는 `--search-symbols` 옵션), 이름을 아는 질문에서는 agent 가 바로 `find_definition` 으로 간다(README 의 이름 없는 질문 GIF 도 그랬다). MCP 도구는 `pull_request_read` 8회 · `list_issues` 3회.
 
 ## 실패 사례와 한계
 

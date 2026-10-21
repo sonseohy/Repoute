@@ -2,7 +2,7 @@
 
 **Repoute = Repo + Route.** GitHub URL 을 넣으면 어디서부터 읽을지(읽기 지도), 코드가 어떻게 흐르는지(따라가기), 어떤 이슈·PR 부터 보면 좋을지를 `파일:줄` 근거와 함께 안내하는, 오픈소스 기여를 처음 시작하는 개발자를 위한 AI Agent.
 
-> 2026-10-21 v2. FastAPI(SSE) + Vite/React 단일 채팅 화면. Python 레포만 지원한다.
+> v2. FastAPI(SSE) + Vite/React 단일 채팅 화면. Python 레포만 지원한다.
 
 ## 주요 기능
 
@@ -21,11 +21,11 @@
 
 <img src="docs/images/demo-reading-guide.gif" width="720" alt="psf/requests 를 불러와 읽기 지도를 받고, Session 인용 칩을 눌러 코드 드로어와 설명 패널을 여는 화면">
 
-**함수 이름 없이 묻기 — 심볼 임베딩 검색으로 출발점(`merge_cookies`)을 찾는다**
+**함수 이름 없이 묻기 — 질문 문장만으로 `merge_cookies` 까지 따라간다**
 
 <img src="docs/images/demo-nosymbol.gif" width="720" alt="'세션 쿠키와 요청 쿠키는 어디서 합쳐져?' 질문에 merge_cookies 를 따라가며 답하는 화면">
 
-GIF 는 실제 실행을 녹화했고 LLM 응답 대기 구간만 약 7배 빨리 감았다(녹화 길이 각 약 25s, 읽기 지도 $0.018 · 이름 없는 질문 $0.020, LangSmith 집계). 아래 캡처는 `psf/requests` 를 불러와 한 대화에서 돌린 결과다(2026-10-22, 한 바퀴 $0.23). 칩 하나하나가 인용 검증을 통과한 `파일:줄` 이다.
+GIF 는 실제 실행을 녹화했고 LLM 응답 대기 구간만 약 7배 빨리 감았다(녹화 길이 각 약 25s, 읽기 지도 $0.018 · 이름 없는 질문 $0.020, LangSmith 집계). 이 녹화에서 agent 는 `search_symbols` 를 부르지 않고 `merge_cookies` 이름을 바로 `find_definition` 으로 찾았다(아래 트레이스) — requests 처럼 잘 알려진 레포는 모델이 이름을 이미 안다. `search_symbols` 의 효과는 이름 없는 질문 10개로 따로 쟀다(0/10 → 6/10, 기록 24). 아래 캡처는 `psf/requests` 를 불러와 한 대화에서 돌린 결과다(2026-10-22, 한 바퀴 $0.23). 칩 하나하나가 인용 검증을 통과한 `파일:줄` 이다.
 
 | 읽기 지도 | 따라가기 |
 |---|---|
@@ -48,6 +48,10 @@ GIF 는 실제 실행을 녹화했고 LLM 응답 대기 구간만 약 7배 빨�
 | 비용 | 읽기 지도 레포당 **$0.022**, 따라가기 질문당 **$0.083** (quality) | 5 · 20 |
 
 모든 수치는 `evals/results/` 의 측정 기록이다. n 이 작고 정답 라벨 대부분이 에이전트가 만든 것이라는 한계가 있다. 전체 수치·방법·실패 사례는 [docs/evaluation.md](docs/evaluation.md).
+
+<img src="docs/images/langsmith-experiments.png" width="720" alt="LangSmith reading-guide-gold 데이터셋의 실험 2개: #1(기록 18) citation 1.00 · core p@5 0.68 · entrypoint recall 0.32, #2(기록 20) 1.00 · 0.72 · 0.53">
+
+같은 gold 레포 5개로 돌린 LangSmith Experiment 두 개다. #1 `…-13bfef5b`(기록 18, 랭킹 v2) → #2 `…-d42ebe4b`(기록 20, 진입점 v3): 프롬프트는 그대로 두고 정적 입력만 바꿔 진입점 recall 0.32 → 0.53, 핵심 모듈 p@5 0.68 → 0.72.
 
 ## 아키텍처
 
@@ -124,6 +128,15 @@ flowchart TB
 
 노드 · 상태 · 저장소 · 비용 상한은 [docs/architecture.md](docs/architecture.md).
 
+### LangSmith 트레이스
+
+모든 LLM · 도구 호출은 LangSmith 에 남는다. 아래는 위 화면을 녹화할 때의 실제 트레이스다(프로젝트 `repoute-dev`).
+
+| 읽기 지도 — `Send` 병렬 | 따라가기 — ReAct 도구 호출 | PR Coach — MCP 직접 호출 |
+|---|---|---|
+| <img src="docs/images/langsmith-waterfall-map.png" width="260" alt="LangSmith Waterfall: summarize_module 여러 개가 같은 시점에 병렬 실행되고 이어서 synthesize, validate"> | <img src="docs/images/langsmith-trace-walkthrough.png" width="300" alt="LangSmith 트레이스: classify 뒤 run_ask 안에서 agent 와 tools 가 번갈아 실행, find_definition 결과에 read_code 힌트"> | <img src="docs/images/langsmith-trace-pr.png" width="300" alt="LangSmith 트레이스: fetch_pr 아래 pull_request_read 2회, changed_symbols · impact · test_hints 뒤 explain 에서만 LLM 1회"> |
+| `summarize_module`(fast) 이 모듈 수만큼 같은 시점에 시작하고, 끝나면 `synthesize`(quality) 1회 → `validate`. 10.7s · 21.0K 토큰 · $0.0175 | `classify`(gpt-4o-mini) → `run_ask` 안에서 `agent`(gpt-4o) ⇄ `tools`. `find_definition` 결과가 `파일:줄 → read_code(...)` 힌트를 함께 돌려준다 | `fetch_pr` 아래 `pull_request_read` 2회(get · get_files)를 노드가 정해진 인자로 부르고, LLM 은 마지막 `explain`(gpt-4o-mini) 1회뿐 |
+
 | 영역 | 사용 기술 |
 |---|---|
 | 언어·패키지 | Python 3.11, uv |
@@ -131,7 +144,7 @@ flowchart TB
 | 에이전트 그래프 | LangGraph (`Send` 병렬, `interrupt`/`Command(resume)`, `SqliteSaver` 체크포인터) |
 | 트레이싱·평가 | LangSmith (`evaluate()` Experiment, Feedback) |
 | 정적 분석 | `ast`, `sqlite3`, `networkx` (+ `scipy`) |
-| 임베딩 검색 | `text-embedding-3-small` + SQLite 저장 · numpy 코사인 (벡터 DB 없음) |
+| 임베딩 검색 | `text-embedding-3-small` + SQLite 저장 · numpy 코사인 |
 | GitHub 연동 | `langchain-mcp-adapters` → 원격 github-mcp-server (`x/issues/readonly`, `x/pull_requests/readonly`) |
 | API · 프론트 | FastAPI + SSE · Vite + React + TypeScript |
 | 품질·CI | ruff, pytest, vitest, GitHub Actions |
@@ -226,6 +239,10 @@ sequenceDiagram
     S->>L: rank — 상위 k · 이유 · 난이도 (fast 1회)
     S-->>U: 이슈 + 읽을 모듈 + 코드 위치 (인용은 코드가 붙임)
 ```
+
+<img src="docs/images/langsmith-trace-interrupt.png" width="560" alt="LangSmith 스레드: Turn 5 는 ensure_index · classify · route · run_issues(0.01s) 에서 멈추고, Turn 6 은 입력 resume 'HTTP 쿠키, beginner' 로 run_issues 부터 바로 재개해 fetch_issues · list_issues · match_symbols · rank 를 실행">
+
+같은 스레드의 두 턴이다. Turn 5 는 `run_issues` 가 0.01s 만에 interrupt 로 멈추고, Turn 6 은 입력이 `Command(resume="HTTP 쿠키, beginner")` 라 `ensure_index` · `classify` 없이 `run_issues` 부터 이어서 `list_issues`(MCP) → `match_symbols`(임베딩) → `rank`(gpt-4o-mini 1회) 를 실행한다.
 
 ### 4. PR 리뷰 안내 (pr)
 
