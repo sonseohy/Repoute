@@ -10,6 +10,7 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from repoute.graphs.deps import Deps
 from repoute.graphs.walkthrough import (
     CHECKPOINT_TYPES,
+    MAX_NUDGES,
     MAX_TOOL_CALLS,
     Step,
     WalkthroughAnswer,
@@ -219,3 +220,27 @@ def test_reread_inside_read_range_blocked(index):
     last_tool = [m for m in state["messages"] if isinstance(m, ToolMessage)][-1]
     assert last_tool.content.startswith("이미 읽은 범위입니다 (app/main.py 1~5줄)")
     assert "def run():" not in last_tool.content  # 코드를 다시 보내지 않는다 (재전송 비용)
+
+
+def test_nudge_before_answer_then_read(index):
+    """read_code 없이 바로 답하려 하면 넛지가 들어가고, 그 뒤 읽고 답하면 통과한다 (기록 10)."""
+    chat = [AIMessage(content="바로 답"), _read_main(), AIMessage(content="답 준비")]
+    graph, llm = _run(index, chat, [GOOD])
+    state = ask(graph, "run() 을 부르면?")
+    assert state["nudges"] == 1
+    assert state["validation_errors"] == []
+    assert state["read_ranges"] == [("app/main.py", 1, 5)]
+    nudges = [m for m in state["messages"] if isinstance(m, HumanMessage)]
+    assert nudges[-1].content.startswith("아직 read_code")
+    assert llm.chat_inputs[1][-1].content.startswith("아직 read_code")  # 다음 agent 턴이 받았다
+
+
+def test_nudge_only_once(index):
+    """넛지 뒤에도 안 읽고 답하면 재넛지 없이 finalize 로 가며 읽지 않은 코드 오류가 남는다."""
+    chat = [AIMessage(content="바로 답"), AIMessage(content="또 바로 답")]
+    graph, llm = _run(index, chat, [GOOD] * 3)
+    state = ask(graph, "run() 을 부르면?")
+    assert state["nudges"] == MAX_NUDGES == 1
+    assert len(llm.chat_inputs) == 2  # agent 는 두 번만 불렸다
+    assert any("읽지 않은 코드" in e for e in state["validation_errors"])
+    assert state["retry_count"] == 2  # 재작성해도 읽은 범위가 없으니 그대로 실패로 끝난다

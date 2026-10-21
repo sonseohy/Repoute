@@ -11,7 +11,7 @@ from datetime import date
 from pathlib import Path
 
 from langchain_core.callbacks import UsageMetadataCallbackHandler
-from langchain_core.messages import HumanMessage, ToolMessage
+from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
 
 from repoute.config import get_fast_llm, get_quality_llm, load_settings
 from repoute.graphs.deps import Deps
@@ -55,6 +55,25 @@ def reached(answer, expect: str) -> bool:
     return False
 
 
+def read_code_calls(messages: list) -> int:
+    """실제로 실행된 read_code 호출 수. "이미 읽은 범위" 차단과 "실행 안 함"(상한)은 뺀다."""
+    ids = {
+        c["id"]
+        for m in messages
+        if isinstance(m, AIMessage)
+        for c in m.tool_calls
+        if c["name"] == "read_code"
+    }
+    skipped = ("이미 읽은 범위", "실행 안 함")
+    return sum(
+        1
+        for m in messages
+        if isinstance(m, ToolMessage)
+        and m.tool_call_id in ids
+        and not str(m.content).startswith(skipped)
+    )
+
+
 def run_one(item: dict, agent_model: str, prompt: str, cache_dir) -> dict:
     """질문 하나를 새 상태로 돌리고(체크포인터 없음) 최종 답을 채점해 지표 dict 를 돌려준다."""
     prompts = importlib.import_module(f"repoute.prompts.walkthrough_{prompt}")
@@ -75,6 +94,7 @@ def run_one(item: dict, agent_model: str, prompt: str, cache_dir) -> dict:
             "tool_calls": 0,
             "retry_count": 0,
             "validation_errors": [],
+            "nudges": 0,
         }
         start = time.perf_counter()
         state = graph.invoke(start_state, config=config)
@@ -86,6 +106,7 @@ def run_one(item: dict, agent_model: str, prompt: str, cache_dir) -> dict:
             for m in state["messages"]
             if isinstance(m, ToolMessage) and str(m.content).startswith("이미 읽은 범위")
         ]
+        final_errors = len(state.get("validation_errors") or [])
         tokens = {
             m: {"input_tokens": u["input_tokens"], "output_tokens": u["output_tokens"]}
             for m, u in cb.usage_metadata.items()
@@ -97,6 +118,11 @@ def run_one(item: dict, agent_model: str, prompt: str, cache_dir) -> dict:
             "tool_calls": state.get("tool_calls", 0),
             "retries": state.get("retry_count", 0),
             "blocked": len(blocked),
+            "read_code_calls": read_code_calls(state["messages"]),
+            "nudges": state.get("nudges", 0),
+            "final_errors": final_errors,
+            # 그래프 검증(존재 + 읽은 범위)을 최종적으로 통과했고 인용이 하나 이상 있는가
+            "strict_pass": final_errors == 0 and len(refs) > 0,
             "steps": len(answer.steps),
             "citations": len(refs),
             "validity": citation_validity(refs, index.db, root),
@@ -159,6 +185,10 @@ def render_markdown(rows: list[dict], title: str = DEFAULT_TITLE) -> str:
         f"({s.provider}), temperature 0. 프롬프트 {versions}.",
         "- **유효·구체·def줄**: 최종 답 인용을 `citation_validity`·`citation_specificity`·"
         "`citation_at_def` 로 사후 채점.",
+        "- **엄격**: 최종 `validation_errors` 가 0개이고 인용이 1개 이상(그래프 검증 = 존재 + "
+        "read_code 로 읽은 범위 안). 사후 유효성은 파일:줄 존재만 보므로 "
+        "엄격 통과를 주 지표로 본다.",
+        '- **읽기**: 실제 실행된 read_code 호출 수("이미 읽은 범위" 차단·상한 미실행 제외).',
         "- **도달**: `expect_reach`(사람이 코드를 보고 정한 기대 도달 심볼)가 어떤 단계의 "
         "제목·설명 또는 인용 심볼 문자열에 들어 있는지 보는 **자동 근사치**. 사람 판정 아님.",
         '- **차단**: "이미 읽은 범위" 로 막힌 read_code 수. **도구**: 실행된 도구 호출 수.',
@@ -167,13 +197,15 @@ def render_markdown(rows: list[dict], title: str = DEFAULT_TITLE) -> str:
         "",
         "## 질문별 결과",
         "",
-        "| id | 질문 | 도구 | 차단 | 단계 | 인용 | 유효 | 구체 | def줄 | 도달 | 비용 | 시간 |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| id | 질문 | 도구 | 읽기 | 차단 | 단계 | 인용 | 엄격 | 유효 | 구체 | def줄 | 도달 "
+        "| 비용 | 시간 |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in ok:
         lines.append(
-            f"| {r['id']} | {r['question'][:40]} | {r['tool_calls']} | {r['blocked']} "
-            f"| {r['steps']} | {r['citations']} | {_pct(r['validity'])} "
+            f"| {r['id']} | {r['question'][:40]} | {r['tool_calls']} | {r['read_code_calls']} "
+            f"| {r['blocked']} | {r['steps']} | {r['citations']} "
+            f"| {'O' if r['strict_pass'] else 'X'} | {_pct(r['validity'])} "
             f"| {_pct(r['specificity'])} | {_pct(r['at_def'])} | {'O' if r['reached'] else 'X'} "
             f"| {_money(r['cost'])} | {r['elapsed']:.1f}s |"
         )
@@ -190,6 +222,10 @@ def render_markdown(rows: list[dict], title: str = DEFAULT_TITLE) -> str:
         lines += ["| n | 유효 | 구체 | def줄 | 도달 | 도구 | 비용 평균 | 시간 | 비용 합 |"]
         lines += ["|---|---|---|---|---|---|---|---|---|"]
         lines.append(f"| n={len(ok)} " + _summary(ok) + f" {_money(total)} |")
+        strict = sum(r["strict_pass"] for r in ok)
+        unread = sum(r["read_code_calls"] == 0 for r in ok)
+        lines += ["", f"- **엄격 통과 비율**: {strict}/{len(ok)} ({strict / len(ok):.0%})"]
+        lines += [f"- **read_code 0회 건수**: {unread}/{len(ok)}"]
     failed = [r for r in rows if "error" in r]
     if failed:
         lines += ["", "## 실패", ""] + [f"- {r['id']} ({r['repo']}): {r['error']}" for r in failed]
@@ -217,7 +253,8 @@ def main() -> None:
         try:
             row = run_one(item, args.agent_model, args.prompt, args.cache_dir)
             print(
-                f"[ok] {row['id']}: 도구 {row['tool_calls']}, 유효 {row['validity']:.0%}, "
+                f"[ok] {row['id']}: 도구 {row['tool_calls']}, 읽기 {row['read_code_calls']}, "
+                f"엄격 {'O' if row['strict_pass'] else 'X'}, 유효 {row['validity']:.0%}, "
                 f"도달 {'O' if row['reached'] else 'X'}, {_money(row['cost'])}, "
                 f"{row['elapsed']:.1f}s"
             )

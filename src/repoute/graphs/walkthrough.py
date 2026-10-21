@@ -17,9 +17,15 @@ from repoute.validation.citations import CodeRef, validate_citations
 
 MAX_TOOL_CALLS = 15  # 도구 호출 상한 (wave07 재계획 루프 상한)
 MAX_RETRIES = 2  # 인용 검증 실패 시 재작성 상한
-# 슈퍼스텝 상한을 명시: agent 1 + (tools·agent) 15쌍 + (finalize·validate) 3쌍 + 여유 5.
+MAX_NUDGES = 1  # read_code 없이 답하려 할 때 되돌려 보내는 횟수 상한 (기록 10)
+# 슈퍼스텝 상한을 명시: agent 1 + (tools·agent) 15쌍 + (nudge·agent) 1쌍
+# + (finalize·validate) 3쌍 + 여유 5.
 # langgraph 1.2 기본값은 매우 크지만, 이 그래프가 최대 몇 스텝인지 코드에 적어 두는 쪽을 택했다.
-RECURSION_LIMIT = 1 + 2 * MAX_TOOL_CALLS + 2 * (MAX_RETRIES + 1) + 5
+RECURSION_LIMIT = 1 + 2 * MAX_TOOL_CALLS + 2 * MAX_NUDGES + 2 * (MAX_RETRIES + 1) + 5
+NUDGE = (
+    "아직 read_code 로 코드를 읽지 않았습니다. 설명할 지점을 read_code 로 읽은 뒤 답하세요. "
+    "find_definition 결과 줄 끝의 read_code(...) 를 그대로 호출하면 됩니다."
+)
 # 체크포인터가 상태의 답(pydantic)을 되살릴 때 허용할 타입 (langgraph-checkpoint 4.x: 미등록은 경고)
 CHECKPOINT_TYPES = [("repoute.graphs.walkthrough", "WalkthroughAnswer")]
 
@@ -48,6 +54,7 @@ class WalkState(TypedDict, total=False):
     answer: WalkthroughAnswer | None
     validation_errors: list[str]
     retry_count: int
+    nudges: int  # 읽기 전 답 금지 넛지를 넣은 횟수 (상한 MAX_NUDGES)
 
 
 def _spans(ranges: list, file: str) -> list[tuple[int, int]]:
@@ -136,11 +143,32 @@ def tools_node(state: WalkState, tools: list) -> dict:
     return {"messages": results, "tool_calls": used, "read_ranges": ranges}
 
 
+def nudge(state: WalkState) -> dict:
+    """read_code 없이 답하려는 agent 에게 먼저 코드를 읽으라고 한 번 되돌려 보낸다 (기록 10).
+
+    읽은 범위가 비면 어떤 인용도 "읽지 않은 코드" 로 거부돼 재작성이 소용없다.
+    """
+    return {"messages": [HumanMessage(NUDGE)], "nudges": state.get("nudges", 0) + 1}
+
+
 def route_after_agent(state: WalkState) -> str:
-    """도구 호출이 있고 상한 전이면 tools, 아니면 답 작성(finalize)."""
+    """도구 호출이 있고 상한 전이면 tools, 읽지 않고 답하려 하면 nudge, 아니면 finalize.
+
+    넛지는 "상한 전에 답하려 할 때" 만 작동한다. 도구 상한에 도달했는데 읽은 범위가 비어 있으면
+    넛지도, 인용 없는 답 허용도 하지 않는다(인용 없는 답은 금지 원칙). 그 경우 validate 에
+    "인용 없음/읽지 않은 코드" 오류가 남고 CLI 가 [검증 실패] 를 표시한다.
+    """
     last = state["messages"][-1]
-    if getattr(last, "tool_calls", None) and state.get("tool_calls", 0) < MAX_TOOL_CALLS:
+    under_limit = state.get("tool_calls", 0) < MAX_TOOL_CALLS
+    if getattr(last, "tool_calls", None) and under_limit:
         return "tools"
+    if (
+        not getattr(last, "tool_calls", None)
+        and not state.get("read_ranges")
+        and state.get("nudges", 0) < MAX_NUDGES
+        and under_limit
+    ):
+        return "nudge"
     return "finalize"
 
 
@@ -203,7 +231,7 @@ def build_walkthrough_graph(
     checkpointer=None,
     agent_model: str = "quality",
 ):
-    """START → agent ⇄ tools → finalize → validate → (finalize | END).
+    """START → agent ⇄ (tools | nudge) → finalize → validate → (finalize | END).
 
     checkpointer 를 주면 같은 thread_id 로 대화를 이어 갈 수 있다 (wave12).
     agent_model("fast" | "quality") 은 agent 노드만 바꾼다. finalize 는 항상 quality.
@@ -213,18 +241,20 @@ def build_walkthrough_graph(
     agent_node = partial(agent, deps=deps, tools=tools, prompts=prompts, agent_model=agent_model)
     builder.add_node("agent", agent_node)
     builder.add_node("tools", partial(tools_node, tools=tools))
+    builder.add_node("nudge", nudge)
     builder.add_node("finalize", partial(finalize, deps=deps, prompts=prompts))
     builder.add_node("validate", partial(validate, deps=deps))
     builder.add_edge(START, "agent")
-    builder.add_conditional_edges("agent", route_after_agent, ["tools", "finalize"])
+    builder.add_conditional_edges("agent", route_after_agent, ["tools", "nudge", "finalize"])
     builder.add_edge("tools", "agent")
+    builder.add_edge("nudge", "agent")
     builder.add_edge("finalize", "validate")
     builder.add_conditional_edges("validate", after_validate, ["finalize", END])
     return builder.compile(checkpointer=checkpointer)
 
 
 def ask(graph, question: str, thread_id: str = "default") -> WalkState:
-    """질문 하나를 실행한다. 호출 수는 질문마다 새로 세고, 읽은 범위는 같은 thread 에서 누적된다.
+    """질문 하나를 실행한다. 호출·넛지 수는 질문마다 새로 세고, 읽은 범위는 thread 에서 누적된다.
 
     read_ranges 를 여기서 초기화하지 않아야 후속 질문이 앞에서 읽은 코드를 인용할 수 있다
     (체크포인터가 있을 때). 체크포인터가 없으면 빈 상태에서 시작한다.
@@ -234,6 +264,7 @@ def ask(graph, question: str, thread_id: str = "default") -> WalkState:
         "tool_calls": 0,
         "retry_count": 0,
         "validation_errors": [],
+        "nudges": 0,
     }
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": RECURSION_LIMIT}
     return graph.invoke(start, config=config)

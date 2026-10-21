@@ -7,6 +7,8 @@ import importlib.util
 import json
 from pathlib import Path
 
+from langchain_core.messages import AIMessage, ToolMessage
+
 from repoute.graphs.walkthrough import Step, WalkthroughAnswer
 from repoute.validation.citations import CodeRef
 
@@ -26,8 +28,8 @@ def _load_script():
 batch = _load_script()
 
 
-def _row(qid: str, repo: str, reached: bool, validity: float) -> dict:
-    """run_one 이 돌려주는 모양의 가짜 결과 한 줄."""
+def _row(qid: str, repo: str, reached: bool, validity: float, reads: int = 2) -> dict:
+    """run_one 이 돌려주는 모양의 가짜 결과 한 줄. reads=0 이면 엄격 통과 실패로 둔다."""
     return {
         "id": qid,
         "repo": repo,
@@ -38,6 +40,10 @@ def _row(qid: str, repo: str, reached: bool, validity: float) -> dict:
         "tool_calls": 10,
         "retries": 0,
         "blocked": 1,
+        "read_code_calls": reads,
+        "nudges": 0 if reads else 1,
+        "final_errors": 0 if reads else 4,
+        "strict_pass": bool(reads),
         "steps": 4,
         "citations": 4,
         "validity": validity,
@@ -55,7 +61,7 @@ ROWS = [
     _row("x-01", "a/x", True, 1.0),
     _row("x-02", "a/x", False, 0.5),
     _row("y-01", "b/y", True, 1.0),
-    _row("y-02", "b/y", True, 1.0),
+    _row("y-02", "b/y", True, 1.0, reads=0),
 ]
 
 
@@ -78,18 +84,55 @@ def test_dataset_shape():
 
 
 def test_render_markdown_has_sections():
-    """제목·질문별 표 헤더·레포별 평균·전체 요약(n=4, 도달 3/4)이 들어간다."""
+    """제목·질문별 표 헤더·레포별 평균·전체 요약(n=4, 도달 3/4)이 들어간다.
+
+    표 헤더에 "읽기"·"엄격" 열이 추가돼 헤더 문자열 기대값을 바꿨다 (기록 10 후속).
+    """
     text = batch.render_markdown(ROWS, "10. 테스트 배치")
     assert text.startswith("# 10. 테스트 배치 (Phase 3, ")
     assert (
-        "| id | 질문 | 도구 | 차단 | 단계 | 인용 | 유효 | 구체 | def줄 | 도달 | 비용 | 시간 |"
-        in text
+        "| id | 질문 | 도구 | 읽기 | 차단 | 단계 | 인용 | 엄격 | 유효 | 구체 | def줄 | 도달 "
+        "| 비용 | 시간 |" in text
     )
     assert "| a/x | n=2 | 75% | 75% | 50% | 1/2 (50%) |" in text
     assert "## 전체 요약" in text
     assert "| n=4 | 88% | 88% | 50% | 3/4 (75%) | 10.0 | $0.0200 | 10.0s | $0.0800 |" in text
     assert "자동 근사치" in text and "wt-batch" in text
     assert "## 관찰" in text
+
+
+def test_render_markdown_strict_and_unread():
+    """질문별 표에 읽기 수·엄격 O/X 가, 전체 요약에 엄격 통과 비율과 read_code 0회 건수가 찍힌다."""
+    text = batch.render_markdown(ROWS)
+    assert (
+        "| y-01 | requests.get()을 호출하면 내부에서 무슨 일이 일어나? | 10 | 2 | 1 | 4 | 4 | O |"
+        in text
+    )
+    assert (
+        "| y-02 | requests.get()을 호출하면 내부에서 무슨 일이 일어나? | 10 | 0 | 1 | 4 | 4 | X |"
+        in text
+    )
+    assert "- **엄격 통과 비율**: 3/4 (75%)" in text
+    assert "- **read_code 0회 건수**: 1/4" in text
+    assert "엄격 통과를 주 지표로 본다" in text
+
+
+def test_read_code_calls_skips_blocked_and_unrun():
+    """실행된 read_code 만 센다: 차단("이미 읽은 범위")·상한 미실행·다른 도구 응답은 뺀다."""
+    calls = [
+        {"name": "read_code", "args": {}, "id": "r1"},
+        {"name": "read_code", "args": {}, "id": "r2"},
+        {"name": "read_code", "args": {}, "id": "r3"},
+        {"name": "find_definition", "args": {}, "id": "f1"},
+    ]
+    messages = [
+        AIMessage(content="", tool_calls=calls),
+        ToolMessage("1 def run():", tool_call_id="r1"),
+        ToolMessage("이미 읽은 범위입니다 (a.py 1~5줄).", tool_call_id="r2"),
+        ToolMessage("실행 안 함: 상한 초과·없는 도구", tool_call_id="r3"),
+        ToolMessage("a.py:1", tool_call_id="f1"),
+    ]
+    assert batch.read_code_calls(messages) == 1
 
 
 def test_render_markdown_lists_failures():
