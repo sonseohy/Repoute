@@ -18,6 +18,7 @@ from repoute.validation.citations import CodeRef, validate_citations
 MAX_TOOL_CALLS = 15  # 도구 호출 상한 (wave07 재계획 루프 상한)
 MAX_RETRIES = 2  # 인용 검증 실패 시 재작성 상한
 MAX_NUDGES = 1  # read_code 없이 답하려 할 때 되돌려 보내는 횟수 상한 (기록 10)
+MAX_EXPLORE_WITHOUT_READ = 6  # 읽기 없이 허용하는 탐색 호출 수. 넘으면 find_* 를 막는다 (기록 11)
 # 슈퍼스텝 상한을 명시: agent 1 + (tools·agent) 15쌍 + (nudge·agent) 1쌍
 # + (finalize·validate) 3쌍 + 여유 5.
 # langgraph 1.2 기본값은 매우 크지만, 이 그래프가 최대 몇 스텝인지 코드에 적어 두는 쪽을 택했다.
@@ -25,6 +26,10 @@ RECURSION_LIMIT = 1 + 2 * MAX_TOOL_CALLS + 2 * MAX_NUDGES + 2 * (MAX_RETRIES + 1
 NUDGE = (
     "아직 read_code 로 코드를 읽지 않았습니다. 설명할 지점을 read_code 로 읽은 뒤 답하세요. "
     "find_definition 결과 줄 끝의 read_code(...) 를 그대로 호출하면 됩니다."
+)
+EXPLORE_BLOCK = (
+    "읽기 없이 탐색만 {used}회 했습니다. 이제 read_code 로 코드를 읽으세요. "
+    "직전 find_definition 결과 줄 끝의 read_code(...) 를 그대로 호출하면 됩니다."
 )
 # 체크포인터가 상태의 답(pydantic)을 되살릴 때 허용할 타입 (langgraph-checkpoint 4.x: 미등록은 경고)
 CHECKPOINT_TYPES = [("repoute.graphs.walkthrough", "WalkthroughAnswer")]
@@ -55,6 +60,7 @@ class WalkState(TypedDict, total=False):
     validation_errors: list[str]
     retry_count: int
     nudges: int  # 읽기 전 답 금지 넛지를 넣은 횟수 (상한 MAX_NUDGES)
+    explore_blocked: int  # 읽기 없는 탐색이라 실행하지 않은 도구 호출 수 (배치 지표)
 
 
 def _spans(ranges: list, file: str) -> list[tuple[int, int]]:
@@ -116,10 +122,18 @@ def tools_node(state: WalkState, tools: list) -> dict:
     ToolNode 는 도구를 스레드 풀에서 돌려 SQLite 스레드 오류가 난다 (troubleshooting 04).
     그래서 호출 스레드에서 하나씩 실행한다. 상한을 넘는 호출은 실행하지 않고 그렇다고 답한다.
     이미 읽은 범위 안을 다시 읽는 read_code 는 실행도, 호출 수 집계도 하지 않는다 (기록 08 관찰 3).
+
+    탐색 상한: 읽은 범위가 빈 채로 MAX_EXPLORE_WITHOUT_READ 회를 쓴 뒤 read_code 가 아닌 호출은
+    실행하지 않고 "read_code 로 읽으라" 를 돌려준다. 상한 전에 반드시 발동하는 과정 강제
+    (troubleshooting 20): 넛지는 답하려 할 때만 작동해 탐색만 하다 상한에 걸리는 실행을 못 잡는다.
+    거부도 호출 수를 소모해서, 계속 탐색만 하면 무한 루프 없이 MAX_TOOL_CALLS 에서 끝난다.
+    읽은 범위는 호출을 처리하면서 갱신하므로, 같은 메시지에서 read_code 가 먼저 성공하면
+    뒤따르는 find_* 는 실행된다.
     """
     by_name = {t.name: t for t in tools}
     used = state.get("tool_calls", 0)
     ranges = list(state.get("read_ranges", []))
+    explore_blocked = state.get("explore_blocked", 0)
     results = []
     for call in state["messages"][-1].tool_calls:
         tool, call_id = by_name.get(call["name"]), call["id"]
@@ -132,6 +146,11 @@ def tools_node(state: WalkState, tools: list) -> dict:
         if used >= MAX_TOOL_CALLS or tool is None:
             results.append(ToolMessage("실행 안 함: 상한 초과·없는 도구", tool_call_id=call_id))
             continue
+        if not ranges and used >= MAX_EXPLORE_WITHOUT_READ and call["name"] != "read_code":
+            results.append(ToolMessage(EXPLORE_BLOCK.format(used=used), tool_call_id=call_id))
+            used += 1  # 예산은 소모한다: 거부만 반복해도 상한에서 끝난다
+            explore_blocked += 1
+            continue
         used += 1
         try:
             results.append(tool.invoke(call))  # ToolCall 을 넣으면 ToolMessage 가 나온다
@@ -140,7 +159,12 @@ def tools_node(state: WalkState, tools: list) -> dict:
             continue
         if call["name"] == "read_code":  # read_code 와 같은 규칙으로 실제 읽힌 범위를 남긴다
             ranges.append(_read_range(call["args"]))
-    return {"messages": results, "tool_calls": used, "read_ranges": ranges}
+    return {
+        "messages": results,
+        "tool_calls": used,
+        "read_ranges": ranges,
+        "explore_blocked": explore_blocked,
+    }
 
 
 def nudge(state: WalkState) -> dict:
@@ -265,6 +289,7 @@ def ask(graph, question: str, thread_id: str = "default") -> WalkState:
         "retry_count": 0,
         "validation_errors": [],
         "nudges": 0,
+        "explore_blocked": 0,
     }
     config = {"configurable": {"thread_id": thread_id}, "recursion_limit": RECURSION_LIMIT}
     return graph.invoke(start, config=config)

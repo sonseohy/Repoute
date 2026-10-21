@@ -42,6 +42,7 @@ def _row(qid: str, repo: str, reached: bool, validity: float, reads: int = 2) ->
         "blocked": 1,
         "read_code_calls": reads,
         "nudges": 0 if reads else 1,
+        "explore_blocked": 0 if reads else 3,
         "final_errors": 0 if reads else 4,
         "strict_pass": bool(reads),
         "steps": 4,
@@ -56,6 +57,8 @@ def _row(qid: str, repo: str, reached: bool, validity: float, reads: int = 2) ->
         "elapsed": 10.0,
     }
 
+
+Q = "requests.get()을 호출하면 내부에서 무슨 일이 일어나?"  # _row 의 질문 (표 행 기대값에 쓴다)
 
 ROWS = [
     _row("x-01", "a/x", True, 1.0),
@@ -86,13 +89,13 @@ def test_dataset_shape():
 def test_render_markdown_has_sections():
     """제목·질문별 표 헤더·레포별 평균·전체 요약(n=4, 도달 3/4)이 들어간다.
 
-    표 헤더에 "읽기"·"엄격" 열이 추가돼 헤더 문자열 기대값을 바꿨다 (기록 10 후속).
+    표 헤더에 "읽기"·"엄격"(기록 10 후속), "탐색차단"(기록 11 후속) 열이 추가돼 기대값을 바꿨다.
     """
     text = batch.render_markdown(ROWS, "10. 테스트 배치")
     assert text.startswith("# 10. 테스트 배치 (Phase 3, ")
     assert (
-        "| id | 질문 | 도구 | 읽기 | 차단 | 단계 | 인용 | 엄격 | 유효 | 구체 | def줄 | 도달 "
-        "| 비용 | 시간 |" in text
+        "| id | 질문 | 도구 | 읽기 | 차단 | 탐색차단 | 단계 | 인용 | 엄격 | 유효 | 구체 | def줄 "
+        "| 도달 | 비용 | 시간 |" in text
     )
     assert "| a/x | n=2 | 75% | 75% | 50% | 1/2 (50%) |" in text
     assert "## 전체 요약" in text
@@ -102,19 +105,25 @@ def test_render_markdown_has_sections():
 
 
 def test_render_markdown_strict_and_unread():
-    """질문별 표에 읽기 수·엄격 O/X 가, 전체 요약에 엄격 통과 비율과 read_code 0회 건수가 찍힌다."""
+    """질문별 표에 읽기 수·엄격 O/X 가, 전체 요약에 엄격 통과 비율과 read_code 0회 건수가 찍힌다.
+
+    "탐색차단" 열이 "차단" 뒤에 들어가 행 기대값에 그 칸(0)을 넣었다 (기록 11 후속).
+    """
     text = batch.render_markdown(ROWS)
-    assert (
-        "| y-01 | requests.get()을 호출하면 내부에서 무슨 일이 일어나? | 10 | 2 | 1 | 4 | 4 | O |"
-        in text
-    )
-    assert (
-        "| y-02 | requests.get()을 호출하면 내부에서 무슨 일이 일어나? | 10 | 0 | 1 | 4 | 4 | X |"
-        in text
-    )
+    assert f"| y-01 | {Q} | 10 | 2 | 1 | 0 | 4 | 4 | O |" in text
+    assert f"| y-02 | {Q} | 10 | 0 | 1 | 3 | 4 | 4 | X |" in text
     assert "- **엄격 통과 비율**: 3/4 (75%)" in text
     assert "- **read_code 0회 건수**: 1/4" in text
     assert "엄격 통과를 주 지표로 본다" in text
+
+
+def test_render_markdown_explore_blocked():
+    """질문별 표의 "탐색차단" 칸에 거부 수가, 요약에 탐색 차단 발동 건수(1/4)가 찍힌다."""
+    text = batch.render_markdown(ROWS)
+    assert "| 차단 | 탐색차단 |" in text
+    assert f"| y-02 | {Q} | 10 | 0 | 1 | 3 |" in text
+    assert "- **탐색 차단 발동 건수**: 1/4" in text
+    assert "**탐색차단**" in text  # 방법 절에 정의가 있다
 
 
 def test_read_code_calls_skips_blocked_and_unrun():

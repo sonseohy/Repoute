@@ -10,6 +10,7 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from repoute.graphs.deps import Deps
 from repoute.graphs.walkthrough import (
     CHECKPOINT_TYPES,
+    MAX_EXPLORE_WITHOUT_READ,
     MAX_NUDGES,
     MAX_TOOL_CALLS,
     Step,
@@ -244,3 +245,36 @@ def test_nudge_only_once(index):
     assert len(llm.chat_inputs) == 2  # agent 는 두 번만 불렸다
     assert any("읽지 않은 코드" in e for e in state["validation_errors"])
     assert state["retry_count"] == 2  # 재작성해도 읽은 범위가 없으니 그대로 실패로 끝난다
+
+
+def test_explore_without_read_blocked_then_read(index):
+    """읽기 없이 find_definition 만 8번이면 7·8번째는 실행 안 하고 "읽으라" 를 돌려준다 (기록 11).
+
+    거부도 호출 수를 소모하고, 그 뒤 read_code 는 실행되며 이후 find_* 도 다시 실행된다.
+    """
+    finds = [_call("find_definition", {"name": "run"}, n) for n in range(10, 18)]
+    after = _call("find_definition", {"name": "run"}, 20)
+    chat = [*finds, _read_main(), after, AIMessage(content="답 준비")]
+    graph, _ = _run(index, chat, [GOOD])
+    state = ask(graph, "run() 을 부르면?")
+    tool_texts = [m.content for m in state["messages"] if isinstance(m, ToolMessage)]
+    assert MAX_EXPLORE_WITHOUT_READ == 6
+    assert all("app/main.py:4-5" in t for t in tool_texts[:6])  # 6번째까지는 실제 실행
+    assert tool_texts[6].startswith("읽기 없이 탐색만 6회 했습니다")
+    assert tool_texts[7].startswith("읽기 없이 탐색만 7회 했습니다")
+    assert state["explore_blocked"] == 2
+    assert state["tool_calls"] == 10  # 8 + read_code 1 + find 1: 거부도 예산을 썼다
+    assert "def run():" in tool_texts[8]  # read_code 는 차단되지 않고 실행됐다
+    assert "app/main.py:4-5" in tool_texts[9]  # 읽은 뒤의 find_definition 은 다시 실행된다
+    assert state["validation_errors"] == []
+
+
+def test_explore_not_blocked_after_read(index):
+    """이미 읽은 범위가 있으면 find_* 를 몇 번 불러도 탐색 차단은 발동하지 않는다."""
+    finds = [_call("find_definition", {"name": "run"}, n) for n in range(10, 20)]
+    graph, _ = _run(index, [_read_main(), *finds, AIMessage(content="답")], [GOOD])
+    state = ask(graph, "run() 을 부르면?")
+    tool_texts = [m.content for m in state["messages"] if isinstance(m, ToolMessage)]
+    assert state["explore_blocked"] == 0
+    assert state["tool_calls"] == 11
+    assert all("app/main.py:4-5" in t for t in tool_texts[1:])

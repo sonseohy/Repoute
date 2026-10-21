@@ -95,6 +95,7 @@ def run_one(item: dict, agent_model: str, prompt: str, cache_dir) -> dict:
             "retry_count": 0,
             "validation_errors": [],
             "nudges": 0,
+            "explore_blocked": 0,
         }
         start = time.perf_counter()
         state = graph.invoke(start_state, config=config)
@@ -120,6 +121,7 @@ def run_one(item: dict, agent_model: str, prompt: str, cache_dir) -> dict:
             "blocked": len(blocked),
             "read_code_calls": read_code_calls(state["messages"]),
             "nudges": state.get("nudges", 0),
+            "explore_blocked": state.get("explore_blocked", 0),
             "final_errors": final_errors,
             # 그래프 검증(존재 + 읽은 범위)을 최종적으로 통과했고 인용이 하나 이상 있는가
             "strict_pass": final_errors == 0 and len(refs) > 0,
@@ -192,19 +194,20 @@ def render_markdown(rows: list[dict], title: str = DEFAULT_TITLE) -> str:
         "- **도달**: `expect_reach`(사람이 코드를 보고 정한 기대 도달 심볼)가 어떤 단계의 "
         "제목·설명 또는 인용 심볼 문자열에 들어 있는지 보는 **자동 근사치**. 사람 판정 아님.",
         '- **차단**: "이미 읽은 범위" 로 막힌 read_code 수. **도구**: 실행된 도구 호출 수.',
+        "- **탐색차단**: 읽기 없이 탐색만 6회 한 뒤 실행하지 않은 find_* 수(예산은 소모).",
         "- **비용**: `UsageMetadataCallbackHandler` 토큰 × 스크립트 `PRICES` 단가 추정치. "
         "LangSmith 태그 `wt-batch` 로 교차 확인. **시간**: invoke 벽시계(인덱싱 제외).",
         "",
         "## 질문별 결과",
         "",
-        "| id | 질문 | 도구 | 읽기 | 차단 | 단계 | 인용 | 엄격 | 유효 | 구체 | def줄 | 도달 "
-        "| 비용 | 시간 |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| id | 질문 | 도구 | 읽기 | 차단 | 탐색차단 | 단계 | 인용 | 엄격 | 유효 | 구체 | def줄 "
+        "| 도달 | 비용 | 시간 |",
+        "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for r in ok:
         lines.append(
             f"| {r['id']} | {r['question'][:40]} | {r['tool_calls']} | {r['read_code_calls']} "
-            f"| {r['blocked']} | {r['steps']} | {r['citations']} "
+            f"| {r['blocked']} | {r.get('explore_blocked', '—')} | {r['steps']} | {r['citations']} "
             f"| {'O' if r['strict_pass'] else 'X'} | {_pct(r['validity'])} "
             f"| {_pct(r['specificity'])} | {_pct(r['at_def'])} | {'O' if r['reached'] else 'X'} "
             f"| {_money(r['cost'])} | {r['elapsed']:.1f}s |"
@@ -224,8 +227,10 @@ def render_markdown(rows: list[dict], title: str = DEFAULT_TITLE) -> str:
         lines.append(f"| n={len(ok)} " + _summary(ok) + f" {_money(total)} |")
         strict = sum(r["strict_pass"] for r in ok)
         unread = sum(r["read_code_calls"] == 0 for r in ok)
+        explored = sum(r.get("explore_blocked", 0) > 0 for r in ok)
         lines += ["", f"- **엄격 통과 비율**: {strict}/{len(ok)} ({strict / len(ok):.0%})"]
         lines += [f"- **read_code 0회 건수**: {unread}/{len(ok)}"]
+        lines += [f"- **탐색 차단 발동 건수**: {explored}/{len(ok)}"]
     failed = [r for r in rows if "error" in r]
     if failed:
         lines += ["", "## 실패", ""] + [f"- {r['id']} ({r['repo']}): {r['error']}" for r in failed]
