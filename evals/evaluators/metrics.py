@@ -167,3 +167,26 @@ def issue_symbol_hit(predicted_symbols: list[str], gold_symbols: list[str]) -> b
     """
     gold_tails = {_tail(g) for g in gold_symbols}
     return any(_tail(p) in gold_tails for p in predicted_symbols)
+
+
+def impact_recall(predicted_symbols: list[str], gold_symbols: list[str]) -> float:
+    """PR Coach: 정답 영향 심볼 중 예측에 들어 있는 비율 (0.0~1.0). 분모는 정답 수.
+
+    끝 이름으로 비교한다("Session.send" 정답에 "send" 예측도 찾은 것으로 친다).
+    정답의 중복은 한 번만 센다. gold 가 비면 0.0.
+    """
+    gold_tails = {_tail(g) for g in gold_symbols}
+    if not gold_tails:
+        return 0.0
+    pred_tails = {_tail(p) for p in predicted_symbols}
+    return len(gold_tails & pred_tails) / len(gold_tails)
+
+
+def test_file_hit(predicted_files: list[str], gold_files: list[str]) -> bool:
+    """PR Coach: 예측 테스트 파일 중 하나라도 정답과 파일명(경로 끝)이 같은가.
+
+    "tests/test_models.py" 정답에 "test_models.py" 나 "repo/tests/test_models.py" 예측도 맞은
+    것으로 친다. 디렉터리 차이(체크아웃 위치·접두어)를 흡수하려는 느슨한 비교다.
+    """
+    gold_names = {g.replace("\\", "/").rsplit("/", 1)[-1] for g in gold_files}
+    return any(p.replace("\\", "/").rsplit("/", 1)[-1] in gold_names for p in predicted_files)

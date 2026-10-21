@@ -95,6 +95,7 @@ def _run_graph(
     Phase 6: thread 가 질문(interrupt)에서 멈춰 있으면 turn_input 이 이 메시지를 답으로 넘기는
     Command(resume) 를 만든다. 이번 실행이 질문에서 멈추면 "__interrupt__" 업데이트를
     ProfileRequested 이벤트와 result.ask_user=true·reply=질문 으로 바꾼다.
+    Phase 7: pr 의도의 결과는 result.pr_review(PRReview), PR 도구도 이슈 도구처럼 재사용한다.
     """
     deps = SupervisorDeps(
         base.fast_llm,
@@ -105,6 +106,7 @@ def _run_graph(
         embedding_model=base.embedding_model,
         github_token=base.github_token,
         issue_tools=base.issue_tools,  # 앞 요청이 불러 둔 GitHub 도구를 다시 쓴다
+        pr_tools=base.pr_tools,  # PR 읽기 도구도 같은 방식 (Phase 7)
     )
     state: dict = {}
     config = {"configurable": {"thread_id": thread_id}}
@@ -124,6 +126,8 @@ def _run_graph(
                 state["intent"] = graph.get_state(config).values.get("intent")
         if deps.issue_tools is not None:  # 처음 불러온 도구는 다음 요청도 쓰게 base 에 남긴다
             base.issue_tools = deps.issue_tools
+        if deps.pr_tools is not None:
+            base.pr_tools = deps.pr_tools
         run_id = str(cb.traced_runs[0].id) if cb.traced_runs and tracing_is_enabled() else None
         result = {
             "intent": _dump(state.get("intent")),
@@ -132,6 +136,7 @@ def _run_graph(
             "next": state.get("next"),  # next_step 의 dict 그대로 (pydantic 아님)
             "reply": state.get("reply"),
             "issues": _dump(state.get("issues")),  # IssueMatches (Phase 6)
+            "pr_review": _dump(state.get("pr_review")),  # PRReview (Phase 7)
             "ask_user": bool(state.get("ask_user")),  # true 면 reply 가 질문, 다음 메시지가 답
             "validation_errors": state.get("validation_errors") or [],
             "thread_id": thread_id,

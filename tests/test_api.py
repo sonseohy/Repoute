@@ -314,3 +314,41 @@ def test_issues_ask_profile_then_resume(tmp_path, repo_url, monkeypatch, issue_m
     assert done["issues"]["matches"][0]["number"] == 34 and done["issues"]["considered"] == 5
     assert done["intent"]["kind"] == "issues"
     assert second[-1][0] == "done"
+
+
+def test_pr_review_in_result(tmp_path, repo_url, monkeypatch, pr_mod):
+    """PR 리뷰: PR URL 메시지는 게이트로 pr 가 되고, SSE result.pr_review 에 리뷰가 dict 로 담긴다.
+
+    PR 도구 로드·PR Coach 는 가짜 (GitHub·LLM 호출 없음). 다른 결과 칸(issues·answer)은 None.
+    """
+    calls = []
+
+    def fake_coach(deps, repo_url, number):
+        calls.append((repo_url, number))
+        return pr_mod.PRReview(
+            repo="owner/name",
+            number=number,
+            title="helper 반환값 수정",
+            url=f"https://github.com/owner/name/pull/{number}",
+            summary="helper 가 2 를 돌려주게 바꿨다",
+            changed_symbols=[pr_mod.SymbolRef(name="helper", file="app/util.py", line=1)],
+            impact=[pr_mod.ImpactRef(name="run", file="app/main.py", line=4)],
+            test_files=[],
+            check_points=[pr_mod.CheckPoint(text="run 의 반환값이 바뀌는지 확인")],
+        )
+
+    monkeypatch.setattr(supervisor, "_run_pr_coach", fake_coach)
+    monkeypatch.setattr(supervisor, "_load_pr_tools", lambda deps: {})
+    intents = [Intent(kind="ask", reason="오판")]  # 게이트가 pr 로 고친다
+    with _client(tmp_path, intents, token="test-token") as client:
+        body = {"repo_url": repo_url, "message": "https://github.com/owner/name/pull/12 리뷰해줘"}
+        events = _sse(client.post("/threads/t1/runs", json=body).text)
+    result = dict(events)["result"]
+    assert calls == [(repo_url, 12)]
+    assert _update_types(events) == ["IndexReady", "IntentDecided", "GateApplied", "PRReviewReady"]
+    assert result["intent"]["kind"] == "pr"
+    assert result["pr_review"]["number"] == 12
+    assert result["pr_review"]["changed_symbols"][0]["name"] == "helper"
+    assert result["pr_review"]["errors"] == []
+    assert result["issues"] is None and result["answer"] is None and result["reply"] is None
+    assert events[-1][0] == "done"

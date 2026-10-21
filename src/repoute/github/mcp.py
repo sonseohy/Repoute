@@ -16,6 +16,9 @@ from langchain_core.tools import BaseTool
 GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/"
 # 이슈 매칭에 필요한 읽기 도구만 (전체 /mcp/ 는 도구 수십 개라 스키마 토큰이 크다)
 ISSUE_TOOL_NAMES = ("list_issues", "get_issue", "search_issues")
+# PR Coach 용 읽기 도구. toolset="pull_requests/readonly" 와 함께 names 로 넘긴다.
+# pull_request_read(owner, repo, pullNumber, method) 하나가 method 로 get·get_files 등을 나눈다.
+PR_TOOL_NAMES = ("pull_request_read",)
 
 
 def github_connection(token: str, toolset: str | None = "issues/readonly") -> dict:

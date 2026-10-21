@@ -199,3 +199,18 @@ def test_langsmith_dry_run_prints_counts_without_network():
         [sys.executable, str(script), "--dry-run"], capture_output=True, text=True, check=True
     ).stdout
     assert "[dry-run] walkthrough-qa: 예제 20개" in out
+
+
+def test_impact_recall_matches_tail_name_over_gold_count():
+    """PR Coach 영향 재현율: 끝 이름으로 맞추고 분모는 정답 수. 정답이 비면 0.0."""
+    gold = ["Session.send", "HTTPAdapter.build_response", "resolve_redirects"]
+    assert m.impact_recall(["send", "Session.resolve_redirects", "other"], gold) == 2 / 3
+    assert m.impact_recall(["send"], []) == 0.0
+
+
+def test_test_file_hit_compares_file_name_only():
+    """테스트 파일 적중: 경로 끝 파일명이 같으면 디렉터리가 달라도 맞은 것으로 친다."""
+    gold = ["tests/test_requests.py", "tests/test_utils.py"]
+    assert m.test_file_hit(["requests/tests/test_utils.py"], gold)
+    assert not m.test_file_hit(["tests/test_models.py"], gold)
+    assert not m.test_file_hit([], gold)

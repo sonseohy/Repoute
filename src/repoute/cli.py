@@ -9,9 +9,11 @@ import time
 from pathlib import Path
 
 from repoute.config import get_embedder, get_fast_llm, get_quality_llm, load_settings
-from repoute.github.mcp import load_github_tools
+from repoute.github.mcp import PR_TOOL_NAMES, load_github_tools
+from repoute.github.prs import parse_pr_url
 from repoute.graphs.deps import Deps
 from repoute.graphs.issue_matcher import MAX_CANDIDATES, IssueDeps, Profile, run_issue_matcher
+from repoute.graphs.pr_coach import PRDeps, run_pr_coach
 from repoute.graphs.reading_guide import run_reading_guide
 from repoute.graphs.walkthrough import ask, build_walkthrough_graph
 from repoute.indexing.clone import parse_repo_url
@@ -231,6 +233,62 @@ def issues_repo(url: str, interests: str, level: str, k: int, cache_dir: str) ->
     repo.db.close()
 
 
+def pr_repo(url: str, number: int | None, cache_dir: str) -> None:
+    """PR 하나의 변경 심볼·영향 범위·테스트 파일·체크포인트를 `파일:줄` 인용과 함께 출력한다.
+
+    url 은 PR URL(…/pull/N) 이거나 레포 URL + number. github-mcp-server 에서 PR 을 받고,
+    변경·영향·테스트는 정적 분석, 설명만 fast LLM 1회다. 실제 MCP·LLM 을 호출한다.
+    """
+    settings = load_settings()
+    if not settings.github_token:
+        print("GITHUB_PERSONAL_ACCESS_TOKEN 이 없습니다. .env 에 읽기 권한 토큰을 넣어 주세요.")
+        print("(github-mcp-server 원격 엔드포인트 인증에 씁니다. .env.example 참고)")
+        sys.exit(1)
+    start = time.perf_counter()
+    try:
+        parsed = parse_pr_url(url)
+        if parsed is not None:
+            owner, name, number = parsed
+        elif number is None:
+            raise ValueError("PR URL(…/pull/N) 이 아니면 --number 가 필요합니다")
+        else:
+            owner, name = parse_repo_url(url)
+        tools = asyncio.run(
+            load_github_tools(settings.github_token, "pull_requests/readonly", PR_TOOL_NAMES)
+        )
+        repo = build_index(f"https://github.com/{owner}/{name}", cache_dir)
+        deps = PRDeps(get_fast_llm(settings), repo, {t.name: t for t in tools})
+        review = run_pr_coach(deps, f"{owner}/{name}", number)
+    except Exception as e:  # URL·토큰·네트워크·API 오류는 한 줄로만 알린다
+        message = str(e).strip().splitlines()[0] if str(e).strip() else ""
+        print(f"오류: {type(e).__name__}: {message}")
+        sys.exit(1)
+    elapsed = time.perf_counter() - start
+
+    print(f"PR #{review.number} {review.title}   ({review.url})")
+    print(f"인덱스 커밋: {repo.info.commit[:7]}  (줄 번호는 이 커밋 기준)")
+    for error in review.errors:
+        print(f"  - 오류: {error}")
+    for note in review.notes:
+        print(f"  - 참고: {note}")
+    print(f"요약: {review.summary or '없음'}")
+    print(f"변경 심볼 ({len(review.changed_symbols)}):")
+    for s in review.changed_symbols:
+        print(f"  - {s.name:<30} {s.file}:{s.line}")
+    print(f"영향 ({len(review.impact)}):")
+    for i in review.impact:
+        print(f"  - [{i.relation}] {i.name:<30} {i.file}:{i.line}   ← {i.via}")
+    print(f"테스트 파일: {', '.join(review.test_files) or '없음'}")
+    print("체크포인트:")
+    for c in review.check_points:
+        refs = ", ".join(f"{r.file}:{r.line} [{r.symbol}]" for r in c.refs) or "인용 없음"
+        print(f"  - {c.text}   ({refs})")
+    calls = 1 if review.changed_symbols else 0  # 변경 심볼이 없으면 LLM 을 부르지 않는다
+    print(f"비용: fast LLM {calls}회 (+ MCP pull_request_read 2회)")
+    print(f"시간: {elapsed:.1f}s   (LLM 비용은 LangSmith 'repoute-dev' 에서 확인)")
+    repo.db.close()
+
+
 def main() -> None:
     """서브커맨드를 해석해 해당 함수를 실행한다."""
     parser = argparse.ArgumentParser(prog="repoute")
@@ -275,6 +333,12 @@ def main() -> None:
     )
     issues_parser.add_argument("--k", type=int, default=5, help="추천할 이슈 수")
     issues_parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스 캐시")
+    pr_parser = sub.add_parser(
+        "pr", help="PR 의 변경·영향 범위·테스트를 인용과 함께 설명한다 (GitHub MCP + LLM 호출)"
+    )
+    pr_parser.add_argument("url", help="PR URL (…/pull/N) 또는 레포 URL (이때는 --number 필요)")
+    pr_parser.add_argument("--number", type=int, default=None, help="PR 번호 (레포 URL 일 때)")
+    pr_parser.add_argument("--cache-dir", default=".repoute_cache", help="clone·인덱스 캐시")
     args = parser.parse_args()
     if args.command == "check":
         check()
@@ -294,6 +358,8 @@ def main() -> None:
         )
     elif args.command == "issues":
         issues_repo(args.url, args.interests, args.level, args.k, args.cache_dir)
+    elif args.command == "pr":
+        pr_repo(args.url, args.number, args.cache_dir)
 
 
 if __name__ == "__main__":

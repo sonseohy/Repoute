@@ -28,7 +28,8 @@
 | [22](22-ui-baselines.md) | ui-baselines | Supervisor 의도 분류 + /explain 설명 품질 첫 측정 (v1 vs v2) | 분류 LLM 97% / 게이트 후 93% (오류 2건은 "식별자 없는 ask → map" 게이트). 설명 v1 은 항목 56/56 이 카테고리 이름 복사, v2 는 0/82·실제 코드 줄, 줄 참조 유효 93% → 89%(형식 흐트러짐), 천 단위 잘림 7건. 결정론적 후처리 후 문제 항목 v1 4→0, v2 19→9 ($0) | 30 메시지 / 20 심볼 | 전용 스크립트 2개, 결정론적 지표 (fast 판정은 변별력 0) | 태그 `ui-baseline-intents` | (커밋 후 기재) |
 | [23](23-nosymbol-before.md) | nosymbol-before | 함수 이름 없는 질문 10개 — before (게이트 + 기존 도구 5개, quality) | 게이트: 따라가기 도달 **0/10**(9개 map 으로). 게이트 우회 시 도달 5/10, 체인 0.21, search_code 15회, 첫 read_code 까지 3.2회, 질문당 $0.060 | 10 | walkthrough_batch(도구 순서 기록) + nosymbol_gate | 태그 `wt-nosymbol-before`, `wt-nosymbol-gate` | (커밋 후 기재) |
 | [24](24-nosymbol-after.md) | nosymbol-after | 23 + `search_symbols`(심볼 임베딩 검색, text-embedding-3-small, SQLite+numpy) 6번째 도구 | 도달 5→**6/10**(끝 이름 5→8), 첫 read_code 까지 3.2→**2.0**, 도구 7.0→5.3, search_code 15→10, 질문당 $0.060→**$0.045**, 엄격 10/10 유지. UI 경로는 게이트 완화로 0→6/10 | 10 | walkthrough_batch --search-symbols | 태그 `wt-nosymbol-after` | (커밋 후 기재) |
-| [25](25-issue-matcher.md) | issue-matcher | Phase 6: GitHub MCP(원격 issues/readonly) + 이슈→모듈 임베딩 매칭 | 매칭 p@3 **0.85**, hit@3 **0.90**, 심볼 0.75, 1위 0.80 (임베딩만, $0.00006). MCP 도구 토큰·실제 흐름은 B·C 절 | 20 이슈 | issue_matcher_eval.py (LLM 0) | — | (커밋 후 기재) |
+| [25](25-issue-matcher.md) | issue-matcher | Phase 6: GitHub MCP(원격 issues/readonly) + 이슈→모듈 임베딩 매칭 | 매칭 p@3 **0.85**, hit@3 **0.90**, 심볼 0.75, 1위 0.80 (임베딩만, $0.00006). MCP 도구 설명 토큰 전체 12.8k → 필터 1.2k(−91%). 실제 흐름 1회: 1차 KeyError(응답 모양) → 수정 후 후보 28 → 5개, $0.0004·12.7s | 20 이슈 | issue_matcher_eval.py (LLM 0) | — | (커밋 후 기재) |
+| [26](26-pr-coach.md) | pr-coach | Phase 7: PR Coach 정적 단계(hunk → 변경 심볼 → 호출자 → 테스트 힌트) gold 8 PR | hunk 헤더 함수 이름 우선 + 피호출자 제외: 변경 재현 28→**56%**, 영향 재현 36→**64%**, 정밀 9→**40%**, 테스트 hit 62→75%. 실제 흐름 1회 $0.0003·14s | 8 PR | pr_coach_eval.py (LLM·MCP 0) | — | (커밋 후 기재) |
 
 ## 이름 규칙
 

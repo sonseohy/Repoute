@@ -113,3 +113,8 @@ def test_checkpoint_types_include_issue_matcher():
     """이슈 추천 결과(IssueMatches)와 프로필(Profile)을 되살릴 수 있게 허용 타입에 들어 있다."""
     assert ("repoute.graphs.issue_matcher", "IssueMatches") in CHECKPOINT_TYPES
     assert ("repoute.graphs.issue_matcher", "Profile") in CHECKPOINT_TYPES
+
+
+def test_checkpoint_types_include_pr_review():
+    """PR 리뷰 결과(PRReview)를 되살릴 수 있게 허용 타입에 들어 있다 (Phase 7)."""
+    assert ("repoute.graphs.pr_coach", "PRReview") in CHECKPOINT_TYPES

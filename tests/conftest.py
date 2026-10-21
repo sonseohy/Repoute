@@ -97,3 +97,58 @@ def issue_mod(monkeypatch) -> types.ModuleType:
         module = _fake_issue_module()
         monkeypatch.setitem(sys.modules, ISSUE_MODULE, module)
         return module
+
+
+PR_MODULE = "repoute.graphs.pr_coach"
+
+
+def _fake_pr_module() -> types.ModuleType:
+    """pr_coach 의 PRReview 와 같은 바깥 모양만 든 가짜 모듈 (안의 심볼·영향·확인점은 최소 필드).
+
+    Supervisor 는 PRReview 의 number·changed_symbols·impact 개수만 쓰므로 안쪽 모델은
+    단순하게 둔다. 체크포인터 복원을 위해 __module__ 을 진짜 모듈 이름으로 맞춘다.
+    """
+
+    class SymbolRef(BaseModel):
+        name: str
+        file: str
+        line: int
+
+    class ImpactRef(BaseModel):
+        name: str
+        file: str
+        line: int
+
+    class CheckPoint(BaseModel):
+        text: str
+
+    class PRReview(BaseModel):
+        repo: str
+        number: int
+        title: str
+        url: str
+        summary: str
+        changed_symbols: list[SymbolRef]
+        impact: list[ImpactRef]
+        test_files: list[str]
+        check_points: list[CheckPoint]
+        errors: list[str] = []
+
+    module = types.ModuleType(PR_MODULE)
+    for cls in (SymbolRef, ImpactRef, CheckPoint, PRReview):
+        cls.__module__ = PR_MODULE
+        setattr(module, cls.__name__, cls)
+    return module
+
+
+@pytest.fixture
+def pr_mod(monkeypatch) -> types.ModuleType:
+    """PR Coach 모듈 대역. 진짜 모듈이 있어도 늘 가짜를 sys.modules 에 넣는다.
+
+    진짜 모듈의 안쪽 모델(SymbolRef 등) 필드는 다른 작업에서 바뀔 수 있어, Supervisor·API
+    테스트는 바깥 모양만 같은 가짜로 고정한다 (_run_pr_coach 도 테스트에서 대체한다).
+    테스트가 끝나면 monkeypatch 가 원래 sys.modules 항목을 되돌린다.
+    """
+    module = _fake_pr_module()
+    monkeypatch.setitem(sys.modules, PR_MODULE, module)
+    return module

@@ -8,6 +8,8 @@ stream_mode="updates" 로 보인다.
 Phase 6: issues 의도는 기여할 이슈를 추천한다. 프로필(관심·수준)이 thread 에 없으면
 interrupt() 로 멈춰 사용자에게 묻고, 같은 thread 의 다음 메시지를 Command(resume=...) 로 받아
 이어 간다 (pending_interrupt·turn_input 참고).
+Phase 7: pr 의도는 PR 하나의 변경 심볼·영향·확인할 점을 정리한다 (PR Coach). PR URL·번호가
+메시지에 있으면 코드 게이트(PR_PATTERN)가 LLM 판단과 무관하게 pr 로 보낸다.
 """
 
 import asyncio
@@ -27,6 +29,7 @@ from repoute.config import DEFAULT_EMBEDDING_MODEL
 from repoute.graphs.deps import Deps
 from repoute.graphs.reading_guide import ReadingGuide, run_reading_guide
 from repoute.graphs.walkthrough import WalkthroughAnswer, ask, build_walkthrough_graph
+from repoute.indexing.clone import parse_repo_url
 from repoute.indexing.embeddings import ensure_embeddings
 from repoute.indexing.index import RepoIndex, build_index
 from repoute.prompts import reading_guide_v3, supervisor_v2, walkthrough_v3
@@ -53,6 +56,16 @@ NEXT_PATTERN = re.compile(
 # 그래도 issues 는 프로필 질문(또는 토큰 안내)으로 시작해 되돌리기 쉽고, ask 는 건드리지 않아
 # 함수 이름이 있는 질문의 따라가기는 잃지 않는다.
 ISSUE_PATTERN = re.compile(r"이슈|issue|기여|contribute|good\s*first", re.IGNORECASE)
+# PR 을 가리키는 말. github.com/<owner>/<name>/pull/<n> URL 이나 "PR #7"·"pull 7"·"풀리퀘 7" 이
+# 있으면 LLM 이 무엇이라 하든 pr 로 고정한다 (비용 0). 번호가 함께 있어야 걸리므로 "PR 이 뭐야?"
+# 같은 일반 질문은 건드리지 않는다. 영문자 바로 뒤의 pr(예: "spr 3")은 PR 로 보지 않는다.
+PR_URL_PATTERN = re.compile(r"github\.com/([\w.-]+)/([\w.-]+)/pull/(\d+)", re.IGNORECASE)
+PR_NUMBER_PATTERN = re.compile(
+    r"(?<![A-Za-z])(?:PR|pull|풀\s*리퀘(?:스트)?)\s*#?\s*(\d+)", re.IGNORECASE
+)
+PR_PATTERN = re.compile(f"{PR_URL_PATTERN.pattern}|{PR_NUMBER_PATTERN.pattern}", re.IGNORECASE)
+# 의도가 이미 pr 일 때만 쓰는 느슨한 번호: "#123" (게이트에는 쓰지 않는다. 이슈 번호와 헷갈린다)
+BARE_NUMBER_PATTERN = re.compile(r"#\s*(\d+)")
 # 프로필 수준 단어 → Profile.level. 영어 셋에 한국어 별칭을 더했다
 LEVEL_WORDS = {
     "beginner": "beginner",
@@ -72,8 +85,8 @@ class Intent(BaseModel):
     """의도 분류 결과 (fast 모델 구조화 출력)."""
 
     # map=구조/어디서부터, ask=특정 코드 흐름, next=읽기 순서 다음 단계, chat=인사·기타,
-    # issues=기여할 이슈 추천 (Phase 6)
-    kind: Literal["map", "ask", "chat", "next", "issues"]
+    # issues=기여할 이슈 추천 (Phase 6), pr=PR 리뷰·변경 영향 (Phase 7)
+    kind: Literal["map", "ask", "chat", "next", "issues", "pr"]
     reason: str
 
 
@@ -101,6 +114,7 @@ class SupervisorState(TypedDict, total=False):
     reply: str | None  # chat 또는 안내 문구
     profile: dict | None  # 이슈 추천 프로필 (Profile.model_dump). thread 에 남아 다시 묻지 않는다
     issues: Any  # IssueMatches | None — issues 결과. 클래스는 다른 모듈이라 지연 import (Any)
+    pr_review: Any  # PRReview | None — pr 결과 (Phase 7). 같은 이유로 Any
     history: Annotated[list[dict], operator.add]  # 최근 대화 {"role": "user"|"agent", "text"}
     events: Annotated[list[dict], add_events]  # 진행 상황 (SSE 용), 이번 실행 분만
 
@@ -123,6 +137,7 @@ class SupervisorDeps:
     stores: dict[str, Any] = field(default_factory=dict)  # repo_url → SymbolEmbeddingStore
     github_token: str = ""  # 이슈 추천용 GitHub 토큰. 비면 issues 는 안내만 한다
     issue_tools: dict | None = None  # 이름 → GitHub MCP 도구. None 이면 첫 이슈 요청에서 1회 로드
+    pr_tools: dict | None = None  # 이름 → PR 읽기 MCP 도구. None 이면 첫 PR 요청에서 1회 로드
 
     def sub_deps(self, repo_url: str) -> Deps:
         """서브그래프(읽기 지도·따라가기)가 받을 Deps. 임베딩 저장소가 있으면 함께 넘긴다."""
@@ -164,7 +179,11 @@ def _gate(
 
     can_search: 따라가기에 search_symbols(이름 없이 설명으로 찾기)가 있으면 True. 그때는
     식별자 없는 ask 도 출발점을 찾을 수 있어 map 으로 내리지 않는다 (RAG 1단계 게이트 완화).
+    PR URL·번호는 가장 먼저 본다: URL 에는 "https" 같은 식별자가 있어 ask 로 남기 쉽고,
+    "다음 PR #3" 처럼 "다음" 으로 시작해도 사용자가 가리킨 것은 PR 이다.
     """
+    if PR_PATTERN.search(message):
+        return "pr", "메시지에 PR URL 이나 PR 번호가 있어 PR 리뷰로 보냄"
     if NEXT_PATTERN.match(message) and has_guide:
         return "next", "'다음' 으로 시작하는 말이고 이 대화에 읽기 지도가 있음"
     if kind == "next" and not has_guide:
@@ -185,6 +204,7 @@ def classify(state: SupervisorState, deps: SupervisorDeps) -> dict:
     - 지도가 있고 "다음" 으로 시작 → next: 지도를 다시 만들면 같은 1단계를 또 보여 주고
       LLM 비용도 다시 든다 (UI 에서 발견한 문제).
     - map/chat 인데 이슈·기여 단어가 있음 → issues (ISSUE_PATTERN 참고).
+    - PR URL·"PR #n" 이 있음 → 무엇이었든 pr (PR_PATTERN 참고).
     """
     history = _history_text(state.get("history") or [])
     prompt = supervisor_v2.CLASSIFY.format(history=history, message=state["message"])
@@ -205,6 +225,7 @@ ROUTES = {
     "next": "next_step",
     "chat": "chat_reply",
     "issues": "run_issues",
+    "pr": "run_pr",
 }
 
 
@@ -398,6 +419,91 @@ def run_issues(state: SupervisorState, deps: SupervisorDeps) -> dict:
     return {**update, "issues": issues, "events": [event]}
 
 
+def _github_url(owner: str, name: str) -> str:
+    """owner/name → https://github.com/owner/name (build_index 가 알아보는 모양)."""
+    return f"https://github.com/{owner}/{name}"
+
+
+def _same_repo(url_a: str, url_b: str) -> bool:
+    """두 레포 URL 이 같은 owner/name 을 가리키는지 (대소문자 무시). 못 알아보면 False."""
+    try:
+        a, b = parse_repo_url(url_a), parse_repo_url(url_b)
+    except ValueError:
+        return False
+    return (a[0].lower(), a[1].lower()) == (b[0].lower(), b[1].lower())
+
+
+def parse_pr_ref(message: str, repo_url: str) -> tuple[str, int] | None:
+    """메시지에서 (레포 URL, PR 번호) 를 뽑는다. 못 찾으면 None.
+
+    - github.com/<o>/<r>/pull/<n> URL → ("https://github.com/<o>/<r>", n). 그 레포가 지금
+      thread 레포와 같은 owner/name 이면 thread 의 URL 을 그대로 돌려준다 (인덱스를 다시 열지
+      않고, 로컬 file:// 레포도 그대로 쓰게).
+    - "PR #7"·"pull 7"·"풀리퀘 7" → (repo_url, 7): 현재 thread 레포의 PR.
+    - 그 밖에 "#7" 만 있어도 (repo_url, 7). 이 함수는 의도가 pr 일 때만 부르므로 받아 준다.
+    """
+    if m := PR_URL_PATTERN.search(message):
+        owner, name, number = m.group(1), m.group(2).removesuffix(".git"), int(m.group(3))
+        url = _github_url(owner, name)
+        return (repo_url if _same_repo(url, repo_url) else url), number
+    if m := PR_NUMBER_PATTERN.search(message) or BARE_NUMBER_PATTERN.search(message):
+        return repo_url, int(m.group(1))
+    return None
+
+
+def _load_pr_tools(deps: SupervisorDeps) -> dict:
+    """PR 읽기 MCP 도구를 처음 한 번만 불러 deps.pr_tools 에 둔다 (테스트는 대체한다).
+
+    _load_issue_tools 와 같은 패턴(_run_async). toolset 은 pull_requests/readonly 로 좁혀
+    도구 스키마 토큰을 줄인다. PR_TOOL_NAMES 가 아직 없으면 interface 의 기본 이름을 쓴다.
+    """
+    if deps.pr_tools is None:
+        from repoute.github import mcp
+
+        names = getattr(mcp, "PR_TOOL_NAMES", ("pull_request_read",))
+        coro = mcp.load_github_tools(deps.github_token, "pull_requests/readonly", names)
+        deps.pr_tools = {tool.name: tool for tool in _run_async(coro)}
+    return deps.pr_tools
+
+
+def _run_pr_coach(deps: SupervisorDeps, repo_url: str, number: int):
+    """PR Coach 서브그래프를 부르는 얇은 래퍼 (지연 import, 테스트는 대체한다).
+
+    repo_url 의 인덱스(deps.indexes)로 "owner/name" 을 정해 넘긴다.
+    """
+    from repoute.graphs.pr_coach import PRDeps, run_pr_coach
+
+    index = deps.indexes[repo_url]
+    sub = PRDeps(fast_llm=deps.fast_llm, index=index, pr_tools=deps.pr_tools or {})
+    return run_pr_coach(sub, f"{index.info.owner}/{index.info.name}", number)
+
+
+def run_pr(state: SupervisorState, deps: SupervisorDeps) -> dict:
+    """PR 하나를 리뷰한다: 변경 심볼·영향 범위·관련 테스트·확인할 점 (PR Coach).
+
+    토큰이 없거나 PR 번호를 못 찾으면 멈추지 않고 안내(reply)만 준다 (issues 와 같은 방식).
+    PR URL 의 레포가 thread 레포와 다르면 그 레포를 build_index 로 열어 deps.indexes 에 둔다
+    (닫기는 deps.close 가 한다). 도구 로드·리뷰는 비용이 들어 확인을 모두 마친 뒤에 한다.
+    """
+    if not deps.github_token:
+        return {"reply": supervisor_v2.PR_NEED_TOKEN, "events": [{"type": "Replied"}]}
+    ref = parse_pr_ref(state["message"], state["repo_url"])
+    if ref is None:
+        return {"reply": supervisor_v2.PR_NEED_NUMBER, "events": [{"type": "Replied"}]}
+    url, number = ref
+    if url not in deps.indexes:  # 다른 레포의 PR (또는 ensure_index 를 거치지 않은 실행)
+        deps.indexes[url] = build_index(url, deps.cache_dir)
+    _load_pr_tools(deps)
+    review = _run_pr_coach(deps, url, number)
+    event = {
+        "type": "PRReviewReady",
+        "number": number,
+        "changed": len(review.changed_symbols),
+        "impact": len(review.impact),
+    }
+    return {"pr_review": review, "events": [event]}
+
+
 def chat_reply(state: SupervisorState) -> dict:
     """LLM 없이 고정 안내를 돌려준다."""
     return {"reply": supervisor_v2.CHAT_REPLY, "events": [{"type": "Replied"}]}
@@ -424,6 +530,10 @@ def _agent_summary(state: SupervisorState) -> str:
         matches = state["issues"].matches
         numbers = ", ".join(f"#{m.number}" for m in matches)
         return f"이슈 추천 {len(matches)}개: {numbers}" if matches else "추천할 이슈를 찾지 못함"
+    if kind == "pr" and state.get("pr_review") is not None:
+        review = state["pr_review"]
+        changed, impact = len(review.changed_symbols), len(review.impact)
+        return f"PR #{review.number} 리뷰: 변경 심볼 {changed}개, 영향 {impact}개"
     return state.get("reply") or ""
 
 
@@ -435,13 +545,13 @@ def remember(state: SupervisorState) -> dict:
 
 
 def build_supervisor_graph(deps: SupervisorDeps, checkpointer=None):
-    """START → ensure_index → classify → (run_map | run_ask | next_step | chat_reply | run_issues)
-    → remember → END.
+    """START → ensure_index → classify
+    → (run_map | run_ask | next_step | chat_reply | run_issues | run_pr) → remember → END.
 
     checkpointer 를 주면 같은 thread_id 로 guide·cursor·history 를 이어 간다 (wave12).
     """
     builder = StateGraph(SupervisorState)
-    for node in (ensure_index, classify, run_map, run_ask, run_issues):
+    for node in (ensure_index, classify, run_map, run_ask, run_issues, run_pr):
         builder.add_node(node.__name__, partial(node, deps=deps))
     for node in (next_step, chat_reply, remember):
         builder.add_node(node.__name__, node)
@@ -476,6 +586,7 @@ def _turn_reset() -> dict:
         "next": None,
         "reply": None,
         "issues": None,
+        "pr_review": None,
         "validation_errors": [],
         "events": None,
     }
@@ -484,9 +595,10 @@ def _turn_reset() -> dict:
 def turn_input(repo_url: str, message: str, thread_id: str, graph=None) -> dict | Command:
     """메시지 하나의 시작 입력. thread 에 남길 것(guide·cursor·history·profile)은 건드리지 않는다.
 
-    이번 실행의 결과 칸(answer·next·reply·issues·validation_errors)은 비워 지난 메시지의 결과가
-    섞이지 않게 한다. graph 를 주고 그 thread 에 답을 기다리는 interrupt 가 있으면
-    (pending_interrupt) 새 메시지를 그 답으로 보는 Command(resume=message) 를 돌려준다.
+    이번 실행의 결과 칸(answer·next·reply·issues·pr_review·validation_errors)은 비워
+    지난 메시지의 결과가 섞이지 않게 한다. graph 를 주고 그 thread 에 답을 기다리는
+    interrupt 가 있으면 (pending_interrupt) 새 메시지를 그 답으로 보는
+    Command(resume=message) 를 돌려준다.
     이때 update 로 결과 칸을 비워야 멈춘 실행의 events 가 재개 결과에 섞이지 않는다.
     원래 message·intent 는 그대로 둔다 (history 에는 이슈를 요청한 원래 말이 남는다).
     한계: 질문을 받은 뒤 전혀 다른 말을 해도 그 말을 답으로 쓴다 (프로필로 파싱된다).

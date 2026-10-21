@@ -17,6 +17,7 @@ from repoute.graphs.supervisor import (
     SupervisorDeps,
     _gate,
     build_supervisor_graph,
+    parse_pr_ref,
     parse_profile,
     pending_interrupt,
     run_supervisor,
@@ -557,3 +558,233 @@ def test_issues_end_to_end_with_real_matcher(tmp_path, repo_url, monkeypatch, fa
     assert {r.symbol for r in match.refs} <= {"run", "helper"}
     assert match.modules and set(match.modules) <= {"app.main", "app.util"}
     assert _types(second) == ["EmbeddingsReady", "IssuesReady"] or _types(second) == ["IssuesReady"]
+
+
+# --- Phase 7: pr 의도 (PR Coach 는 가짜로 대체, GitHub·LLM 호출 없음) ---
+
+
+def _fake_coach(pr_mod, calls: list):
+    """_run_pr_coach 대역. (repo_url, number) 를 calls 에 남기고 변경 2개·영향 1개 리뷰를 준다."""
+
+    def fake(deps, repo_url, number):
+        calls.append((repo_url, number))
+        index = deps.indexes[repo_url]  # run_pr 가 연 인덱스가 있어야 한다
+        return pr_mod.PRReview(
+            repo=f"{index.info.owner}/{index.info.name}",
+            number=number,
+            title="helper 반환값 수정",
+            url=f"https://github.com/{index.info.owner}/{index.info.name}/pull/{number}",
+            summary="helper 가 2 를 돌려주게 바꿨다",
+            changed_symbols=[
+                pr_mod.SymbolRef(name="helper", file="app/util.py", line=1),
+                pr_mod.SymbolRef(name="run", file="app/main.py", line=4),
+            ],
+            impact=[pr_mod.ImpactRef(name="run", file="app/main.py", line=4)],
+            test_files=[],
+            check_points=[pr_mod.CheckPoint(text="run 의 반환값이 바뀌는지 확인")],
+        )
+
+    return fake
+
+
+@pytest.fixture
+def coach_calls(monkeypatch, pr_mod) -> list:
+    """PR 도구 로드·PR Coach 를 가짜로 바꾸고, 리뷰에 넘어간 (repo_url, number) 목록을 돌려준다."""
+    calls = []
+    monkeypatch.setattr(supervisor, "_run_pr_coach", _fake_coach(pr_mod, calls))
+    monkeypatch.setattr(supervisor, "_load_pr_tools", lambda deps: {})
+    return calls
+
+
+def test_gate_sends_pr_url_to_pr(tmp_path, repo_url):
+    """PR URL 이 있으면 LLM 이 ask 라 해도 코드 게이트가 pr 로 고치고, parse_pr_ref 가 (url, 12).
+
+    URL 의 레포가 thread 레포(file://.../owner/name)와 같은 owner/name 이면 thread URL 을
+    그대로 돌려줘 인덱스를 다시 열지 않는다. 다른 레포면 github.com URL 을 준다.
+    """
+    message = "https://github.com/owner/name/pull/12 리뷰해줘"
+    assert _gate("ask", message, False)[0] == "pr"
+    assert _gate("map", message, True)[0] == "pr"
+    assert parse_pr_ref(message, "https://github.com/x/y") == ("https://github.com/owner/name", 12)
+    assert parse_pr_ref(message, repo_url) == (repo_url, 12)
+    assert parse_pr_ref("github.com/Owner/Name/pull/3", "https://github.com/owner/name") == (
+        "https://github.com/owner/name",
+        3,
+    )
+    deps = _deps(tmp_path, [Intent(kind="ask", reason="흐름 질문")])
+    state = run_supervisor(deps, repo_url, message, "t1")  # 토큰 없음 → 안내로 끝난다
+    deps.close()
+    assert state["intent"].kind == "pr"
+    assert _types(state) == ["IndexReady", "IntentDecided", "GateApplied", "Replied"]
+    assert state["events"][2]["from"] == "ask" and state["events"][2]["to"] == "pr"
+
+
+def test_pr_number_uses_current_repo():
+    """ "PR #7 뭐 바꿨어" 는 현재 thread 레포의 7번.
+
+    번호 없는 PR 말("PR 이 뭐야?")·pr 이 섞인 일반 단어("sprint 3")는 게이트에 걸리지 않는다.
+    """
+    url = "https://github.com/owner/name"
+    assert parse_pr_ref("PR #7 뭐 바꿨어", url) == (url, 7)
+    assert parse_pr_ref("pull 42 영향 알려줘", url) == (url, 42)
+    assert parse_pr_ref("풀리퀘스트 #5 리뷰", url) == (url, 5)
+    assert parse_pr_ref("#9 리뷰해줘", url) == (url, 9)  # 의도가 pr 일 때만 쓰는 느슨한 번호
+    assert parse_pr_ref("pr 리뷰 해줘", url) is None
+    assert _gate("chat", "PR #7 뭐 바꿨어", False)[0] == "pr"
+    assert _gate("ask", "PR#7 에서 run() 바뀌었어?", False)[0] == "pr"
+    assert _gate("map", "PR 이 뭐야?", False) is None
+    assert _gate("map", "sprint 3 계획", False) is None
+
+
+def test_pr_without_token_replies(tmp_path, repo_url, coach_calls):
+    """토큰이 없으면 PR 도구·Coach 를 부르지 않고 토큰 안내(PR_NEED_TOKEN)만 준다."""
+    deps = _deps(tmp_path, [Intent(kind="pr", reason="PR 리뷰")])
+    state = run_supervisor(deps, repo_url, "PR #7 뭐 바꿨어", "t1")
+    deps.close()
+    assert state["reply"] == supervisor_v2.PR_NEED_TOKEN
+    assert "GITHUB_PERSONAL_ACCESS_TOKEN" in state["reply"]
+    assert state["pr_review"] is None and coach_calls == []
+    assert _types(state) == ["IndexReady", "IntentDecided", "Replied"]
+
+
+def test_pr_with_token_runs_coach(tmp_path, repo_url, coach_calls):
+    """토큰이 있으면 현재 레포·번호로 PR Coach 를 부르고 pr_review·PRReviewReady·history 를 남긴다.
+
+    체크포인터를 거쳐도 PRReview 가 되살아나야 하므로 같은 thread 의 다음 턴(chat)에서는
+    결과 칸이 비고(turn_input) history 는 이어진다.
+    """
+    intents = [Intent(kind="pr", reason="PR 리뷰"), Intent(kind="chat", reason="인사")]
+    deps = _deps(tmp_path, intents)
+    deps.github_token = "test-token"
+    state = run_supervisor(deps, repo_url, "PR #7 뭐 바꿨어", "t1")
+    after = run_supervisor(deps, repo_url, "고마워", "t1")
+    deps.close()
+    assert coach_calls == [(repo_url, 7)]
+    review = state["pr_review"]
+    assert review.number == 7 and review.repo == "owner/name"
+    assert len(review.changed_symbols) == 2 and len(review.impact) == 1
+    assert _types(state) == ["IndexReady", "IntentDecided", "PRReviewReady"]
+    assert state["events"][-1] == {"type": "PRReviewReady", "number": 7, "changed": 2, "impact": 1}
+    assert state["history"][-2:] == [
+        {"role": "user", "text": "PR #7 뭐 바꿨어"},
+        {"role": "agent", "text": "PR #7 리뷰: 변경 심볼 2개, 영향 1개"},
+    ]
+    assert after["pr_review"] is None and len(after["history"]) == 4
+
+
+def test_pr_without_number_asks_for_it(tmp_path, repo_url, coach_calls):
+    """의도가 pr 인데 번호·URL 이 없으면 Coach 를 부르지 않고 PR_NEED_NUMBER 안내를 준다."""
+    deps = _deps(tmp_path, [Intent(kind="pr", reason="PR 리뷰")])
+    deps.github_token = "test-token"
+    state = run_supervisor(deps, repo_url, "pr 리뷰 해줘", "t1")
+    deps.close()
+    assert state["reply"] == supervisor_v2.PR_NEED_NUMBER
+    assert "#123" in state["reply"] and coach_calls == []
+    assert _types(state) == ["IndexReady", "IntentDecided", "Replied"]
+
+
+def test_pr_in_other_repo_opens_its_index(tmp_path, repo_url, coach_calls):
+    """PR URL 의 레포가 thread 레포와 다르면 그 레포를 build_index 로 열어 Coach 에 넘긴다.
+
+    네트워크 없이 확인하려고 다른 로컬 레포(other/repo)를 캐시 자리에 미리 clone 해 둔다
+    (clone_repo 는 캐시 디렉터리가 있으면 clone 하지 않는다).
+    """
+    other = tmp_path / "src2" / "other" / "repo"
+    other.parent.mkdir(parents=True)
+    subprocess.run(["git", "clone", "-q", repo_url, str(other)], check=True)
+    cached = tmp_path / "cache" / "other" / "repo"
+    cached.parent.mkdir(parents=True)
+    subprocess.run(["git", "clone", "-q", f"file://{other}", str(cached)], check=True)
+    deps = _deps(tmp_path, [Intent(kind="map", reason="오판")])
+    deps.github_token = "test-token"
+    state = run_supervisor(deps, repo_url, "https://github.com/other/repo/pull/3 봐줘", "t1")
+    deps.close()
+    assert coach_calls == [("https://github.com/other/repo", 3)]
+    assert state["pr_review"].repo == "other/repo" and state["intent"].kind == "pr"
+
+
+def test_pr_end_to_end_with_real_coach(tmp_path, repo_url, monkeypatch):
+    """실제 PR Coach 그래프까지 통째로: pr 게이트 → MCP 가짜 도구 → 정적 영향 → fast 설명.
+
+    `_run_pr_coach` 를 가짜로 바꾸지 않는다. 도구 로드만 가짜(pull_request_read: get·get_files).
+    app/util.py 의 helper 를 바꾼 PR 이면 변경 심볼은 helper, 호출자 영향은 app/main.py 의 run.
+    LLM 체크포인트의 심볼 이름 run 에는 코드가 인용(app/main.py:4)을 붙인다.
+    """
+    import json
+
+    from langchain_core.tools import BaseTool
+
+    from repoute.graphs.pr_coach import CheckText, Explained
+
+    def blocks(data):
+        return [{"type": "text", "text": json.dumps(data, ensure_ascii=False)}]
+
+    class FakePullRequestRead(BaseTool):
+        name: str = "pull_request_read"
+        description: str = "Read a pull request"
+
+        def _run(self, **kwargs):
+            raise NotImplementedError
+
+        async def _arun(self, **kwargs):
+            if kwargs["method"] == "get":
+                return blocks(
+                    {
+                        "number": 12,
+                        "title": "helper 반환값 수정",
+                        "body": "2 를 돌려준다",
+                        "html_url": "https://github.com/owner/name/pull/12",
+                        "user": {"login": "a"},
+                        "merged_at": None,
+                    }
+                )
+            return blocks(
+                [
+                    {
+                        "filename": "app/util.py",
+                        "status": "modified",
+                        "additions": 1,
+                        "deletions": 1,
+                        "patch": "@@ -1,2 +1,2 @@\n def helper():\n-    return 1\n+    return 2\n",
+                    }
+                ]
+            )
+
+    fast = FakeLLM(
+        {
+            Intent: [Intent(kind="ask", reason="오판")],  # 게이트가 pr 로 고친다
+            ModuleSummary: _summaries(),
+            Explained: [
+                Explained(
+                    summary="helper 가 2 를 돌려주게 바뀌었다.",
+                    check_points=[CheckText(text="run 의 반환값도 바뀐다", symbol="run")],
+                )
+            ],
+        }
+    )
+    deps = _deps(tmp_path, [], fast=fast)
+    deps.github_token = "test-token"
+    monkeypatch.setattr(
+        supervisor,
+        "_load_pr_tools",
+        lambda d: d.__setattr__("pr_tools", {"pull_request_read": FakePullRequestRead()}),
+    )
+    state = run_supervisor(deps, repo_url, "https://github.com/owner/name/pull/12 뭐 바꿨어?", "t1")
+    deps.close()
+    review = state["pr_review"]
+    assert review.number == 12 and review.errors == []
+    assert [s.name for s in review.changed_symbols] == ["helper"]
+    callers = [(i.name, i.file, i.line, i.via) for i in review.impact if i.relation == "caller"]
+    assert callers == [("run", "app/main.py", 4, "helper")]
+    assert review.check_points[0].refs[0].model_dump() == {
+        "file": "app/main.py",
+        "line": 4,
+        "symbol": "run",
+    }
+    assert _types(state)[-1] == "PRReviewReady"
+    assert state["events"][-1] == {
+        "type": "PRReviewReady",
+        "number": 12,
+        "changed": 1,
+        "impact": len(review.impact),
+    }
