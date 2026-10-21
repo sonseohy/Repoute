@@ -9,7 +9,6 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
 from repoute.graphs.deps import Deps
 from repoute.graphs.walkthrough import (
-    CHECKPOINT_TYPES,
     MAX_EXPLORE_WITHOUT_READ,
     MAX_NUDGES,
     MAX_TOOL_CALLS,
@@ -19,6 +18,7 @@ from repoute.graphs.walkthrough import (
     build_walkthrough_graph,
 )
 from repoute.indexing.index import build_index
+from repoute.memory.checkpointer import CHECKPOINT_TYPES
 from repoute.prompts import walkthrough_v1, walkthrough_v2, walkthrough_v3
 from repoute.validation.citations import CodeRef
 

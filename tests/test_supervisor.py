@@ -9,8 +9,9 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
 from repoute.graphs.reading_guide import ModuleSummary, ReadingGuide, ReadingStep
 from repoute.graphs.supervisor import Intent, SupervisorDeps, run_supervisor
-from repoute.graphs.walkthrough import CHECKPOINT_TYPES, Step, WalkthroughAnswer
-from repoute.prompts import supervisor_v1
+from repoute.graphs.walkthrough import Step, WalkthroughAnswer
+from repoute.memory.checkpointer import CHECKPOINT_TYPES
+from repoute.prompts import supervisor_v2
 from repoute.validation.citations import CodeRef
 
 # 원본 레포 파일: main 의 run() 이 util 의 helper() 를 부른다 (test_walkthrough 와 같은 구성)
@@ -45,21 +46,23 @@ class FakeLLM:
     class _Structured:
         """스키마 하나의 큐."""
 
-        def __init__(self, queue: list):
-            self.queue = queue
+        def __init__(self, queue: list, log: list):
+            self.queue, self.log = queue, log
 
         def invoke(self, prompt):
+            self.log.append(prompt)
             return self.queue.pop(0)
 
     def __init__(self, structured: dict | None = None, chat: list | None = None):
         self.structured = {k: list(v) for k, v in (structured or {}).items()}
         self.chat = list(chat or [])
         self.prompts = []  # with_structured_output 으로 요청한 스키마 순서
+        self.structured_inputs = []  # 구조화 출력에 보낸 프롬프트 (분류 프롬프트 확인용)
         self.chat_inputs = []  # 도구 대화(agent 노드)가 보낸 messages 목록
 
     def with_structured_output(self, schema):
         self.prompts.append(schema)
-        return self._Structured(self.structured[schema])
+        return self._Structured(self.structured[schema], self.structured_inputs)
 
     def bind_tools(self, tools):
         return self
@@ -96,9 +99,11 @@ def repo_url(tmp_path):
     return f"file://{_make_origin(tmp_path)}"
 
 
-def _deps(tmp_path, intents: list, quality: FakeLLM | None = None) -> SupervisorDeps:
+def _deps(
+    tmp_path, intents: list, quality: FakeLLM | None = None, fast: FakeLLM | None = None
+) -> SupervisorDeps:
     """fast 자리에 Intent·요약 큐를, quality 자리에 주어진 가짜를 꽂은 Deps."""
-    fast = FakeLLM({Intent: intents, ModuleSummary: _summaries()})
+    fast = fast or FakeLLM({Intent: intents, ModuleSummary: _summaries()})
     saver = InMemorySaver(serde=JsonPlusSerializer(allowed_msgpack_modules=CHECKPOINT_TYPES))
     return SupervisorDeps(fast, quality or FakeLLM(), tmp_path / "cache", saver)
 
@@ -162,7 +167,7 @@ def test_chat_intent(tmp_path, repo_url):
     deps = _deps(tmp_path, [Intent(kind="chat", reason="인사")], quality)
     state = run_supervisor(deps, repo_url, "안녕")
     deps.close()
-    assert state["reply"] == supervisor_v1.CHAT_REPLY
+    assert state["reply"] == supervisor_v2.CHAT_REPLY
     assert _types(state) == ["IndexReady", "IntentDecided", "Replied"]
     assert quality.prompts == []
 
@@ -192,3 +197,63 @@ def test_ask_thread_keeps_history(tmp_path, repo_url):
     second = quality.chat_inputs[2]  # 두 번째 질문의 첫 agent 입력
     assert second[1].content == "run() 첫 질문"
     assert second[-1].content == "run() 둘째 질문"
+
+
+def test_next_walks_reading_order_without_llm(tmp_path, repo_url):
+    """map 뒤 같은 thread 의 "다음" 은 지도를 다시 만들지 않고 저장된 순서를 한 단계씩 짚는다.
+
+    quality 모델의 ReadingGuide 큐는 처음 1개에서 줄지 않고(합성 호출 0회), cursor 가
+    1단계 → 2단계로 나아가며, 순서를 다 넘기면 고정 안내(reply)로 끝난다.
+    LLM 이 map 이라 잘못 골라도 "다음" 으로 시작하면 코드 게이트가 next 로 고정한다.
+    """
+    quality = FakeLLM({ReadingGuide: [_guide()]})
+    intents = [
+        Intent(kind="map", reason="구조"),
+        Intent(kind="next", reason="다음 단계"),
+        Intent(kind="map", reason="오판"),  # 게이트가 next 로 고친다
+        Intent(kind="next", reason="다음 단계"),
+    ]
+    deps = _deps(tmp_path, intents, quality)
+    run_supervisor(deps, repo_url, "어디서부터 읽어?", "t1")
+    quality.structured[ReadingGuide].append(_guide())  # 지도를 다시 만들면 이것이 꺼내진다
+    first = run_supervisor(deps, repo_url, "다음 파일 알려줘", "t1")
+    second = run_supervisor(deps, repo_url, "다음", "t1")
+    done = run_supervisor(deps, repo_url, "그다음은?", "t1")
+    deps.close()
+    assert len(quality.structured[ReadingGuide]) == 1  # 합성 호출 0회
+    assert first["next"]["order"] == 1 and first["next"]["file"] == "app/util.py"
+    assert first["next"]["ref"] == {"file": "app/util.py", "line": 1, "symbol": "helper"}
+    assert first["next"]["remaining"] == 1 and "helper 를 따라가 줘" in first["next"]["hint"]
+    assert _types(first) == ["IndexReady", "IntentDecided", "NextStep"]
+    assert second["next"]["order"] == 2 and second["next"]["remaining"] == 0
+    assert _types(second) == ["IndexReady", "IntentDecided", "GateApplied", "NextStep"]
+    assert second["events"][2]["from"] == "map" and second["events"][2]["to"] == "next"
+    assert done["next"] is None and done["reply"] == supervisor_v2.NEXT_DONE
+    assert done["events"][-1] == {"type": "NextStep", "order": None, "remaining": 0}
+    assert done["cursor"] == 2
+
+
+def test_next_without_guide_falls_back_to_map(tmp_path, repo_url):
+    """지도가 없는 thread 에서 next 로 분류되면 코드 게이트가 map 으로 내려 지도를 만든다."""
+    quality = FakeLLM({ReadingGuide: [_guide()]})
+    deps = _deps(tmp_path, [Intent(kind="next", reason="다음 단계")], quality)
+    state = run_supervisor(deps, repo_url, "다음 파일 알려줘", "fresh")
+    deps.close()
+    assert state["intent"].kind == "map"
+    assert _types(state) == ["IndexReady", "IntentDecided", "GateApplied", "GuideReady"]
+    assert state["events"][2]["from"] == "next" and state["events"][2]["to"] == "map"
+    assert state["cursor"] == 0
+
+
+def test_history_goes_into_classify_prompt(tmp_path, repo_url):
+    """앞 메시지와 도우미 요약이 history 로 남아 다음 분류 프롬프트에 들어간다."""
+    fast = FakeLLM({Intent: [Intent(kind="chat", reason="인사")] * 2})
+    deps = _deps(tmp_path, [], fast=fast)
+    first = run_supervisor(deps, repo_url, "안녕", "t1")
+    second = run_supervisor(deps, repo_url, "뭘 할 수 있어?", "t1")
+    deps.close()
+    assert supervisor_v2.NO_HISTORY in fast.structured_inputs[0]
+    assert "- 사용자: 안녕" in fast.structured_inputs[1]
+    assert "- 도우미: " + supervisor_v2.CHAT_REPLY[:20] in fast.structured_inputs[1]
+    assert len(first["history"]) == 2 and len(second["history"]) == 4
+    assert _types(second) == ["IndexReady", "IntentDecided", "Replied"]  # 이번 실행 분만
