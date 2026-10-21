@@ -6,6 +6,7 @@ from repoute.indexing.parser import parse_repo
 from repoute.indexing.symbols import SymbolDB
 from repoute.validation.citations import (
     CodeRef,
+    citation_at_def,
     citation_specificity,
     citation_validity,
     validate_citations,
@@ -140,3 +141,27 @@ def test_specificity_symbolless_file_and_invalid(pkg):
     assert citation_specificity(refs[:1], db, root) == 1.0
     assert citation_specificity(refs, db, root) == 0.25
     assert citation_specificity([], db, root) == 0.0
+
+
+def test_at_def_on_def_line(repo):
+    """def/class 줄(create_app 1, App 5, App.run 6)을 가리키는 인용은 모두 def 줄 → 1.0."""
+    db, root = repo
+    refs = [CodeRef(file=FILE, line=1), CodeRef(file=FILE, line=5), CodeRef(file=FILE, line=6)]
+    assert citation_at_def(refs, db, root) == 1.0
+
+
+def test_at_def_body_line_is_zero(repo):
+    """몸통·마지막 줄(2, 7)은 구체적이지만 def 줄이 아니라 0.0, 유효하지 않은 인용(99)도 0."""
+    db, root = repo
+    refs = [CodeRef(file=FILE, line=2), CodeRef(file=FILE, line=7)]
+    assert citation_specificity(refs, db, root) == 1.0  # 범위 안이라 구체성은 통과
+    assert citation_at_def(refs, db, root) == 0.0
+    assert citation_at_def([CodeRef(file=FILE, line=99)], db, root) == 0.0
+    assert citation_at_def([], db, root) == 0.0
+
+
+def test_at_def_symbolless_file_line1(pkg):
+    """심볼 없는 파일은 줄 1 을 def 줄로 인정하고 줄 2 는 아니다 → 0.5."""
+    db, root = pkg
+    refs = [CodeRef(file="pkg/__init__.py", line=1), CodeRef(file="pkg/__init__.py", line=2)]
+    assert citation_at_def(refs, db, root) == 0.5

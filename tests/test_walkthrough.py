@@ -17,7 +17,7 @@ from repoute.graphs.walkthrough import (
     build_walkthrough_graph,
 )
 from repoute.indexing.index import build_index
-from repoute.prompts import walkthrough_v1, walkthrough_v2
+from repoute.prompts import walkthrough_v1, walkthrough_v2, walkthrough_v3
 from repoute.validation.citations import CodeRef
 
 # 원본 레포 파일: main 의 run() 이 util 의 helper() 를 부른다 (test_reading_guide 와 같은 구성)
@@ -124,7 +124,8 @@ def test_happy_path(index):
 def test_happy_path_prompt_v2(index):
     """v2 프롬프트로도 정상 흐름이 통과하고, agent 첫 입력의 SystemMessage 에 "읽기 전략" 이 있다.
 
-    cli 기본값이 v2 이므로 그래프가 v2 를 실제로 받아 쓰는지 확인한다.
+    기록 08 의 기준 프롬프트이므로 그래프가 v2 를 실제로 받아 쓰는지 확인한다
+    (cli 기본값은 v3 로 바뀌었다. v3 는 test_happy_path_prompt_v3).
     """
     chat = [_call("find_definition", {"name": "run"}), _read_main(), AIMessage(content="답 준비")]
     graph, llm = _run(index, chat, [GOOD], prompts=walkthrough_v2)
@@ -183,3 +184,38 @@ def test_checkpointer_keeps_history(index):
     assert second[1].content == "첫 질문"
     assert second[-1].content == "둘째 질문"
     assert state["validation_errors"] == []
+
+
+def test_happy_path_prompt_v3(index):
+    """v3 프롬프트 정상 흐름: finalize 지시에 def/class 줄 규칙이, 정의 결과에 인용 힌트가 있다."""
+    chat = [_call("find_definition", {"name": "run"}), _read_main(), AIMessage(content="답 준비")]
+    graph, llm = _run(index, chat, [GOOD], prompts=walkthrough_v3)
+    state = ask(graph, "run() 을 부르면?")
+    assert state["validation_errors"] == []
+    assert state["tool_calls"] == 2
+    assert "def/class 줄" in llm.structured_inputs[0][-1].content  # FINALIZE 에 추가한 한 줄
+    tool_texts = [m.content for m in state["messages"] if isinstance(m, ToolMessage)]
+    assert "인용: app/main.py:4" in tool_texts[0]  # def 줄 인용 힌트가 대화에 들어갔다
+
+
+def test_agent_model_fast(index):
+    """agent_model="fast" 면 agent 턴은 fast_llm 이, finalize 는 quality_llm 이 맡는다 (E5)."""
+    fast = FakeToolLLM([_read_main(), AIMessage(content="답 준비")], [])
+    quality = FakeToolLLM([], [GOOD])
+    graph = build_walkthrough_graph(Deps(fast, quality, index), walkthrough_v3, agent_model="fast")
+    state = ask(graph, "run() 을 부르면?")
+    assert state["validation_errors"] == []
+    assert len(fast.chat_inputs) == 2 and fast.structured_inputs == []  # agent 2턴 모두 fast
+    assert quality.chat_inputs == [] and len(quality.structured_inputs) == 1  # 합성만 quality
+
+
+def test_reread_inside_read_range_blocked(index):
+    """이미 읽은 1~5줄 안의 read_code(4~5) 는 실행 없이 "이미 읽은 범위" 를 돌려주고 세지 않는다."""
+    again = _call("read_code", {"file": "app/main.py", "start": 4, "end": 5}, 2)
+    graph, _ = _run(index, [_read_main(), again, AIMessage(content="답")], [GOOD])
+    state = ask(graph, "run() 을 부르면?")
+    assert state["tool_calls"] == 1  # 두 번째 read_code 는 예산을 쓰지 않았다
+    assert state["read_ranges"] == [("app/main.py", 1, 5)]
+    last_tool = [m for m in state["messages"] if isinstance(m, ToolMessage)][-1]
+    assert last_tool.content.startswith("이미 읽은 범위입니다 (app/main.py 1~5줄)")
+    assert "def run():" not in last_tool.content  # 코드를 다시 보내지 않는다 (재전송 비용)

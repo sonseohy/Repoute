@@ -59,6 +59,27 @@ def citation_validity(refs: list[CodeRef], db: SymbolDB, root: Path) -> float:
     return (len(refs) - wrong) / len(refs)
 
 
+def _symbol_score(refs: list[CodeRef], db: SymbolDB, root: Path, hit) -> float:
+    """유효한 인용마다 hit(줄, 그 파일의 심볼 범위들) 로 맞으면 1 을 세어 비율을 낸다.
+
+    심볼이 하나도 없는 파일은 줄 1 만 인정(달리 가리킬 곳이 없음).
+    유효하지 않은 인용은 0. 인용 없으면 0.0.
+    """
+    if not refs:
+        return 0.0
+    root = root.resolve()
+    cache: dict[Path, int] = {}
+    score = 0
+    for ref in refs:
+        if _check(ref, db, root, cache) is not None:  # 틀린 인용은 어디도 가리키지 않는다
+            continue
+        rel = (root / ref.file).resolve().relative_to(root).as_posix()  # _check 와 같은 정규화
+        query = "SELECT line_start, line_end FROM symbols WHERE file = ?"
+        spans = db.conn.execute(query, (rel,)).fetchall()
+        score += hit(ref.line, spans) if spans else ref.line == 1
+    return score / len(refs)
+
+
 def citation_specificity(refs: list[CodeRef], db: SymbolDB, root: Path) -> float:
     """심볼을 실제로 가리키는 인용 비율 (0.0~1.0). 유효성과 별개로 "유용한 인용" 을 잰다.
 
@@ -66,19 +87,14 @@ def citation_specificity(refs: list[CodeRef], db: SymbolDB, root: Path) -> float
     심볼이 하나도 없는 파일은 줄 1 도 구체적으로 인정(달리 가리킬 곳이 없음).
     유효하지 않은 인용은 비구체적. 인용 없으면 0.0.
     """
-    if not refs:
-        return 0.0
-    root = root.resolve()
-    cache: dict[Path, int] = {}
-    specific = 0
-    for ref in refs:
-        if _check(ref, db, root, cache) is not None:  # 틀린 인용은 어디도 가리키지 않는다
-            continue
-        rel = (root / ref.file).resolve().relative_to(root).as_posix()  # _check 와 같은 정규화
-        query = "SELECT line_start, line_end FROM symbols WHERE file = ?"
-        spans = db.conn.execute(query, (rel,)).fetchall()
-        if spans:
-            specific += any(start <= ref.line <= end for start, end in spans)
-        else:
-            specific += ref.line == 1  # 심볼 없는 파일은 줄 1(모듈 시작)만 인정
-    return specific / len(refs)
+    return _symbol_score(refs, db, root, lambda line, spans: any(a <= line <= b for a, b in spans))
+
+
+def citation_at_def(refs: list[CodeRef], db: SymbolDB, root: Path) -> float:
+    """어떤 심볼의 정의 시작 줄(line_start, def/class 줄)과 정확히 같은 인용 비율 (0.0~1.0).
+
+    구체성(범위 안)보다 엄격: 사람이 읽기 시작할 줄인가. 함수 마지막 줄(line_end) 인용은
+    구체적이지만 여기서는 0 이다 (기록 08 관찰 4).
+    심볼 없는 파일은 줄 1 도 인정, 유효하지 않은 인용은 0, 인용 없으면 0.0.
+    """
+    return _symbol_score(refs, db, root, lambda line, spans: any(a == line for a, _ in spans))

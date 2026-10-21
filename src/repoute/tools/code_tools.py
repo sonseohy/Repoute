@@ -51,6 +51,7 @@ def make_code_tools(db: SymbolDB, root: Path) -> list:
         lines = [
             f"{s.file}:{s.line_start}-{s.line_end}  {s.kind}  {s.name}"
             f'  → read_code("{s.file}", {s.line_start}, {s.line_end})'
+            f"  인용: {s.file}:{s.line_start}"  # 정의는 def/class 줄로 인용하라는 데이터 힌트
             for s in symbols
         ]
         if not lines:

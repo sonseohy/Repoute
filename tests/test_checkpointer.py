@@ -75,6 +75,9 @@ def test_thread_survives_reopen(index, tmp_path):
     """같은 thread 로 두 번 물은 뒤 연결을 닫고 파일에서 다시 열어도 두 질문이 다 남아 있다.
 
     프로세스 재시작 시뮬레이션 (wave12). 답(WalkthroughAnswer)도 pydantic 객체로 되살아난다.
+    기대값 변경(실험 09): 둘째 질문의 같은 범위 read_code 는 이제 "이미 읽은 범위" 로 막혀
+    read_ranges 에 다시 쌓이지 않는다(전엔 같은 범위가 2번). 앞 질문에서 읽은 범위가 thread 에
+    남아 있어야 막히므로, 이 기대값 자체가 범위 누적의 증거다.
     """
     path = tmp_path / "threads" / "threads.sqlite"  # 없는 디렉터리도 만들어야 한다
     saver = open_checkpointer(path)
@@ -89,8 +92,10 @@ def test_thread_survives_reopen(index, tmp_path):
     humans = [m.content for m in state.values["messages"] if m.type == "human"]
     assert "첫 질문" in humans and "둘째 질문" in humans
     assert state.values["answer"] == GOOD
-    # 같은 thread 에서 누적된다. 직렬화를 거치면 tuple 이 list 로 돌아오므로 tuple 로 맞춰 비교
-    assert [tuple(r) for r in state.values["read_ranges"]] == [("app/main.py", 1, 2)] * 2
+    # 직렬화를 거치면 tuple 이 list 로 돌아오므로 tuple 로 맞춰 비교
+    assert [tuple(r) for r in state.values["read_ranges"]] == [("app/main.py", 1, 2)]
+    tool_texts = [m.content for m in state.values["messages"] if m.type == "tool"]
+    assert tool_texts[-1].startswith("이미 읽은 범위입니다 (app/main.py 1~2줄)")
     reopened.conn.close()
 
 

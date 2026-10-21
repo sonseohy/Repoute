@@ -38,10 +38,11 @@ def build_tools(tmp_path) -> dict:
 
 
 def test_find_definition(tmp_path):
-    """find_definition 은 "파일:줄범위"와 종류를 알려 주고, 없는 이름은 "찾지 못함"."""
+    """find_definition 은 "파일:줄범위"·종류·def 줄 인용 힌트를 주고, 없는 이름은 "찾지 못함"."""
     tools = build_tools(tmp_path)
     out = tools["find_definition"].invoke({"name": "create_app"})
     assert "src/app/main.py:4-5" in out and "function" in out
+    assert "인용: src/app/main.py:4" in out  # def 줄(line_start) 인용 힌트 (기록 08 관찰 4)
     assert "찾지 못함" in tools["find_definition"].invoke({"name": "missing"})
 
 

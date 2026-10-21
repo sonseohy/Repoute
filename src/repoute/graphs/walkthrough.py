@@ -67,14 +67,40 @@ def _readable(ranges: list) -> str:
     return ", ".join(f"{f} {a}~{b}줄" for f in files for a, b in _spans(ranges, f)) or "없음"
 
 
-def agent(state: WalkState, deps: Deps, tools: list, prompts: ModuleType = walkthrough_v1) -> dict:
+def agent(
+    state: WalkState,
+    deps: Deps,
+    tools: list,
+    prompts: ModuleType = walkthrough_v1,
+    agent_model: str = "quality",
+) -> dict:
     """다음에 부를 도구를 고르거나, 도구 없이 답할 준비가 됐다고 말한다 (ReAct).
 
-    fast 가 아니라 quality 를 쓴다: 무엇을 따라갈지 고르는 판단이 답의 품질을 좌우한다.
-    비용은 Phase 4 에서 fast 로 바꿔 비교한다 (E5 후보).
+    agent_model 이 "fast" 면 fast 모델, 아니면 quality 모델로 도구를 고른다 (실험 E5).
+    ReAct 비용은 턴마다 다시 보내는 대화 길이가 지배하므로(troubleshooting 19) 턴 단가를 낮춘다.
+    기본값 quality 는 기록 07·08 을 재현한다. finalize 는 어느 쪽이든 quality (wave10a).
     """
-    llm = deps.quality_llm.bind_tools(tools)
+    model = deps.fast_llm if agent_model == "fast" else deps.quality_llm
+    llm = model.bind_tools(tools)
     return {"messages": [llm.invoke([SystemMessage(prompts.SYSTEM)] + state["messages"])]}
+
+
+def _read_range(args: dict) -> tuple[str, int, int]:
+    """read_code 와 같은 규칙(시작은 1 이상, 최대 200줄)으로 실제 읽힐 (file, start, end)."""
+    start = max(int(args["start"]), 1)
+    end = min(int(args["end"]), start + MAX_READ_LINES - 1)
+    return str(PurePosixPath(args["file"])), start, end
+
+
+def _covering(call: dict, ranges: list) -> tuple[str, int, int] | None:
+    """read_code 호출이 이미 읽은 범위 하나에 완전히 들어가면 그 (file, a, b), 아니면 None."""
+    if call["name"] != "read_code":
+        return None
+    try:
+        file, start, end = _read_range(call["args"])
+    except (KeyError, TypeError, ValueError):  # 인자 오류는 도구를 실행해 그대로 알린다
+        return None
+    return next(((file, a, b) for a, b in _spans(ranges, file) if a <= start and end <= b), None)
 
 
 def tools_node(state: WalkState, tools: list) -> dict:
@@ -82,6 +108,7 @@ def tools_node(state: WalkState, tools: list) -> dict:
 
     ToolNode 는 도구를 스레드 풀에서 돌려 SQLite 스레드 오류가 난다 (troubleshooting 04).
     그래서 호출 스레드에서 하나씩 실행한다. 상한을 넘는 호출은 실행하지 않고 그렇다고 답한다.
+    이미 읽은 범위 안을 다시 읽는 read_code 는 실행도, 호출 수 집계도 하지 않는다 (기록 08 관찰 3).
     """
     by_name = {t.name: t for t in tools}
     used = state.get("tool_calls", 0)
@@ -89,6 +116,12 @@ def tools_node(state: WalkState, tools: list) -> dict:
     results = []
     for call in state["messages"][-1].tool_calls:
         tool, call_id = by_name.get(call["name"]), call["id"]
+        seen = _covering(call, ranges)
+        if seen:  # 프롬프트 지시 대신 입력으로 막는다: 예산을 쓰지 않고 앞의 결과를 가리킨다
+            file, a, b = seen
+            note = f"이미 읽은 범위입니다 ({file} {a}~{b}줄). 대화의 앞부분 결과를 쓰세요."
+            results.append(ToolMessage(note, tool_call_id=call_id))
+            continue
         if used >= MAX_TOOL_CALLS or tool is None:
             results.append(ToolMessage("실행 안 함: 상한 초과·없는 도구", tool_call_id=call_id))
             continue
@@ -99,9 +132,7 @@ def tools_node(state: WalkState, tools: list) -> dict:
             results.append(ToolMessage(f"도구 오류: {error}", tool_call_id=call_id))
             continue
         if call["name"] == "read_code":  # read_code 와 같은 규칙으로 실제 읽힌 범위를 남긴다
-            start = max(int(call["args"]["start"]), 1)
-            end = min(int(call["args"]["end"]), start + MAX_READ_LINES - 1)
-            ranges.append((str(PurePosixPath(call["args"]["file"])), start, end))
+            ranges.append(_read_range(call["args"]))
     return {"messages": results, "tool_calls": used, "read_ranges": ranges}
 
 
@@ -166,14 +197,21 @@ def after_validate(state: WalkState) -> str:
     return END
 
 
-def build_walkthrough_graph(deps: Deps, prompts: ModuleType = walkthrough_v1, checkpointer=None):
+def build_walkthrough_graph(
+    deps: Deps,
+    prompts: ModuleType = walkthrough_v1,
+    checkpointer=None,
+    agent_model: str = "quality",
+):
     """START → agent ⇄ tools → finalize → validate → (finalize | END).
 
     checkpointer 를 주면 같은 thread_id 로 대화를 이어 갈 수 있다 (wave12).
+    agent_model("fast" | "quality") 은 agent 노드만 바꾼다. finalize 는 항상 quality.
     """
     tools = make_code_tools(deps.index.db, deps.index.info.path)
     builder = StateGraph(WalkState)
-    builder.add_node("agent", partial(agent, deps=deps, tools=tools, prompts=prompts))
+    agent_node = partial(agent, deps=deps, tools=tools, prompts=prompts, agent_model=agent_model)
+    builder.add_node("agent", agent_node)
     builder.add_node("tools", partial(tools_node, tools=tools))
     builder.add_node("finalize", partial(finalize, deps=deps, prompts=prompts))
     builder.add_node("validate", partial(validate, deps=deps))
