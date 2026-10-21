@@ -17,7 +17,8 @@ from repoute.validation.citations import CodeRef, validate_citations
 
 MAX_TOOL_CALLS = 15  # 도구 호출 상한 (wave07 재계획 루프 상한)
 MAX_RETRIES = 2  # 인용 검증 실패 시 재작성 상한
-# 슈퍼스텝 수: agent 1 + (tools·agent) 15쌍 + (finalize·validate) 3쌍 + 여유 5 (기본 25로는 부족)
+# 슈퍼스텝 상한을 명시: agent 1 + (tools·agent) 15쌍 + (finalize·validate) 3쌍 + 여유 5.
+# langgraph 1.2 기본값은 매우 크지만, 이 그래프가 최대 몇 스텝인지 코드에 적어 두는 쪽을 택했다.
 RECURSION_LIMIT = 1 + 2 * MAX_TOOL_CALLS + 2 * (MAX_RETRIES + 1) + 5
 # 체크포인터가 상태의 답(pydantic)을 되살릴 때 허용할 타입 (langgraph-checkpoint 4.x: 미등록은 경고)
 CHECKPOINT_TYPES = [("repoute.graphs.walkthrough", "WalkthroughAnswer")]

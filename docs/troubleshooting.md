@@ -96,14 +96,14 @@
 
 ## 16. 도구 호출 상한에서 멈추면 답 없는 tool_call 이 대화에 남음 (Phase 3)
 - **증상**: 상한(15회) 도달 시 마지막 AIMessage 의 tool_calls 에 대응하는 ToolMessage 가 없다. 실제 OpenAI API 는 이런 대화를 400 으로 거부하고, 체크포인터로 이어 가는 후속 질문도 깨진다.
-- **해결**: finalize 가 미실행 호출마다 "실행 안 함: 도구 호출 상한" ToolMessage 를 붙이고, 프롬프트 앞에 상한 도달 안내(`LIMIT_NOTE`)를 넣는다. 또 langgraph 기본 `recursion_limit=25` 로는 도구 15회를 다 못 돌아 `RECURSION_LIMIT=42` 로 올렸다.
+- **해결**: finalize 가 미실행 호출마다 "실행 안 함: 도구 호출 상한" ToolMessage 를 붙이고, 프롬프트 앞에 상한 도달 안내(`LIMIT_NOTE`)를 넣는다. 또 `recursion_limit` 을 도구 15회·재작성 2회에 맞춘 `RECURSION_LIMIT=42` 로 **명시**했다. 처음엔 "기본값 25 로는 부족하다" 고 적었는데 틀렸다. langchain-core 의 기본값이 25 이고, 설치된 langgraph 1.2.16 은 자체 기본값(`DEFAULT_RECURSION_LIMIT`, 매우 큼)을 쓴다. 60 스텝 루프가 기본값으로 통과하고 25 를 넘기면 `GraphRecursionError` 가 나는 것을 직접 확인했다. 그래도 명시하는 이유는 프레임워크 기본값에 기대지 않고 "이 그래프는 최대 몇 스텝" 을 코드에 적어 두기 위해서다.
 - **교훈**: 루프를 강제로 끊을 때는 대화 형식의 불변 조건(모든 tool_call 에 ToolMessage)을 지켜야 한다. 가짜 LLM 테스트에서는 안 보이는 문제라 실제 API 규칙을 알고 있어야 한다.
 
 ## 17. 체크포인트에서 복원하면 tuple 이 list 로 바뀜 (Phase 3)
 - **증상**: `read_ranges` 에 `("app/main.py", 1, 5)` 를 넣었는데 SqliteSaver 에서 되살린 상태에서는 `["app/main.py", 1, 5]`. 같은 thread 의 두 번째 질문부터 tuple 과 list 가 섞인다.
-- **원인**: LangGraph 의 JsonPlusSerializer(msgpack) 는 tuple 을 list 로 직렬화한다. pydantic 모델(`WalkthroughAnswer`)은 `allowed_msgpack_modules` 에 등록해야 복원되고, 등록하지 않으면 경고 후 dict 로 돌아온다.
+- **원인**: LangGraph 의 JsonPlusSerializer(msgpack) 는 tuple 을 list 로 직렬화한다. pydantic 모델(`WalkthroughAnswer`)은 langgraph-checkpoint 4.3 기본 모드에서는 등록 없이도 객체로 복원되지만 "미등록 타입, 앞으로 차단 예정" 경고가 난다. `allowed_msgpack_modules` 에 등록하면 경고가 사라지고 엄격 모드에서도 복원된다(그래프 밖에서 직렬화기를 따로 쓸 때만 dict 로 떨어진다).
 - **해결**: 소비하는 코드는 `for f, s, e in ranges` 처럼 언패킹만 하므로 동작은 같다. 비교가 필요한 테스트는 `tuple(r)` 로 맞췄다. 답 타입은 `CHECKPOINT_TYPES` 로 등록해 경고 0건.
-- **교훈**: 체크포인터를 넣는 순간 상태는 "직렬화 왕복이 가능한 것"만 담아야 한다. tuple·set·dataclass 는 돌아올 때 모양이 바뀔 수 있으니 상태 스키마는 list·dict·str·int 와 등록된 pydantic 모델로 제한한다.
+- **교훈**: 체크포인터를 넣는 순간 상태는 "직렬화 왕복이 가능한 것"만 담아야 한다. 그리고 문서에 적는 프레임워크 동작은 설치된 버전으로 직접 확인한다(16번도 같은 이유로 고쳤다). tuple·set·dataclass 는 돌아올 때 모양이 바뀔 수 있으니 상태 스키마는 list·dict·str·int 와 등록된 pydantic 모델로 제한한다.
 
 ## 18. 따라가기 에이전트가 도구 예산 15회를 10회 낭비하고 상한에 걸림 (Phase 3, 기록 07)
 - **증상**: `requests.get()` 질문에 도구 15회를 다 쓰고 `Session.request` 에서 멈춤. 답은 근거가 전부 맞지만 흐름의 절반(`prepare_request` → `send` → adapter)이 빠짐. $0.080.
