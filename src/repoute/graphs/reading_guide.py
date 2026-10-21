@@ -203,7 +203,10 @@ def build_reading_guide_graph(
         builder.add_conditional_edges("validate", after_validate, ["synthesize", END])
     else:
         builder.add_edge("synthesize", END)
-    return builder.compile()
+    # 한 번에 끝나는 파이프라인이라 체크포인트가 필요 없다. False 로 두지 않으면 체크포인터를 단
+    # Supervisor 노드 안에서 부를 때 부모 것을 물려받아 실행마다 "run_map:<task id>" 칸에
+    # 요약(ModuleSummary)까지 쌓는다 (직접 확인).
+    return builder.compile(checkpointer=False)
 
 
 def run_reading_guide(

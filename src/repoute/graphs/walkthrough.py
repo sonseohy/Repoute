@@ -31,8 +31,6 @@ EXPLORE_BLOCK = (
     "읽기 없이 탐색만 {used}회 했습니다. 이제 read_code 로 코드를 읽으세요. "
     "직전 find_definition 결과 줄 끝의 read_code(...) 를 그대로 호출하면 됩니다."
 )
-# 체크포인터가 상태의 답(pydantic)을 되살릴 때 허용할 타입 (langgraph-checkpoint 4.x: 미등록은 경고)
-CHECKPOINT_TYPES = [("repoute.graphs.walkthrough", "WalkthroughAnswer")]
 
 
 class Step(BaseModel):

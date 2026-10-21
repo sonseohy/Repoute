@@ -1,4 +1,4 @@
-"""따라가기 대화 스레드를 SQLite 파일에 남기는 체크포인터 (wave12)."""
+"""따라가기·Supervisor 대화 스레드를 SQLite 파일에 남기는 체크포인터 (wave12)."""
 
 import sqlite3
 from pathlib import Path
@@ -6,7 +6,15 @@ from pathlib import Path
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.checkpoint.sqlite import SqliteSaver
 
-from repoute.graphs.walkthrough import CHECKPOINT_TYPES
+# 체크포인터가 상태의 pydantic 객체를 되살릴 때 허용할 타입 (langgraph-checkpoint 4.x: 미등록 경고).
+# 문자열로만 적어 이 파일이 그래프 모듈을 import 하지 않게 한다 (그래프 → 체크포인터 순환 방지).
+# 상태에 새 pydantic 클래스를 넣으면 여기에 더한다. 안에 든 모델(Step·ReadingStep·CodeRef)은
+# 바깥 모델이 되살아날 때 함께 검증되므로 따로 적지 않는다.
+CHECKPOINT_TYPES = [
+    ("repoute.graphs.walkthrough", "WalkthroughAnswer"),  # 따라가기 answer
+    ("repoute.graphs.reading_guide", "ReadingGuide"),  # Supervisor guide (wave12)
+    ("repoute.graphs.supervisor", "Intent"),  # Supervisor intent
+]
 
 
 def open_checkpointer(path: Path | str = ".repoute_cache/threads.sqlite") -> SqliteSaver:
@@ -21,6 +29,6 @@ def open_checkpointer(path: Path | str = ".repoute_cache/threads.sqlite") -> Sql
     # LangGraph 는 체크포인트를 다른 스레드에서 쓸 수 있다 (troubleshooting 04·15 와 같은 뿌리).
     # SqliteSaver 는 내부 락으로 접근을 직렬화하므로 공식 문서도 check_same_thread=False 를 권한다.
     conn = sqlite3.connect(str(path), check_same_thread=False)
-    # 상태의 답(WalkthroughAnswer)을 되살릴 수 있게 허용 타입을 등록한다
+    # 상태의 답·지도·의도(pydantic)를 되살릴 수 있게 허용 타입을 등록한다
     serde = JsonPlusSerializer(allowed_msgpack_modules=CHECKPOINT_TYPES)
     return SqliteSaver(conn, serde=serde)
