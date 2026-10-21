@@ -7,10 +7,11 @@ import sys
 import time
 from pathlib import Path
 
-from repoute.config import get_fast_llm, get_quality_llm, load_settings
+from repoute.config import get_embedder, get_fast_llm, get_quality_llm, load_settings
 from repoute.graphs.deps import Deps
 from repoute.graphs.reading_guide import run_reading_guide
 from repoute.graphs.walkthrough import ask, build_walkthrough_graph
+from repoute.indexing.embeddings import ensure_embeddings
 from repoute.indexing.entrypoints import find_entrypoints
 from repoute.indexing.imports import modules_of, rank_modules_v2
 from repoute.indexing.index import build_index
@@ -109,11 +110,14 @@ def ask_repo(
     cache_dir: str,
     prompt: str = "v3",
     agent_model: str = "quality",
+    search_symbols: bool = False,
 ) -> None:
     """질문 하나로 호출 체인을 따라가 근거와 함께 출력한다. 실제 LLM 을 호출한다.
 
     대화는 cache_dir/threads.sqlite 에 남아 --thread 로 이어 갈 수 있다 (wave12).
     agent_model 은 도구를 고르는 agent 노드의 모델만 바꾼다 (finalize 는 항상 quality, 실험 E5).
+    search_symbols 를 켜면 심볼 임베딩을 준비하고(첫 실행은 임베딩 API 비용) 도구
+    search_symbols 를 붙인다. 기본은 꺼짐 = 도구 5개 그대로.
     """
     prompts = importlib.import_module(f"repoute.prompts.walkthrough_{prompt}")
     start = time.perf_counter()
@@ -121,6 +125,15 @@ def ask_repo(
         repo = build_index(url, cache_dir)
         thread_id = thread or f"{repo.info.repo_id}:default"  # 기본 스레드는 레포별로 분리
         deps = Deps(get_fast_llm(), get_quality_llm(), repo)
+        if search_symbols:
+            settings = load_settings()
+            embedder = get_embedder(settings)
+            store = ensure_embeddings(repo, embedder, settings.embedding_model, cache_dir)
+            deps.embedder, deps.embedding_store = embedder, store
+            print(
+                f"임베딩: {store.count()}개 ({'cache hit' if store.cached else '새로 만듦'}, "
+                f"{settings.embedding_model})"
+            )
         saver = open_checkpointer(Path(cache_dir) / "threads.sqlite")
         graph = build_walkthrough_graph(deps, prompts, saver, agent_model=agent_model)
         state = ask(graph, question, thread_id)
@@ -192,6 +205,11 @@ def main() -> None:
         default="quality",
         help="도구를 고르는 agent 노드의 모델 (finalize 는 항상 quality)",
     )
+    ask_parser.add_argument(
+        "--search-symbols",
+        action="store_true",
+        help="심볼 임베딩 검색 도구를 켠다 (첫 실행은 임베딩 API 비용 발생, 기본 꺼짐)",
+    )
     args = parser.parse_args()
     if args.command == "check":
         check()
@@ -207,6 +225,7 @@ def main() -> None:
             args.cache_dir,
             prompt=args.prompt,
             agent_model=args.agent_model,
+            search_symbols=args.search_symbols,
         )
 
 

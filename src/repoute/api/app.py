@@ -85,7 +85,14 @@ def _run_graph(base: SupervisorDeps, start: dict, out: queue.Queue) -> None:
     (troubleshooting 04·15). 그래프는 체크포인터로 컴파일해 guide·cursor·history 가 thread 에
     남는다 (wave12). state 는 이번 실행의 업데이트만 모으므로 result 에도 이번 실행 분만 담긴다.
     """
-    deps = SupervisorDeps(base.fast_llm, base.quality_llm, base.cache_dir, base.checkpointer)
+    deps = SupervisorDeps(
+        base.fast_llm,
+        base.quality_llm,
+        base.cache_dir,
+        base.checkpointer,
+        embedder=base.embedder,  # 심볼 임베딩 검색 (레포당 첫 질문에서 1회 생성, 이후 파일 캐시)
+        embedding_model=base.embedding_model,
+    )
     state = dict(start)
     config = {"configurable": {"thread_id": start["thread_id"]}}
     try:
@@ -127,12 +134,20 @@ def create_app(
     async def lifespan(app: FastAPI):
         owned = deps is None
         if owned:  # import 시점이 아니라 서버 시작 시 1회 (실제 LLM 객체, 호출은 아직 없음)
-            from repoute.config import get_fast_llm, get_quality_llm
+            from repoute.config import get_embedder, get_fast_llm, get_quality_llm, load_settings
             from repoute.memory.checkpointer import open_checkpointer
 
             # Supervisor 와 따라가기가 같은 파일을 쓴다. 따라가기는 "<thread>:walkthrough" 칸
             saver = open_checkpointer(Path(cache_dir) / "threads.sqlite")
-            app.state.deps = SupervisorDeps(get_fast_llm(), get_quality_llm(), cache_dir, saver)
+            settings = load_settings()
+            app.state.deps = SupervisorDeps(
+                get_fast_llm(),
+                get_quality_llm(),
+                cache_dir,
+                saver,
+                embedder=get_embedder(settings),  # 기록 24: 이름 없는 질문 도달 0 → 6/10
+                embedding_model=settings.embedding_model,
+            )
         else:
             app.state.deps = deps
         yield

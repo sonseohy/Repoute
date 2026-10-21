@@ -8,7 +8,7 @@ from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
 from repoute.graphs.reading_guide import ModuleSummary, ReadingGuide, ReadingStep
-from repoute.graphs.supervisor import Intent, SupervisorDeps, run_supervisor
+from repoute.graphs.supervisor import Intent, SupervisorDeps, _gate, run_supervisor
 from repoute.graphs.walkthrough import Step, WalkthroughAnswer
 from repoute.memory.checkpointer import CHECKPOINT_TYPES
 from repoute.prompts import supervisor_v2
@@ -159,6 +159,30 @@ def test_gate_demotes_ask_without_symbol(tmp_path, repo_url):
     assert state["guide"] is not None
     assert _types(state) == ["IndexReady", "IntentDecided", "GateApplied", "GuideReady"]
     assert state["events"][2]["from"] == "ask" and state["events"][2]["to"] == "map"
+
+
+def test_gate_relaxed_only_when_search_available():
+    """식별자 없는 ask 는 기본(can_search=False)이면 map 으로, 검색 도구가 있으면 그대로 둔다."""
+    message = "리디렉트 처리는 어디서 해?"
+    assert _gate("ask", message, False)[0] == "map"
+    assert _gate("ask", message, False, can_search=True) is None
+    assert _gate("ask", "run() 은?", False) is None  # 이름이 있으면 원래도 유지
+
+
+def test_ask_without_symbol_with_embedder(tmp_path, repo_url, fake_embedder):
+    """embedder 가 있으면 식별자 없는 ask 도 따라가기로 가고, 임베딩 준비 이벤트가 먼저 남는다."""
+    query = {"query": "helper 를 부르는 진입 함수"}
+    chat = [_call("search_symbols", query, 0), _read_main(1), AIMessage(content="답")]
+    quality = FakeLLM({WalkthroughAnswer: [ANSWER]}, chat)
+    deps = _deps(tmp_path, [Intent(kind="ask", reason="흐름 질문")], quality)
+    deps.embedder, deps.embedding_model = fake_embedder, "fake"
+    state = run_supervisor(deps, repo_url, "코드 흐름 알려줘")
+    deps.close()
+    assert state["intent"].kind == "ask"
+    assert _types(state) == ["IndexReady", "IntentDecided", "EmbeddingsReady", "AnswerReady"]
+    assert state["events"][2] == {"type": "EmbeddingsReady", "count": 2, "cached": False}
+    search_result = quality.chat_inputs[1][-1].content  # search_symbols 의 ToolMessage
+    assert "→ read_code(" in search_result and "인용:" in search_result
 
 
 def test_chat_intent(tmp_path, repo_url):

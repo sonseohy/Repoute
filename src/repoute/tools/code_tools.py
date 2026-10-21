@@ -1,4 +1,4 @@
-"""인덱스와 레포 파일을 읽는 LangChain 도구 5종."""
+"""인덱스와 레포 파일을 읽는 LangChain 도구 5종 (+ 옵트인 search_symbols)."""
 
 from pathlib import Path
 
@@ -10,6 +10,7 @@ from repoute.indexing.symbols import SymbolDB
 MAX_RESULTS = 20  # 정의·호출 결과 상한
 MAX_SEARCH = 30  # 문자열 검색 결과 상한
 MAX_READ_LINES = 200  # read_code 한 번에 읽는 줄 수 상한
+MAX_SYMBOL_HITS = 5  # search_symbols 결과 수 (유사도 상위)
 
 
 def _join(lines: list[str], limit: int = MAX_RESULTS) -> str:
@@ -31,8 +32,12 @@ def _name_candidates(name: str) -> list[str]:
     return candidates + [parts[-1]]
 
 
-def make_code_tools(db: SymbolDB, root: Path) -> list:
-    """인덱스(db)와 레포 루트(root)를 붙여 LangChain 도구 5개를 만든다 (Phase 3 에이전트가 사용)."""
+def make_code_tools(db: SymbolDB, root: Path, store=None, embedder=None) -> list:
+    """인덱스(db)와 레포 루트(root)를 붙여 LangChain 도구 5개를 만든다 (Phase 3 에이전트가 사용).
+
+    store(SymbolEmbeddingStore)와 embedder 를 둘 다 주면 6번째 도구 search_symbols 를 붙인다.
+    하나라도 없으면 도구 목록은 이전과 똑같다 (before 측정과 같은 조건을 지키는 옵트인).
+    """
     root = root.resolve()
 
     # 도구는 db·root를 알아야 하지만 LLM에게는 name 같은 인자만 보여야 해서 클로저로 만든다
@@ -109,4 +114,22 @@ def make_code_tools(db: SymbolDB, root: Path) -> list:
                     hits.append(f"{rel.as_posix()}:{n}  {line.strip()[:120]}")
         return _join(hits, MAX_SEARCH) if hits else f"'{query}'을(를) 찾지 못함"
 
-    return [find_definition, find_callers, find_callees, read_code, search_code]
+    tools = [find_definition, find_callers, find_callees, read_code, search_code]
+    if store is None or embedder is None:
+        return tools
+
+    @tool
+    def search_symbols(query: str) -> str:
+        """함수·클래스 이름을 모를 때 동작을 설명하는 말로 찾는다(예: "리디렉트 횟수 초과 예외").
+        이름을 알면 find_definition 을 먼저 쓴다. query 는 찾는 동작을 설명하는 짧은 문장.
+        결과 줄 끝의 read_code(...) 호출을 그대로 쓰면 정의 전체를 한 번에 읽는다."""
+        lines = []
+        for h in store.search(embedder.embed_query(query), k=MAX_SYMBOL_HITS):
+            file, start, end = h["file"], h["line_start"], h["line_end"]
+            lines.append(
+                f"{h['kind']} {h['name']} — {file}:{start}~{end} (유사도 {h['score']:.2f})"
+                f'  → read_code("{file}", {start}, {end})  인용: {file}:{start}'
+            )
+        return "\n".join(lines) if lines else f"'{query}' 와 비슷한 심볼을 찾지 못함"
+
+    return tools + [search_symbols]

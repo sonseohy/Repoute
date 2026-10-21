@@ -1,5 +1,6 @@
 """repoute.tools.code_tools(탐색 도구) 테스트. 실행: uv run pytest -v tests/test_code_tools.py"""
 
+from repoute.indexing.embeddings import SymbolEmbeddingStore
 from repoute.indexing.parser import parse_repo
 from repoute.indexing.symbols import SymbolDB
 from repoute.tools.code_tools import _name_candidates, make_code_tools
@@ -100,3 +101,40 @@ def test_tools_are_langchain_tools(tmp_path):
     assert len(tools) == 5
     for t in tools.values():
         assert t.name and t.description
+
+
+BASE_TOOLS = ["find_definition", "find_callers", "find_callees", "read_code", "search_code"]
+
+
+def _index(tmp_path):
+    """build_tools 와 같은 작은 레포의 (db, root)."""
+    root = tmp_path / "repo"
+    (root / FILE).parent.mkdir(parents=True)
+    (root / FILE).write_text(APP_SOURCE, encoding="utf-8")
+    db = SymbolDB()
+    db.build(parse_repo(root))
+    return db, root
+
+
+def test_default_tools_unchanged(tmp_path, fake_embedder):
+    """store·embedder 중 하나라도 없으면 도구 5개, 이름 목록도 그대로다 (기본 동작 불변)."""
+    db, root = _index(tmp_path)
+    store = SymbolEmbeddingStore(tmp_path / "emb.sqlite")
+    assert [t.name for t in make_code_tools(db, root)] == BASE_TOOLS
+    assert [t.name for t in make_code_tools(db, root, store=store)] == BASE_TOOLS
+    assert [t.name for t in make_code_tools(db, root, embedder=fake_embedder)] == BASE_TOOLS
+
+
+def test_search_symbols_added_with_store_and_embedder(tmp_path, fake_embedder):
+    """둘 다 있으면 6번째 도구 search_symbols 가 붙고, 결과 줄은 read_code 호출·인용 힌트를 준다."""
+    db, root = _index(tmp_path)
+    store = SymbolEmbeddingStore(tmp_path / "emb.sqlite")
+    store.build(db, root, fake_embedder, "fake")
+    tools = make_code_tools(db, root, store=store, embedder=fake_embedder)
+    assert [t.name for t in tools] == BASE_TOOLS + ["search_symbols"]
+    out = tools[-1].invoke({"query": "create app"})
+    lines = out.splitlines()
+    assert 1 <= len(lines) <= 5
+    assert lines[0].startswith("function create_app — src/app/main.py:4~5 (유사도 ")
+    assert all("→ read_code(" in line and "인용:" in line for line in lines)
+    assert 'read_code("src/app/main.py", 4, 5)  인용: src/app/main.py:4' in lines[0]

@@ -26,6 +26,8 @@
 | [20](20-reading-guide-v3-entrypoints.md) | reading-guide-v3-entrypoints | 진입점 v3 반영 후 Experiment 재실행 (18 과 Compare) | entrypoint_recall **0.32 → 0.53**, core p@5 0.68 → 0.72, 인용 100%. Phase 4 누적: 진입점 0.05→0.53, 핵심 0.24→0.72 | 5 | langsmith_eval.py | Experiment `reading-guide-gold-v3-d42ebe4b` | (커밋 후 기재) |
 | [21](21-walkthrough-qa-experiment.md) | walkthrough-qa-experiment | walkthrough-qa 첫 Experiment (quality, 5개) | reached 0.60, chain 0.43, strict 1.0, 질문당 $0.079 — 기록 13(n=20)과 일관 | 5 | langsmith_eval.py | Experiment `walkthrough-qa-v3-quality-0ae83013` | (커밋 후 기재) |
 | [22](22-ui-baselines.md) | ui-baselines | Supervisor 의도 분류 + /explain 설명 품질 첫 측정 (v1 vs v2) | 분류 LLM 97% / 게이트 후 93% (오류 2건은 "식별자 없는 ask → map" 게이트). 설명 v1 은 항목 56/56 이 카테고리 이름 복사, v2 는 0/82·실제 코드 줄, 줄 참조 유효 93% → 89%(형식 흐트러짐), 천 단위 잘림 7건. 결정론적 후처리 후 문제 항목 v1 4→0, v2 19→9 ($0) | 30 메시지 / 20 심볼 | 전용 스크립트 2개, 결정론적 지표 (fast 판정은 변별력 0) | 태그 `ui-baseline-intents` | (커밋 후 기재) |
+| [23](23-nosymbol-before.md) | nosymbol-before | 함수 이름 없는 질문 10개 — before (게이트 + 기존 도구 5개, quality) | 게이트: 따라가기 도달 **0/10**(9개 map 으로). 게이트 우회 시 도달 5/10, 체인 0.21, search_code 15회, 첫 read_code 까지 3.2회, 질문당 $0.060 | 10 | walkthrough_batch(도구 순서 기록) + nosymbol_gate | 태그 `wt-nosymbol-before`, `wt-nosymbol-gate` | (커밋 후 기재) |
+| [24](24-nosymbol-after.md) | nosymbol-after | 23 + `search_symbols`(심볼 임베딩 검색, text-embedding-3-small, SQLite+numpy) 6번째 도구 | 도달 5→**6/10**(끝 이름 5→8), 첫 read_code 까지 3.2→**2.0**, 도구 7.0→5.3, search_code 15→10, 질문당 $0.060→**$0.045**, 엄격 10/10 유지. UI 경로는 게이트 완화로 0→6/10 | 10 | walkthrough_batch --search-symbols | 태그 `wt-nosymbol-after` | (커밋 후 기재) |
 
 ## 이름 규칙
 

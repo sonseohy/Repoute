@@ -1,0 +1,202 @@
+{
+  "model": "gpt-4o-mini",
+  "date": "2026-10-21",
+  "tag": "wt-nosymbol-gate",
+  "dataset": "evals/datasets/walkthrough_questions_nosymbol.json",
+  "has_guide": false,
+  "history": [],
+  "summary": {
+    "n": 10,
+    "failed": 0,
+    "reached_ask": 0,
+    "llm_ask": 9,
+    "llm_kinds": {
+      "map": 0,
+      "ask": 9,
+      "next": 0,
+      "chat": 1
+    },
+    "final_kinds": {
+      "map": 9,
+      "ask": 0,
+      "next": 0,
+      "chat": 1
+    },
+    "gate_applied": 9,
+    "symbol_matches": [],
+    "total_cost": 0.0008904,
+    "avg_elapsed": 1.1185314541449771
+  },
+  "rows": [
+    {
+      "id": "ns-requests-01",
+      "repo": "psf/requests",
+      "question": "리디렉트를 너무 많이 따라가면 어디서 예외가 나?",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 475,
+          "output_tokens": 27
+        }
+      },
+      "cost": 8.745e-05,
+      "elapsed": 1.196739082923159
+    },
+    {
+      "id": "ns-requests-02",
+      "repo": "psf/requests",
+      "question": "요청을 보내기 전에 세션에 저장된 쿠키와 요청마다 넘긴 쿠키는 어디서 합쳐져?",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 486,
+          "output_tokens": 27
+        }
+      },
+      "cost": 8.91e-05,
+      "elapsed": 0.9460371669847518
+    },
+    {
+      "id": "ns-requests-03",
+      "repo": "psf/requests",
+      "question": "환경 변수에 설정해 둔 프록시 주소는 어디서 읽어 와?",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 477,
+          "output_tokens": 29
+        }
+      },
+      "cost": 8.895e-05,
+      "elapsed": 1.1554202500265092
+    },
+    {
+      "id": "ns-httpx-01",
+      "repo": "encode/httpx",
+      "question": "리디렉트를 따라갈 때 다음 요청의 메서드가 바뀌는 건 어디서 정해져?",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 484,
+          "output_tokens": 27
+        }
+      },
+      "cost": 8.88e-05,
+      "elapsed": 0.9456976668443531
+    },
+    {
+      "id": "ns-httpx-02",
+      "repo": "encode/httpx",
+      "question": "압축돼서 온 응답 본문을 풀 때, 압축 방식에 맞는 해제기는 어디서 골라?",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 486,
+          "output_tokens": 29
+        }
+      },
+      "cost": 9.029999999999999e-05,
+      "elapsed": 1.230180042097345
+    },
+    {
+      "id": "ns-click-01",
+      "repo": "pallets/click",
+      "question": "옵션을 명령줄에 안 주면 환경 변수에서 값을 읽어 오던데, 그건 어디서 해?",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 485,
+          "output_tokens": 30
+        }
+      },
+      "cost": 9.075e-05,
+      "elapsed": 1.0895189999137074
+    },
+    {
+      "id": "ns-click-02",
+      "repo": "pallets/click",
+      "question": "값을 안 준 옵션에 대해 사용자에게 직접 입력을 물어보는 건 어디서 해?",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 480,
+          "output_tokens": 24
+        }
+      },
+      "cost": 8.64e-05,
+      "elapsed": 1.4121653328184038
+    },
+    {
+      "id": "ns-rich-01",
+      "repo": "Textualize/rich",
+      "question": "출력할 때 터미널 폭은 어디서 계산해? 환경 변수로 바꿀 수도 있어?",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 482,
+          "output_tokens": 29
+        }
+      },
+      "cost": 8.969999999999998e-05,
+      "elapsed": 0.900405041873455
+    },
+    {
+      "id": "ns-rich-02",
+      "repo": "Textualize/rich",
+      "question": "긴 문장을 출력하면 폭에 맞춰 줄을 나누는 건 어디서 해?",
+      "llm_kind": "ask",
+      "final_kind": "map",
+      "gate_reason": "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음",
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 478,
+          "output_tokens": 25
+        }
+      },
+      "cost": 8.67e-05,
+      "elapsed": 1.3439347080420703
+    },
+    {
+      "id": "ns-rich-03",
+      "repo": "Textualize/rich",
+      "question": "터미널이 256색까지만 지원하면 트루컬러 색은 어디서 가까운 색으로 바뀌어?",
+      "llm_kind": "chat",
+      "final_kind": "chat",
+      "gate_reason": null,
+      "symbol_match": null,
+      "tokens": {
+        "gpt-4o-mini-2024-07-18": {
+          "input_tokens": 487,
+          "output_tokens": 32
+        }
+      },
+      "cost": 9.225e-05,
+      "elapsed": 0.9652162499260157
+    }
+  ]
+}

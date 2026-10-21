@@ -1,12 +1,13 @@
 # evals/datasets — 평가 정답 데이터셋
 
-Phase 4 평가(PLAN 6절 Phase 4) 에 쓰는 정답 데이터. 세 파일 모두 JSON 배열이라 파일 안에 메타를 넣을 수 없어서, 스키마·라벨링 방법·한계를 여기에 적는다.
+Phase 4 평가(PLAN 6절 Phase 4) 에 쓰는 정답 데이터. 네 파일 모두 JSON 배열이라 파일 안에 메타를 넣을 수 없어서, 스키마·라벨링 방법·한계를 여기에 적는다.
 
 | 파일 | LangSmith 데이터셋 | 항목 수 | 사용하는 평가자 |
 |---|---|---|---|
 | `reading_guide_gold.json` | `reading-guide-gold` | 레포 5개 | `entrypoint_recall`, `core_module_precision@5` |
 | `walkthrough_questions.json` | `walkthrough-qa` | 질문 20개 (레포 4개 × 5) | 도달(`expect_reach`), `call_chain_accuracy`(`expect_chain`) |
 | `supervisor_intents.json` | (로컬 전용) | 메시지 30개 | 의도 분류 정확도 (`evals/experiments/supervisor_intents.py`) |
+| `walkthrough_questions_nosymbol.json` | (로컬 전용, 미등록) | 질문 10개 (레포 4개 × 2~3) | 도달(`expect_reach`), `call_chain_accuracy`(`expect_chain`) |
 
 대상 레포와 커밋 (인덱스 `.repoute_cache/index/<owner>__<name>@<commit>.sqlite` 의 커밋과 같다):
 psf/requests@611c616, encode/httpx@b5addb6, pallets/click@2247b35, Textualize/rich@9d8f9a3, fastapi/fastapi@6f28852.
@@ -41,6 +42,19 @@ psf/requests@611c616, encode/httpx@b5addb6, pallets/click@2247b35, Textualize/ri
 ## 3. `supervisor_intents.json` — Supervisor 의도 분류
 
 Supervisor `classify`(fast 모델 + 코드 게이트 `_gate`)가 메시지를 map·ask·next·chat 중 어디로 보내는지 재는 데이터. 항목은 `{id, message, has_guide, history, expected, note}` 이고, `has_guide` 는 이 대화에 읽기 지도가 이미 있는지, `history` 는 분류 프롬프트에 들어가는 최근 대화(`{"role": "user"|"agent", "text"}`, 도우미 줄은 `_agent_summary` 모양으로 씀)다. **라벨 = 사람 수작업**(규칙·LLM 자동 라벨 아님. 초안은 Opus 에이전트가 2026-10-21 에 손으로 붙였고 사용자 검수 전. 사용자가 실제로 칠 법한 한국어 메시지 27개 + 영어 3개, 각 라벨의 이유를 `note` 에 한 줄), **n = 30**, 분포 map 9 / ask 9 / next 6 / chat 6. next 는 모두 `has_guide: true` 이고, 지도 없는 "다음"(si-06)은 게이트 규칙대로 map 으로 라벨해 map 9개에 넣었다. 함수 이름이 없는 ask 2개(si-13 리디렉트, si-14 인증 헤더)는 사람 기준으로 ask 지만 현재 게이트가 map 으로 내리므로(Phase 5.5-4 완화 대상) 결과에서 따로 집계한다. 한계: n 이 작아 한 항목이 정확도를 3%p 움직이고, next 6개는 모두 `NEXT_PATTERN` 에 걸리는 표현이라 게이트 후 next 정확도는 사실상 정규식 검사다. LLM 단독 정확도와 함께 봐야 한다.
+
+## 4. `walkthrough_questions_nosymbol.json` — 이름 없는 따라가기 질문
+
+**목적.** 질문에 함수·클래스 이름이 하나도 없는 따라가기 질문 세트. 현재 Supervisor 게이트(`src/repoute/graphs/supervisor.py` 의 `SYMBOL_PATTERN`)는 메시지에 식별자가 없으면 ask 를 map 으로 내리므로, 이 세트의 질문은 지금은 따라가기까지 가지 못한다. 게이트를 완화하고 심볼 임베딩 검색 도구를 넣었을 때 **전/후 비교**용이다(Phase 5.5-4).
+
+- **스키마:** 2절 `walkthrough_questions.json` 과 같다(`id`, `repo`, `question`, `expect_reach`, `expect_chain`, `chain_evidence`). `id` 는 `ns-<레포>-NN`.
+- **n = 10.** requests 3 (리디렉트 한도 예외, 쿠키 병합, 환경 변수 프록시), httpx 2 (리디렉트 시 메서드 변경, 압축 해제기 선택), click 2 (환경 변수에서 옵션 값 읽기, 프롬프트 입력), rich 3 (터미널 폭, 줄바꿈 위치, 256색 다운그레이드).
+- **라벨 = Opus 에이전트 초안, 사용자 검수 전** (2026-10-21, LLM 호출 없이 소스 읽기). 질문은 "이름을 몰라도 물을 법한" 동작·현상·설정 키워드로 썼다.
+- **기존 20개와 겹침 없음.** 10개 모두 `expect_reach` 가 같은 레포의 기존 `walkthrough_questions.json` 정답과 다르다. 체인 앞부분(`Session.request`, `Client.send`, `Console.print` 등)은 겹친다.
+- **식별자 없음 검증:** 질문은 순 한국어(한글·숫자·문장부호)로만 썼고, `tests/test_datasets_nosymbol.py` 가 10개 모두 `SYMBOL_PATTERN.search(question) is None` 인지 확인한다(영어 단어 하나만 있어도 식별자로 매치되므로).
+- **근거 확인 방법:** `expect_chain` 의 각 이름을 인덱스 `symbols` 테이블에서 `sqlite3` 로 조회해 존재를 확인하고, `chain_evidence` 의 각 `path:line` 을 `.repoute_cache/<owner>/<name>/` 소스에서 직접 열어 그 줄이 해당 체인 심볼의 `line_start~line_end` 안에 있고 설명(호출문·raise 줄)과 맞는지 봤다. 괄호 안 `:NNN` 은 같은 파일의 보충 줄이다.
+- **동적 호출:** click 두 질문의 `self.consume_value`·`self.value_from_envvar`·`super().resolve_envvar_value` 는 질문 상황(옵션)으로 정해지는 `Option.*` 구체 메서드를 적었다(2절 체인 규칙과 같음). ns-rich-02 의 `renderable.__rich_console__` 은 `Text.__rich_console__`.
+- **한계:** n 이 작아 한 항목이 10%p 를 움직인다. ns-rich-01 의 `self.options`·`self.size` 는 property 접근이라 인덱스 `calls` 테이블에 없다(조회로 확인) — 정적 호출 그래프만으로는 `Console.print → Console.options → Console.size` 를 따라갈 수 없다. ns-click-02 는 옵션에 프롬프트가 설정된 경우를 전제한다.
 
 ## 라벨링 방법
 

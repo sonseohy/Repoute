@@ -17,9 +17,11 @@ from typing import Annotated, Any, Literal, TypedDict
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel
 
+from repoute.config import DEFAULT_EMBEDDING_MODEL
 from repoute.graphs.deps import Deps
 from repoute.graphs.reading_guide import ReadingGuide, run_reading_guide
 from repoute.graphs.walkthrough import WalkthroughAnswer, ask, build_walkthrough_graph
+from repoute.indexing.embeddings import ensure_embeddings
 from repoute.indexing.index import RepoIndex, build_index
 from repoute.prompts import reading_guide_v3, supervisor_v2, walkthrough_v3
 
@@ -90,16 +92,22 @@ class SupervisorDeps:
     cache_dir: Path | str = ".repoute_cache"
     checkpointer: Any = None  # 따라가기 대화 스레드 (없으면 매번 새 대화)
     indexes: dict[str, RepoIndex] = field(default_factory=dict)  # repo_url → 이번 실행의 인덱스
+    # 옵트인 심볼 임베딩 검색. None 이면 따라가기 도구 5개·게이트 그대로 (기본 동작 불변)
+    embedder: Any = None
+    embedding_model: str = DEFAULT_EMBEDDING_MODEL
+    stores: dict[str, Any] = field(default_factory=dict)  # repo_url → SymbolEmbeddingStore
 
     def sub_deps(self, repo_url: str) -> Deps:
-        """서브그래프(읽기 지도·따라가기)가 받을 Deps."""
-        return Deps(self.fast_llm, self.quality_llm, self.indexes[repo_url])
+        """서브그래프(읽기 지도·따라가기)가 받을 Deps. 임베딩 저장소가 있으면 함께 넘긴다."""
+        store = self.stores.get(repo_url)
+        return Deps(self.fast_llm, self.quality_llm, self.indexes[repo_url], self.embedder, store)
 
     def close(self) -> None:
         """열어 둔 인덱스 DB 연결을 모두 닫는다."""
         for repo in self.indexes.values():
             repo.db.close()
         self.indexes.clear()
+        self.stores.clear()  # 저장소는 연결을 들고 있지 않아 닫을 것이 없다
 
 
 def ensure_index(state: SupervisorState, deps: SupervisorDeps) -> dict:
@@ -122,13 +130,19 @@ def _history_text(history: list[dict]) -> str:
     return "\n".join(lines) or supervisor_v2.NO_HISTORY
 
 
-def _gate(kind: str, message: str, has_guide: bool) -> tuple[str, str] | None:
-    """코드 게이트 (wave06). 바꿀 때만 (새 kind, 이유), 아니면 None."""
+def _gate(
+    kind: str, message: str, has_guide: bool, can_search: bool = False
+) -> tuple[str, str] | None:
+    """코드 게이트 (wave06). 바꿀 때만 (새 kind, 이유), 아니면 None.
+
+    can_search: 따라가기에 search_symbols(이름 없이 설명으로 찾기)가 있으면 True. 그때는
+    식별자 없는 ask 도 출발점을 찾을 수 있어 map 으로 내리지 않는다 (RAG 1단계 게이트 완화).
+    """
     if NEXT_PATTERN.match(message) and has_guide:
         return "next", "'다음' 으로 시작하는 말이고 이 대화에 읽기 지도가 있음"
     if kind == "next" and not has_guide:
         return "map", "이 대화에 읽기 지도가 없어 다음 단계를 고를 수 없음"
-    if kind == "ask" and not SYMBOL_PATTERN.search(message):
+    if kind == "ask" and not can_search and not SYMBOL_PATTERN.search(message):
         return "map", "메시지에 함수·클래스 이름이 없어 따라가기 도구를 쓸 수 없음"
     return None
 
@@ -137,6 +151,7 @@ def classify(state: SupervisorState, deps: SupervisorDeps) -> dict:
     """fast 모델로 의도를 고르고(최근 대화 포함), 코드 게이트로 바로잡는다 (wave06).
 
     - 심볼 없는 ask → map: ask 의 도구(find_definition 등)는 이름이 있어야 작동한다.
+      단 embedder 가 있으면(search_symbols 사용 가능) 이 규칙은 쓰지 않는다.
     - 지도 없는 next → map: 이어 갈 읽기 순서가 없다.
     - 지도가 있고 "다음" 으로 시작 → next: 지도를 다시 만들면 같은 1단계를 또 보여 주고
       LLM 비용도 다시 든다 (UI 에서 발견한 문제).
@@ -145,7 +160,8 @@ def classify(state: SupervisorState, deps: SupervisorDeps) -> dict:
     prompt = supervisor_v2.CLASSIFY.format(history=history, message=state["message"])
     intent = deps.fast_llm.with_structured_output(Intent).invoke(prompt)
     events = [{"type": "IntentDecided", "kind": intent.kind, "reason": intent.reason}]
-    gate = _gate(intent.kind, state["message"], state.get("guide") is not None)
+    has_guide, can_search = state.get("guide") is not None, deps.embedder is not None
+    gate = _gate(intent.kind, state["message"], has_guide, can_search)
     if gate and gate[0] != intent.kind:
         kind, reason = gate
         events.append({"type": "GateApplied", "from": intent.kind, "to": kind, "reason": reason})
@@ -178,7 +194,18 @@ def run_ask(state: SupervisorState, deps: SupervisorDeps) -> dict:
     체크포인트된다(네임스페이스 ""). Supervisor 도 같은 체크포인터·thread_id 의 "" 칸을 쓰므로
     그대로 두면 두 상태가 한 칸에서 섞여 따라가기 대화가 사라진다(직접 확인). 그래서
     따라가기 thread 이름에 ":walkthrough" 를 붙여 같은 SqliteSaver 안에서 칸을 나눈다.
+
+    embedder 가 있으면 먼저 심볼 임베딩을 준비한다. 첫 호출은 임베딩 API 비용이 들어
+    EmbeddingsReady 이벤트(건수·캐시 여부)로 드러낸다. 같은 커밋이면 파일 캐시라 비용이 없다.
     """
+    events = []
+    if deps.embedder is not None:
+        url = state["repo_url"]
+        store = ensure_embeddings(
+            deps.indexes[url], deps.embedder, deps.embedding_model, deps.cache_dir
+        )
+        deps.stores[url] = store  # 인덱스처럼 deps 에 두고 sub_deps 가 넘긴다
+        events.append({"type": "EmbeddingsReady", "count": store.count(), "cached": store.cached})
     sub = deps.sub_deps(state["repo_url"])
     base = state.get("thread_id")
     thread_id = f"{base}:walkthrough" if base else f"{sub.index.info.repo_id}:default"
@@ -188,7 +215,7 @@ def run_ask(state: SupervisorState, deps: SupervisorDeps) -> dict:
     result = ask(graph, state["message"], thread_id)
     errors = result.get("validation_errors") or []
     event = {"type": "AnswerReady", "steps": len(result["answer"].steps), "errors": len(errors)}
-    return {"answer": result["answer"], "validation_errors": errors, "events": [event]}
+    return {"answer": result["answer"], "validation_errors": errors, "events": events + [event]}
 
 
 def next_step(state: SupervisorState) -> dict:
