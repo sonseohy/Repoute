@@ -17,6 +17,14 @@
 | [11](11-walkthrough-batch-nudge.md) | walkthrough-batch-nudge | 10 + "읽지 않고 답하면 넛지" | 엄격 13/20 (변화 없음). 넛지 발동 3건은 전부 성공, 실패 7건은 답하기 전 상한 도달로 넛지 미발동 | 20 | 10 과 동일 | 태그 `wt-batch` | (커밋 후 기재) |
 | [12](12-walkthrough-batch-explore-limit.md) | walkthrough-batch-explore-limit | 11 + 읽기 없이 탐색 6회면 도구 층에서 거부 | **엄격 통과 13→20/20, read_code 0회 7→0, 재작성 7→0, $0.42→$0.37.** 도달 8→4/20 (얕은 답, trade-off) | 20 | 10 과 동일 | 태그 `wt-batch` | (커밋 후 기재) |
 | [13](13-walkthrough-batch-quality.md) | walkthrough-batch-quality (E5) | 12 와 동일, agent 만 gpt-4o | 엄격 20/20 유지, **도달 4→13/20**, 단계 3.3→4.9, 도구 11.9→9.9, 시간 17→14s, 질문당 $0.018→$0.083 (4.5배) | 20 | 12 와 동일 | 태그 `wt-batch` | (커밋 후 기재) |
+| [14](14-phase4-baselines.md) | phase4-baselines | 정답 데이터셋(레포 5, 질문 20 체인) + 평가자 4종, 현재 수치 측정 | 정적 진입점 재현율 **0.05**, PageRank p@5 **0.24**; 체인 정확도 fast 0.49 / fast+상한 0.28 / quality 0.60 | 5 레포 / 20 질문 | 결정론적 평가자, 기존 raw 재채점 | — (LLM 미사용) | (커밋 후 기재) |
+| [15](15-entrypoints-v2.md) | entrypoints-v2 | 공개 API export 기반 진입점 후보·점수, docs_src 제외 | 정적 entrypoint_recall@10 **0.05 → 0.58**, @5 0.43 (동점 처리가 운에 의존, fastapi 76파일) | 5 | static_baseline.py (LLM 미사용) | — | (커밋 후 기재) |
+| [16](16-reading-guide-gold.md) | reading-guide-gold (E1 실측) | 읽기 지도 LLM 출력(v3 + 진입점 v2 + docs_src 제외)을 gold 로 채점 | entrypoint_recall **0.27**, core_module_p@5 **0.32** (정적 0.24), 인용 100%. 읽기 순서가 PageRank 순서를 그대로 따름 | 5 | e4 스크립트 gold 채점, LangSmith 교차 | 태그 `prompt-v3` | (커밋 후 기재) |
+| [17](17-ranking-v2.md) | ranking-v2 | 역방향 개인화 PageRank + `__init__` 감쇠 (22개 변형 비교) | 정적 core_module_p@5 **0.24 → 0.60** (시드 효과 미확인, 과적합 경고) | 5 | static_baseline.py | — | (커밋 후 기재) |
+| [18](18-reading-guide-rank-v2.md) | reading-guide-rank-v2 | 랭킹 v2 연결 후 읽기 지도 vs gold, 첫 LangSmith Experiment | core_module_p@5 **0.32 → 0.68**, entrypoint_recall 0.27 → 0.32 (scripts `main` 문제), 인용 100% | 5 | langsmith_eval.py (evaluate) | Experiment `reading-guide-gold-v3-13bfef5b` | (커밋 후 기재) |
+| [19](19-entrypoints-v3.md) | entrypoints-v3 | 라이브러리 신호로 scripts 가산 축소, CLI 경로 감점 (효과 없는 규칙 3개 제거) | 1위 gold 적중 1/5 → 3/5, CLI main 제거, 정적 p@5 0.60 → 0.64, recall 0.58/0.43 유지 | 5 | static_baseline.py | — | (커밋 후 기재) |
+| [20](20-reading-guide-v3-entrypoints.md) | reading-guide-v3-entrypoints | 진입점 v3 반영 후 Experiment 재실행 (18 과 Compare) | entrypoint_recall **0.32 → 0.53**, core p@5 0.68 → 0.72, 인용 100%. Phase 4 누적: 진입점 0.05→0.53, 핵심 0.24→0.72 | 5 | langsmith_eval.py | Experiment `reading-guide-gold-v3-d42ebe4b` | (커밋 후 기재) |
+| [21](21-walkthrough-qa-experiment.md) | walkthrough-qa-experiment | walkthrough-qa 첫 Experiment (quality, 5개) | reached 0.60, chain 0.43, strict 1.0, 질문당 $0.079 — 기록 13(n=20)과 일관 | 5 | langsmith_eval.py | Experiment `walkthrough-qa-v3-quality-0ae83013` | (커밋 후 기재) |
 
 ## 이름 규칙
 

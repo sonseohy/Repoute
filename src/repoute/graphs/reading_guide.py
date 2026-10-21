@@ -12,11 +12,12 @@ from pydantic import BaseModel
 
 from repoute.graphs.deps import Deps
 from repoute.indexing.entrypoints import find_entrypoints
-from repoute.indexing.imports import rank_modules
+from repoute.indexing.imports import modules_of, rank_modules_v2
+from repoute.indexing.parser import Symbol
 from repoute.prompts import reading_guide_v1
 from repoute.validation.citations import CodeRef, validate_citations
 
-MAX_TARGETS = 12  # PageRank 상위 몇 개 모듈을 요약할지
+MAX_TARGETS = 12  # 랭킹 v2 상위 몇 개 모듈을 요약할지
 HEAD_LINES = 60  # 요약 프롬프트에 넣을 파일 앞부분 줄 수
 MAX_EDGES = 30  # 합성 프롬프트에 넣을 import 관계 수
 MAX_RETRIES = 2  # 인용 검증 실패 시 재생성 횟수 상한 (무한 루프 방지)
@@ -75,13 +76,19 @@ def _citable(deps: Deps, file: str, limit: int | None = None) -> str:
     return ", ".join(f"{n}:{line}" for n, _, line in symbols) or "1(모듈 시작)"
 
 
+def _ranked(deps: Deps) -> tuple[list[Symbol], list[tuple[str, float]]]:
+    """(진입점, 랭킹 v2 점수 목록). 진입점이 있는 모듈을 시드로 쓴다 (기록 17)."""
+    index = deps.index
+    entry = find_entrypoints(index.db, index.info.path)
+    seeds = modules_of(index.graph, [s.file for s in entry])
+    return entry, rank_modules_v2(index.graph, seeds)
+
+
 def select_targets(state: GuideState, deps: Deps) -> dict:
-    """PageRank 상위 모듈 + 진입점이 있는 모듈 (중복 제거, 순서 유지)."""
-    graph = deps.index.graph
-    top = [module for module, _ in rank_modules(graph)[:MAX_TARGETS]]
-    by_file = {data["file"]: module for module, data in graph.nodes(data=True)}  # 파일 → 모듈
-    entry = find_entrypoints(deps.index.db, deps.index.info.path)
-    entry_modules = [by_file[s.file] for s in entry if s.file in by_file]
+    """랭킹 v2 상위 모듈 + 진입점이 있는 모듈 (중복 제거, 순서 유지)."""
+    entry, ranked = _ranked(deps)
+    top = [module for module, _ in ranked[:MAX_TARGETS]]
+    entry_modules = modules_of(deps.index.graph, [s.file for s in entry])
     return {"targets": list(dict.fromkeys(top + entry_modules))}
 
 
@@ -111,20 +118,23 @@ def summarize_module(state: dict, deps: Deps, prompts: ModuleType = reading_guid
 
 
 def synthesize(state: GuideState, deps: Deps, prompts: ModuleType = reading_guide_v1) -> dict:
-    """요약·import 관계·진입점·PageRank 로 읽기 순서를 합성한다 (quality 모델)."""
+    """요약·import 관계·진입점·랭킹 v2 로 읽기 순서를 합성한다 (quality 모델).
+
+    프롬프트의 "PageRank 상위" 라벨은 그대로 두고, 넘기는 목록만 랭킹 v2 순서로 바꿨다.
+    """
     index = deps.index
     summaries = "\n".join(
         f"- {s.module} ({s.file}, {s.role}): {s.summary}\n"
         f"  인용 가능한 줄: {_citable(deps, s.file)}"
         for s in state.get("summaries", [])
     )
-    ranked_scores = dict(rank_modules(index.graph))
-    # 중요한 모듈(PageRank 높은 쪽)로 들어가는 import 관계부터 상위 MAX_EDGES 개
+    entry, ranked_list = _ranked(deps)
+    ranked_scores = dict(ranked_list)
+    # 중요한 모듈(랭킹 v2 점수 높은 쪽)로 들어가는 import 관계부터 상위 MAX_EDGES 개
     top_edges = sorted(index.graph.edges, key=lambda e: -ranked_scores.get(e[1], 0))[:MAX_EDGES]
     edges = "\n".join(f"- {a} → {b}" for a, b in top_edges) or "없음"
-    entry = find_entrypoints(index.db, index.info.path)
     entrypoints = "\n".join(f"- {s.file}:{s.line_start} {s.name}" for s in entry) or "없음"
-    ranked = "\n".join(f"- {m} ({score:.3f})" for m, score in list(ranked_scores.items())[:10])
+    ranked = "\n".join(f"- {m} ({score:.3f})" for m, score in ranked_list[:10])
     prompt = prompts.SYNTHESIZE_GUIDE.format(
         repo_id=index.info.repo_id,
         summaries=summaries or "없음",

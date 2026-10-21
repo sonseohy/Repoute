@@ -1,0 +1,111 @@
+[
+  {
+    "repo": "psf/requests",
+    "commit": "611c616",
+    "entrypoints": [
+      {"file": "src/requests/api.py", "symbol": "get"},
+      {"file": "src/requests/api.py", "symbol": "request"},
+      {"file": "src/requests/sessions.py", "symbol": "Session.request"}
+    ],
+    "core_modules": [
+      "src.requests.api",
+      "src.requests.sessions",
+      "src.requests.models",
+      "src.requests.adapters",
+      "src.requests.auth"
+    ],
+    "reading_order_hint": ["api.py → sessions.py → models.py → adapters.py → auth.py"],
+    "pagerank_top5": ["src.requests.compat", "src.requests.models", "src.requests.structures", "src.requests", "src.requests.cookies"],
+    "rationale": "라이브러리형: __init__.py:171 이 api.py 의 get/post/request 를 공개 API 로 다시 내보낸다. api.py:71 request 는 Session.request 로, sessions.py:635·651 은 prepare_request → send 로, sessions.py:784 는 HTTPAdapter.send 로 넘어간다. 이 흐름(api → sessions → models → adapters)이 요청 한 번의 전부다. auth.py 는 models.py:685 prepare_auth 가 HTTPBasicAuth 를 만들어 쓰는 인증 경로. help.py:main 은 디버그 정보 출력용이라 진입점이 아니다.",
+    "labeled_by": "소스 직접 확인 (Opus 에이전트), 2026-10-21. 사용자 검수 전.",
+    "notes": "PageRank 상위 5(compat, models, structures, __init__, cookies)와 겹치는 건 models 1개. compat·structures·cookies 는 많이 import 되는 '하부 부품'이라 PageRank 가 높지만 처음 읽을 필요는 없다. 반대로 api(13위)·sessions(14위)·adapters(15위, 전체 20개 중)는 import 되는 횟수가 적어 PageRank 가 낮다 — 호출 흐름의 시작점일수록 피참조가 적다는 것이 PageRank 와 학습 순서가 갈리는 이유. 5번째 자리는 utils.py(1155줄, sessions·adapters·models 가 모두 import)도 후보였지만 서로 무관한 헬퍼 모음이라 auth 로 정함. 06 기록의 진입점은 help.py:126 main(gold 에 없음), 읽기 순서 앞 5개(compat, models, structures, __init__, cookies)와 gold 겹침은 손 계산 1/5."
+  },
+  {
+    "repo": "encode/httpx",
+    "commit": "b5addb6",
+    "entrypoints": [
+      {"file": "httpx/_api.py", "symbol": "get"},
+      {"file": "httpx/_api.py", "symbol": "request"},
+      {"file": "httpx/_client.py", "symbol": "Client"},
+      {"file": "httpx/_client.py", "symbol": "Client.send"}
+    ],
+    "core_modules": [
+      "httpx._api",
+      "httpx._client",
+      "httpx._models",
+      "httpx._transports.default",
+      "httpx._auth"
+    ],
+    "reading_order_hint": ["_api.py → _client.py → _models.py → _transports/default.py → _auth.py"],
+    "pagerank_top5": ["httpx._models", "httpx._types", "httpx._urls", "httpx._exceptions", "httpx._utils"],
+    "rationale": "라이브러리형: __init__.py 가 _api·_client 등을 `import *` 로 공개한다. _api.py:102·109 request 는 Client 를 만들어 Client.request 로, _client.py:825 는 Client.send 로, :914·942·979·1014 는 _send_handling_auth → _send_handling_redirects → _send_single_request → transport.handle_request 로 이어진다. 기본 transport 는 _client.py:731 의 HTTPTransport(_transports/default.py). _auth.py 는 _client.py:937 auth.sync_auth_flow 의 제너레이터 기반 인증 흐름. pyproject 의 `httpx = \"httpx:main\"` 은 선택 설치(httpx[cli]) CLI 라 라이브러리 진입점이 아니다.",
+    "labeled_by": "소스 직접 확인 (Opus 에이전트), 2026-10-21. 사용자 검수 전.",
+    "notes": "PageRank 상위 5(_models, _types, _urls, _exceptions, _utils)와 겹치는 건 _models 1개. _types·_urls·_exceptions·_utils 는 거의 모든 모듈이 import 하는 부품. _client(요청 흐름 전체, 14위)·_transports.default(실제 전송·예외 변환, 15위)·_api(공개 함수, 23개 중 21위)가 밀리는 것이 PageRank 의 한계. _auth 는 8위. _content(본문 인코딩)·_config 도 후보였음. 06 기록의 진입점은 __init__.py:18 main 과 _main.py:452 main(둘 다 CLI, gold 에 없음), 읽기 순서 앞 5개(__init__, _models, _types, _urls, _exceptions)와 gold 겹침은 손 계산 1/5."
+  },
+  {
+    "repo": "pallets/click",
+    "commit": "2247b35",
+    "entrypoints": [
+      {"file": "src/click/decorators.py", "symbol": "command"},
+      {"file": "src/click/decorators.py", "symbol": "option"},
+      {"file": "src/click/core.py", "symbol": "Command.main"},
+      {"file": "src/click/core.py", "symbol": "Group"}
+    ],
+    "core_modules": [
+      "src.click.core",
+      "src.click.decorators",
+      "src.click.parser",
+      "src.click.types",
+      "src.click.exceptions"
+    ],
+    "reading_order_hint": ["decorators.py → core.py(Command.main → make_context → parse_args → invoke) → parser.py → types.py → exceptions.py"],
+    "pagerank_top5": ["src.click._compat", "src.click.core", "src.click.types", "src.click.utils", "src.click._winconsole"],
+    "rationale": "CLI 를 만드는 라이브러리: 사용자가 쓰는 것은 decorators.py 의 command/option(decorators.py:248 이 Command(callback=f) 를 만든다). 실행 시작점은 core.py:1685 Command.__call__ → Command.main, main 은 :1591 make_context(→ :1393 parse_args → :1404 handle_parse_result) 와 :1592 invoke 를 부른다. Group 은 하위 명령 해석(:2080 resolve_command). parser.py 는 parse_args 가 쓰는 옵션 파서, types.py 는 type_cast_value 의 타입 변환, exceptions.py 는 main(:1629) 이 잡아 출력하는 ClickException 계층.",
+    "labeled_by": "소스 직접 확인 (Opus 에이전트), 2026-10-21. 사용자 검수 전.",
+    "notes": "PageRank 상위 5(_compat, core, types, utils, _winconsole)와 겹치는 건 core·types 2개. _compat·_winconsole 은 플랫폼 호환 계층이라 처음 읽을 이유가 없다. decorators(사용자 접점)는 12위, parser 9위, exceptions 6위 (전체 17개). 06 기록의 진입점은 core.py Command.main(오버로드 3줄, 끝 이름 기준 gold 와 1개 일치) — 5개 레포 중 휴리스틱이 유일하게 맞춘 경우(이름이 main 이라서). 06 읽기 순서 앞 5개(testing, _compat, core, types, utils)와 gold 겹침은 손 계산 2/5. pyproject 에 [project.scripts] 없음."
+  },
+  {
+    "repo": "Textualize/rich",
+    "commit": "9d8f9a3",
+    "entrypoints": [
+      {"file": "rich/__init__.py", "symbol": "print"},
+      {"file": "rich/console.py", "symbol": "Console"},
+      {"file": "rich/console.py", "symbol": "Console.print"},
+      {"file": "rich/console.py", "symbol": "Console.render"}
+    ],
+    "core_modules": [
+      "rich.console",
+      "rich.segment",
+      "rich.text",
+      "rich.style",
+      "rich.markup"
+    ],
+    "reading_order_hint": ["__init__.py(print) → console.py(Console.print → render → _write_buffer) → segment.py → text.py → style.py → markup.py"],
+    "pagerank_top5": ["rich.cells", "rich.console", "rich._unicode_data", "rich.text", "rich._unicode_data._versions"],
+    "rationale": "라이브러리형: rich/__init__.py:73·74 print 는 전역 Console 을 얻어 Console.print 를 부른다. Console.print 는 :1705 _collect_renderables(문자열은 :1560 render_str → :1442 render_markup 으로 Text 화), :1731 render(:1319 객체의 __rich_console__ 호출, 렌더 프로토콜의 중심), 블록 끝 __exit__ → _write_buffer(:2055) 로 출력한다. 렌더 결과 단위가 Segment(segment.py), 문자열 표현이 Text(text.py), 서식이 Style(style.py), 마크업 파서가 markup.py. Table·Progress 등 나머지 위젯은 이 프로토콜 위의 응용.",
+    "labeled_by": "소스 직접 확인 (Opus 에이전트), 2026-10-21. 사용자 검수 전.",
+    "notes": "PageRank 상위 5(cells, console, _unicode_data, text, _unicode_data._versions)와 겹치는 건 console·text 2개. cells·_unicode_data 는 문자 폭 계산 표(유니코드 데이터)라 많이 import 되지만 학습 대상이 아니다. segment(8위)·style(6위)는 PageRank 상위권이지만 5 안에는 못 든다. markup 은 109개 중 33위. 06 기록의 진입점은 live.py:111 Live.start / progress.py:1168 Progress.start / status.py:85 Status.start(이름이 start 라서 골림, gold 에 없음). 06 읽기 순서 앞 5개(cells, console, _unicode_data, text, style)와 gold 겹침은 손 계산 3/5."
+  },
+  {
+    "repo": "fastapi/fastapi",
+    "commit": "6f28852",
+    "entrypoints": [
+      {"file": "fastapi/applications.py", "symbol": "FastAPI"},
+      {"file": "fastapi/applications.py", "symbol": "FastAPI.get"},
+      {"file": "fastapi/routing.py", "symbol": "APIRouter.add_api_route"},
+      {"file": "fastapi/routing.py", "symbol": "get_request_handler"}
+    ],
+    "core_modules": [
+      "fastapi.applications",
+      "fastapi.routing",
+      "fastapi.dependencies.utils",
+      "fastapi.params",
+      "fastapi.openapi.utils"
+    ],
+    "reading_order_hint": ["applications.py(FastAPI, get) → routing.py(APIRouter.add_api_route → APIRoute → get_request_handler) → dependencies/utils.py(get_dependant, solve_dependencies) → params.py → openapi/utils.py"],
+    "pagerank_top5": ["fastapi", "fastapi.exceptions", "fastapi._compat.v2", "fastapi.responses", "fastapi.datastructures"],
+    "rationale": "웹 프레임워크: 사용자는 fastapi/__init__.py:7 의 FastAPI 앱 클래스와 그 데코레이터(FastAPI.get)로 시작한다. FastAPI.get 은 applications.py:2035 에서 self.router.get → routing.py:3777 api_route → :3109 add_api_route → :3044 APIRoute 생성, APIRoute 는 :1276 request_response(get_route_handler()) → :1285 get_request_handler 를 붙인다. 요청 시 get_request_handler 가 :511 solve_dependencies(dependencies/utils.py) → :745 run_endpoint_function → :767 serialize_response. 의존성 그래프는 routing.py:914 get_dependant 가 만든다. params.py 는 Query/Body/Depends 의 실제 클래스, openapi/utils.py 는 get_openapi(문서 생성). cli.py:8 main 은 외부 패키지 fastapi_cli 로 넘기는 얇은 래퍼라 진입점이 아니다.",
+    "labeled_by": "소스 직접 확인 (Opus 에이전트), 2026-10-21. 사용자 검수 전.",
+    "notes": "docs_src/ 제외, fastapi/ 패키지 기준 (인덱스 심볼 1588개 중 docs_src 864개, fastapi/ 548개 — docs_src 가 그래프를 지배해 PageRank 1위가 fastapi(__init__) 가 됨). PageRank 상위 5(fastapi, exceptions, _compat.v2, responses, datastructures)와 gold 겹침은 0개 — 5개 레포 중 차이가 가장 크다. 541개 중 routing 9위, applications 13위, dependencies.utils 27위, openapi.utils 29위, params 31위. param_functions(사용자용 Query()/Depends() 함수, 대부분 문서 문자열)와 encoders(jsonable_encoder)도 후보였음. 06 기록의 진입점은 cli.py:8 main(gold 에 없음), 읽기 순서 앞 5개(__init__, exceptions, _compat.v2, responses, routing)와 gold 겹침은 손 계산 1/5."
+  }
+]

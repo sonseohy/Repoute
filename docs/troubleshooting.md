@@ -62,12 +62,12 @@
 ## 10. 진입점 휴리스틱이 디버그 함수를 고름 — `requests/help.py:main` (Phase 2)
 - **증상**: requests 의 진입점으로 `help.py:126 main` 이 뽑힘. 실제 진입은 `api.py` 의 `get/post` 또는 `__init__.py` 의 공개 API.
 - **원인**: 이름이 `main` 이면 무조건 후보. 라이브러리형 레포(CLI 가 아닌)는 `main` 이 진입점이 아니다.
-- **해결**: **미해결**. 후보: `__init__.py` 의 `__all__`/import 된 이름을 후보에 추가, `help`·`debug`·`_internal` 파일명 감점, 레포 유형(라이브러리/앱/CLI) 판별. Phase 4 의 `entrypoint_recall` 로 측정 후 손댄다(측정 원칙 2).
+- **측정됨(기록 14)**: gold 19개 중 1개만 맞음, `entrypoint_recall` 0.05 (n=5). **부분 해결(기록 15)**: `__init__.py` export 기반 후보 +3, 공개 클래스 핵심 메서드 +2, 경로·비공개 감점 → recall@10 0.58, @5 0.43. 남은 문제: +3 동점 60개를 파일 이름순으로 가르는 운 의존, CLI `main` 이 라이브러리에서 1위(httpx `_main.py`, fastapi `cli.py`) — 원인은 `[project.scripts]` +3 (두 레포 모두 편의 CLI 를 scripts 에 등록). LLM 도 그 후보를 그대로 고른다(18: recall 0.32). **해결(기록 19)**: 라이브러리 신호(export ≥ 5)면 scripts +3 → +1, `cli`/`_main`/`__main__` 경로 −3 → httpx 1위 `request`, fastapi 1위 `FastAPI`, 1위 적중 1/5 → 3/5. 동점 운 의존(recall@5 0.43)은 그대로 — 호출 그래프 동점 가르기가 다음.
 
 ## 11. 읽기 순서가 PageRank 순위를 그대로 따라감 (Phase 2)
 - **증상**: requests 읽기 순서 1~3위가 PageRank 1~3위(compat, models, structures)와 같음. 사람은 `api.py → sessions.py → adapters.py` 흐름을 먼저 읽는다.
 - **원인**: 프롬프트가 "PageRank 상위"를 핵심 모듈로 제시하고, 모델이 그 순서를 거의 그대로 쓴다. 의존 관계 순서와 학습 순서는 다르다.
-- **해결**: **미해결**. 측정 수단(`reading-guide-gold` 정답셋, `core_module_precision@5`)이 먼저 필요. 인용이 100% 유효해도 순서가 좋다는 뜻은 아니라는 것이 이 프로젝트의 중요한 구분.
+- **측정됨(기록 14·16)**: PageRank 상위 5 의 `core_module_precision@5` 0.24, LLM 합성 뒤에도 0.32 (n=5). gold 핵심 모듈은 PageRank 13~31위. **LLM 은 입력 순서를 재배열하지 않으므로**(16) 랭킹 자체를 바꿔야 한다. **해결(기록 17·18)**: 역방향 개인화 PageRank + `__init__` 허브 감쇠 → 정적 p@5 0.60, 그래프 연결 후 LLM 출력 **0.68**(click 1.0). 프롬프트는 바꾸지 않았다 — 입력을 고치면 출력이 따라온다. 남은 것: rich 후퇴(약한 진입점 시드 전파, 10번과 연결), n=5 과적합 경고. 후보: 진입점 모듈을 시드로 한 개인화 PageRank, 하부 부품(compat·types·utils) 감점. 인용이 100% 유효해도 출발점이 맞다는 뜻은 아니라는 구분이 수치로 확정됨.
 
 ## 12. 파서의 알려진 한계 (Phase 1, 설계상 수용)
 - 호출은 이름 기준이라 `a.save()` 와 `b.save()` 를 구분 못 함. 내장 함수도 섞임.

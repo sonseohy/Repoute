@@ -1,0 +1,342 @@
+[
+  {
+    "repo": "psf/requests@611c616",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 20,
+    "targets": 13,
+    "citations": 6,
+    "refs": [
+      "src/requests/api.py:24",
+      "src/requests/compat.py:36",
+      "src/requests/models.py:284",
+      "src/requests/structures.py:20",
+      "src/requests/__init__.py:60",
+      "src/requests/api.py:24"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 15295,
+        "output_tokens": 1042
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4278,
+        "output_tokens": 384
+      }
+    },
+    "cost": 0.01745445,
+    "elapsed": 5.970906958915293,
+    "entrypoints": [
+      {
+        "file": "src/requests/api.py",
+        "symbol": "request"
+      }
+    ],
+    "reading_order": [
+      "src/requests/compat.py",
+      "src/requests/models.py",
+      "src/requests/structures.py",
+      "src/requests/__init__.py",
+      "src/requests/api.py"
+    ],
+    "reading_modules": [
+      "src.requests.compat",
+      "src.requests.models",
+      "src.requests.structures",
+      "src.requests",
+      "src.requests.api"
+    ],
+    "entrypoint_recall": 0.3333333333333333,
+    "core_module_p5": 0.4
+  },
+  {
+    "repo": "encode/httpx@b5addb6",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 23,
+    "targets": 14,
+    "citations": 9,
+    "refs": [
+      "httpx/_main.py:452",
+      "httpx/_models.py:139",
+      "httpx/_types.py:92",
+      "httpx/_urls.py:15",
+      "httpx/_exceptions.py:74",
+      "httpx/_utils.py:15",
+      "httpx/_config.py:16",
+      "httpx/_auth.py:22",
+      "httpx/_api.py:39"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 17914,
+        "output_tokens": 1166
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 5103,
+        "output_tokens": 537
+      }
+    },
+    "cost": 0.0215142,
+    "elapsed": 7.427072917111218,
+    "entrypoints": [
+      {
+        "file": "httpx/_main.py",
+        "symbol": "main"
+      }
+    ],
+    "reading_order": [
+      "httpx/_models.py",
+      "httpx/_types.py",
+      "httpx/_urls.py",
+      "httpx/_exceptions.py",
+      "httpx/_utils.py",
+      "httpx/_config.py",
+      "httpx/_auth.py",
+      "httpx/_api.py"
+    ],
+    "reading_modules": [
+      "httpx._models",
+      "httpx._types",
+      "httpx._urls",
+      "httpx._exceptions",
+      "httpx._utils",
+      "httpx._config",
+      "httpx._auth",
+      "httpx._api"
+    ],
+    "entrypoint_recall": 0.0,
+    "core_module_p5": 0.2
+  },
+  {
+    "repo": "fastapi/fastapi@6f28852",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 76,
+    "targets": 16,
+    "citations": 11,
+    "refs": [
+      "fastapi/cli.py:8",
+      "fastapi/applications.py:52",
+      "fastapi/background.py:12",
+      "fastapi/exceptions.py:17",
+      "fastapi/types.py:1",
+      "fastapi/_compat/__init__.py:1",
+      "fastapi/_compat/v2.py:43",
+      "fastapi/openapi/models.py:23",
+      "fastapi/telemetry/_api.py:35",
+      "fastapi/_compat/shared.py:47",
+      "fastapi/logger.py:1"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 14480,
+        "output_tokens": 1327
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4072,
+        "output_tokens": 616
+      }
+    },
+    "cost": 0.0193082,
+    "elapsed": 7.958718959009275,
+    "entrypoints": [
+      {
+        "file": "fastapi/cli.py",
+        "symbol": "main"
+      },
+      {
+        "file": "fastapi/applications.py",
+        "symbol": "FastAPI"
+      },
+      {
+        "file": "fastapi/background.py",
+        "symbol": "BackgroundTasks"
+      }
+    ],
+    "reading_order": [
+      "fastapi/exceptions.py",
+      "fastapi/types.py",
+      "fastapi/_compat/__init__.py",
+      "fastapi/_compat/v2.py",
+      "fastapi/openapi/models.py",
+      "fastapi/telemetry/_api.py",
+      "fastapi/_compat/shared.py",
+      "fastapi/logger.py"
+    ],
+    "reading_modules": [
+      "fastapi.exceptions",
+      "fastapi.types",
+      "fastapi._compat",
+      "fastapi._compat.v2",
+      "fastapi.openapi.models",
+      "fastapi.telemetry._api",
+      "fastapi._compat.shared",
+      "fastapi.logger"
+    ],
+    "entrypoint_recall": 0.25,
+    "core_module_p5": 0.0
+  },
+  {
+    "repo": "pallets/click@2247b35",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 17,
+    "targets": 12,
+    "citations": 12,
+    "refs": [
+      "src/click/core.py:238",
+      "src/click/core.py:989",
+      "src/click/core.py:1703",
+      "src/click/core.py:3057",
+      "src/click/_compat.py:22",
+      "src/click/core.py:238",
+      "src/click/types.py:60",
+      "src/click/utils.py:32",
+      "src/click/_winconsole.py:114",
+      "src/click/exceptions.py:35",
+      "src/click/globals.py:13",
+      "src/click/shell_completion.py:19"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 18313,
+        "output_tokens": 1018
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 6269,
+        "output_tokens": 587
+      }
+    },
+    "cost": 0.02490025,
+    "elapsed": 6.300298999994993,
+    "entrypoints": [
+      {
+        "file": "src/click/core.py",
+        "symbol": "Context"
+      },
+      {
+        "file": "src/click/core.py",
+        "symbol": "Command"
+      },
+      {
+        "file": "src/click/core.py",
+        "symbol": "Group"
+      },
+      {
+        "file": "src/click/core.py",
+        "symbol": "Option"
+      }
+    ],
+    "reading_order": [
+      "src/click/_compat.py",
+      "src/click/core.py",
+      "src/click/types.py",
+      "src/click/utils.py",
+      "src/click/_winconsole.py",
+      "src/click/exceptions.py",
+      "src/click/globals.py",
+      "src/click/shell_completion.py"
+    ],
+    "reading_modules": [
+      "src.click._compat",
+      "src.click.core",
+      "src.click.types",
+      "src.click.utils",
+      "src.click._winconsole",
+      "src.click.exceptions",
+      "src.click.globals",
+      "src.click.shell_completion"
+    ],
+    "entrypoint_recall": 0.25,
+    "core_module_p5": 0.4
+  },
+  {
+    "repo": "Textualize/rich@9d8f9a3",
+    "mode": "validate",
+    "prompt": "v3",
+    "files": 109,
+    "targets": 14,
+    "citations": 9,
+    "refs": [
+      "rich/__init__.py:23",
+      "rich/__init__.py:53",
+      "rich/console.py:1652",
+      "rich/cells.py:38",
+      "rich/_unicode_data/__init__.py:31",
+      "rich/console.py:581",
+      "rich/text.py:118",
+      "rich/style.py:40",
+      "rich/__init__.py:23"
+    ],
+    "valid": 1.0,
+    "specificity": 1.0,
+    "errors": 0,
+    "error_messages": [],
+    "retries": 0,
+    "tokens": {
+      "gpt-4o-mini-2024-07-18": {
+        "input_tokens": 16601,
+        "output_tokens": 1142
+      },
+      "gpt-4o-2024-08-06": {
+        "input_tokens": 4896,
+        "output_tokens": 408
+      }
+    },
+    "cost": 0.01949535,
+    "elapsed": 6.740170124918222,
+    "entrypoints": [
+      {
+        "file": "rich/__init__.py",
+        "symbol": "get_console"
+      },
+      {
+        "file": "rich/__init__.py",
+        "symbol": "print"
+      },
+      {
+        "file": "rich/console.py",
+        "symbol": "Console.print"
+      }
+    ],
+    "reading_order": [
+      "rich/cells.py",
+      "rich/_unicode_data/__init__.py",
+      "rich/console.py",
+      "rich/text.py",
+      "rich/style.py",
+      "rich/__init__.py"
+    ],
+    "reading_modules": [
+      "rich.cells",
+      "rich._unicode_data",
+      "rich.console",
+      "rich.text",
+      "rich.style",
+      "rich"
+    ],
+    "entrypoint_recall": 0.5,
+    "core_module_p5": 0.6
+  }
+]

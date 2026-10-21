@@ -96,3 +96,57 @@ def test_render_markdown_old_rows_without_specificity():
     text = render_markdown(rows)
     assert "| 75% | — | 2 |" in text
     assert "| naive | n=2 | 62% | — | 6 |" in text
+
+
+GOLD_ITEM = {
+    "entrypoints": [
+        {"file": "pkg/api.py", "symbol": "get"},
+        {"file": "pkg/sessions.py", "symbol": "Session.request"},
+    ],
+    "core_modules": ["pkg.api", "pkg.sessions", "pkg.models", "pkg.adapters", "pkg.auth"],
+}
+
+
+def test_score_against_gold():
+    """진입점은 (file, 끝 이름)으로 1/2 일치, 읽기 모듈 상위 5개 중 gold 2개 → (0.5, 0.4)."""
+    entrypoints = [
+        {"file": "pkg/api.py", "symbol": "get"},
+        {"file": "pkg/help.py", "symbol": "main"},
+    ]
+    modules = ["pkg.compat", "pkg.api", "pkg.utils", "pkg.models", "pkg.cookies", "pkg.auth"]
+    assert e4.score_against_gold(entrypoints, modules, GOLD_ITEM) == (0.5, 0.4)
+
+
+def test_score_against_gold_without_gold_is_none():
+    """gold 에 없는 레포는 0 이 아니라 (None, None) (측정 안 한 수치 금지)."""
+    assert e4.score_against_gold([{"file": "a.py", "symbol": "f"}], ["a"], None) == (None, None)
+
+
+def test_files_to_modules_uses_graph_then_path():
+    """그래프 노드의 file 속성으로 모듈명을 찾고, 노드에 없는 파일은 경로를 모듈명으로 바꾼다."""
+    import networkx as nx
+
+    graph = nx.DiGraph()
+    graph.add_node("src.pkg", file="src/pkg/__init__.py")
+    files = ["src/pkg/__init__.py", "other/mod.py"]
+    assert e4.files_to_modules(files, graph) == ["src.pkg", "other.mod"]
+
+
+def test_render_markdown_gold_columns():
+    """레포별 표·모드별 평균에 진입점 recall·핵심 p@5 열이 붙고, gold 없는 레포는 '—'."""
+    scored = {"entrypoint_recall": 0.5, "core_module_p5": 0.4}
+    unscored = {"entrypoint_recall": None, "core_module_p5": None}
+    rows = [
+        {**ROWS[0], **scored},
+        {**ROWS[1], **scored},
+        {**ROWS[2], **unscored},
+        {**ROWS[3], **scored},
+    ]
+    text = render_markdown(rows)
+    assert "| 시간 | 진입점 recall | 핵심 p@5 |" in text
+    assert "| 시간 평균 | 진입점 recall 평균 | 핵심 p@5 평균 |" in text
+    assert "| 8.0s | 0.50 | 0.40 |" in text
+    assert "| 8.0s | — | — |" in text
+    assert "| validate | n=2 | 100% | 50% | 0 | $0.0100 | 8.0s | 0.50 | 0.40 |" in text
+    assert "| naive | n=2 | 62% | 31% | 6 | $0.0100 | 8.0s | — | — |" in text
+    assert "recall 0.05, p@5 0.24" in text

@@ -11,7 +11,8 @@ from repoute.config import get_fast_llm, get_quality_llm, load_settings
 from repoute.graphs.deps import Deps
 from repoute.graphs.reading_guide import run_reading_guide
 from repoute.graphs.walkthrough import ask, build_walkthrough_graph
-from repoute.indexing.imports import rank_modules
+from repoute.indexing.entrypoints import find_entrypoints
+from repoute.indexing.imports import modules_of, rank_modules_v2
 from repoute.indexing.index import build_index
 from repoute.memory.checkpointer import open_checkpointer
 from repoute.validation.citations import citation_at_def
@@ -55,8 +56,10 @@ def index(url: str, cache_dir: str) -> None:
     print(f"repo:     {repo.info.repo_id}  ({'cache hit' if repo.cached else 'indexed'})")
     print(f"files:    {repo.file_count}   symbols: {symbols}   calls: {calls}")
     print(f"time:     {repo.elapsed:.2f}s")
-    print("core modules (PageRank, 참조 수):")
-    for rank, (module, score) in enumerate(rank_modules(repo.graph)[:5], start=1):
+    entry = find_entrypoints(repo.db, repo.info.path)
+    seeds = modules_of(repo.graph, [s.file for s in entry])  # 진입점이 있는 모듈 = 시드
+    print("core modules (랭킹 v2: 역방향 개인화 PageRank, 참조 수):")
+    for rank, (module, score) in enumerate(rank_modules_v2(repo.graph, seeds)[:5], start=1):
         refs = repo.graph.in_degree(module)  # 이 모듈을 import 하는 모듈 수
         print(f"  {rank}. {module:<40} {score:.3f}  ({refs} modules import this)")
     repo.db.close()
