@@ -15,6 +15,7 @@
 | [09](09-walkthrough-fast-agent.md) | walkthrough-fast-agent (E5) | agent 턴 gpt-4o-mini + def 줄 힌트 + 재읽기 차단 (통제군 포함) | fast: $0.099→$0.025 (−75%), send 도달 유지, def 줄 0%→100%. quality 통제군: $0.043, 3단계에서 멈춤 | 1×2 | 체크포인트 채점 + LangSmith | 00:23:59 / 00:24:12 UTC | (커밋 후 기재) |
 | [10](10-walkthrough-batch.md) | walkthrough-batch | 따라가기 질문 20개 배치 (레포 4개, fast agent, v3) | 사후 유효 90% 이나 **엄격 통과 13/20=65%** (read_code 0회 7건이 전부 실패), 도달 11/20(수동), 평균 $0.022·19.3s | 20 | 체크포인트 채점 + LangSmith validate 출력 교차 확인 | 태그 `wt-batch` | (커밋 후 기재) |
 | [11](11-walkthrough-batch-nudge.md) | walkthrough-batch-nudge | 10 + "읽지 않고 답하면 넛지" | 엄격 13/20 (변화 없음). 넛지 발동 3건은 전부 성공, 실패 7건은 답하기 전 상한 도달로 넛지 미발동 | 20 | 10 과 동일 | 태그 `wt-batch` | (커밋 후 기재) |
+| [12](12-walkthrough-batch-explore-limit.md) | walkthrough-batch-explore-limit | 11 + 읽기 없이 탐색 6회면 도구 층에서 거부 | **엄격 통과 13→20/20, read_code 0회 7→0, 재작성 7→0, $0.42→$0.37.** 도달 8→4/20 (얕은 답, trade-off) | 20 | 10 과 동일 | 태그 `wt-batch` | (커밋 후 기재) |
 
 ## 이름 규칙
 
