@@ -88,8 +88,10 @@ def main() -> None:
         for name, _, examples in plans:
             print(f"[dry-run] {name}: 예제 {len(examples)}개")
         return
+    from dotenv import load_dotenv
     from langsmith import Client  # 실제 업로드할 때만 import
 
+    load_dotenv(".env")  # 키를 .env 에서 읽는다 (troubleshooting 06: 안 읽으면 Invalid token)
     client = Client()
     for name, description, examples in plans:
         added = upload(client, name, description, examples)
