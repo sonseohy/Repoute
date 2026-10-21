@@ -17,6 +17,7 @@
 | [11](11-walkthrough-batch-nudge.md) | walkthrough-batch-nudge | 10 + "읽지 않고 답하면 넛지" | 엄격 13/20 (변화 없음). 넛지 발동 3건은 전부 성공, 실패 7건은 답하기 전 상한 도달로 넛지 미발동 | 20 | 10 과 동일 | 태그 `wt-batch` | (커밋 후 기재) |
 | [12](12-walkthrough-batch-explore-limit.md) | walkthrough-batch-explore-limit | 11 + 읽기 없이 탐색 6회면 도구 층에서 거부 | **엄격 통과 13→20/20, read_code 0회 7→0, 재작성 7→0, $0.42→$0.37.** 도달 8→4/20 (얕은 답, trade-off) | 20 | 10 과 동일 | 태그 `wt-batch` | (커밋 후 기재) |
 | [13](13-walkthrough-batch-quality.md) | walkthrough-batch-quality (E5) | 12 와 동일, agent 만 gpt-4o | 엄격 20/20 유지, **도달 4→13/20**, 단계 3.3→4.9, 도구 11.9→9.9, 시간 17→14s, 질문당 $0.018→$0.083 (4.5배) | 20 | 12 와 동일 | 태그 `wt-batch` | (커밋 후 기재) |
+| [14](14-phase4-baselines.md) | phase4-baselines | 정답 데이터셋(레포 5, 질문 20 체인) + 평가자 4종, 현재 수치 측정 | 정적 진입점 재현율 **0.05**, PageRank p@5 **0.24**; 체인 정확도 fast 0.49 / fast+상한 0.28 / quality 0.60 | 5 레포 / 20 질문 | 결정론적 평가자, 기존 raw 재채점 | — (LLM 미사용) | (커밋 후 기재) |
 
 ## 이름 규칙
 
