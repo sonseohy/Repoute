@@ -1,0 +1,94 @@
+# 읽기 지도 회귀 평가 (evals/experiments/regression_gate.py)
+#
+# - 무엇: gold 레포 5개 × validate × 프롬프트 v3 로 읽기 지도를 만들어 결정론적 지표
+#   (citation_validity, core_module_p5, entrypoint_recall) 평균이 기준치 아래면 job 실패.
+#   기준치는 스크립트의 THRESHOLDS 상수 (기록 18 기준, docs/conventions.md "CI 회귀 평가").
+# - 예상 비용: 레포 5개 ≈ $0.10/실행 (기록 18 실측, 레포당 약 $0.02). 시간은 clone 포함 수 분.
+# - 필요한 secrets (Settings → Secrets and variables → Actions): OPENAI_API_KEY, LANGSMITH_API_KEY
+#   키가 없으면(fork PR 등) 평가를 건너뛰고 성공으로 끝난다.
+# - 왜 PR 마다가 아니라 paths 필터인가: 실제 LLM 을 호출해 돈이 든다. 출력이 바뀔 수 있는 것은
+#   src/repoute/** (그래프·프롬프트·인덱싱) 와 evals/** (gold·지표·스크립트) 뿐이라, 문서만 바꾼
+#   PR 에는 비용을 쓰지 않는다. 그 밖에는 수동 실행(workflow_dispatch).
+
+name: Eval regression
+
+on:
+  workflow_dispatch:
+    inputs:
+      repos:
+        description: "일부 레포만 (공백 구분 owner/name, 비우면 gold 전체 5개)"
+        required: false
+        default: ""
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/repoute/**"
+      - "evals/**"
+
+# 같은 PR 에 push 가 연달아 오면 앞의 실행을 취소한다 (비용 중복 방지)
+concurrency:
+  group: eval-regression-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # secrets 는 workflow·job 의 if 에서 직접 못 읽으므로 env 로 받아 확인한다
+      - name: secrets 확인
+        id: secrets
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "secrets 미설정, 평가 건너뜀"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v7
+        if: steps.secrets.outputs.ready == 'true'
+
+      - name: uv 설치
+        if: steps.secrets.outputs.ready == 'true'
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+
+      - name: 의존성 설치
+        if: steps.secrets.outputs.ready == 'true'
+        run: uv sync --locked
+
+      # clone 만 캐시한다. index/ 는 빼서 인덱싱 코드가 바뀐 PR 도 새 인덱스로 평가한다
+      # (인덱스 캐시 키가 repo@commit 뿐이라 코드 변경을 모른다). 인덱싱은 LLM 을 안 써서 싸다.
+      # key 에 gold 해시: gold 가 바뀌면(커밋 갱신 등) clone 을 새로 받는다.
+      - name: clone 캐시
+        if: steps.secrets.outputs.ready == 'true'
+        uses: actions/cache@v5
+        with:
+          path: |
+            .repoute_cache
+            !.repoute_cache/index
+          key: repoute-clones-${{ hashFiles('evals/datasets/reading_guide_gold.json') }}
+
+      - name: 회귀 평가
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          LANGSMITH_API_KEY: ${{ secrets.LANGSMITH_API_KEY }}
+          LANGSMITH_TRACING: "true"
+          LANGSMITH_PROJECT: repoute-ci
+          REPOS: ${{ inputs.repos }}
+        # REPOS 는 따옴표 없이 펼쳐 공백으로 나눈다. 비면 --repos 를 안 붙여 전체를 돈다.
+        # 기준치 미달이면 스크립트가 exit 1 → 이 step·job 이 실패한다.
+        run: |
+          if [ -n "$REPOS" ]; then
+            uv run python evals/experiments/regression_gate.py --cache-dir .repoute_cache --repos $REPOS
+          else
+            uv run python evals/experiments/regression_gate.py --cache-dir .repoute_cache
+          fi
