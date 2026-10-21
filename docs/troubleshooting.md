@@ -87,3 +87,20 @@
 - **원인**: "줄 1(모듈 시작)" 을 모든 모듈의 인용 가능 목록에 넣자, 모델이 가장 안전한 선택으로 줄 1 을 골랐다. 프롬프트 v2 의 "심볼 없는 모듈만 줄 1" 지시는 지켜지지 않았다. 측정하는 지표(유효성)만 최적화되고 측정하지 않는 품질(구체성)이 무너진 것.
 - **해결**: (1) `citation_specificity`(심볼 범위 안을 가리키는 인용 비율, 심볼 없는 파일의 줄 1 은 인정) 지표 추가 → 03 83%, 04 43% 로 수치 확인. (2) 입력 쪽에서 강제 — 심볼이 있는 파일의 "인용 가능한 줄" 목록에서 줄 1 제거(`_citable`), 프롬프트 v3. (3) 실험 05: 유효 100% 유지, 구체성 100%, 재생성 0, $0.022.
 - **교훈**: 지표 하나로 루프를 돌리면 모델은 그 지표만 맞춘다. "유효한가" 와 "유용한가" 는 따로 재야 하고, 허용 범위는 프롬프트 지시보다 입력 데이터로 좁히는 편이 확실하다.
+
+## 15. LangGraph `ToolNode` 가 도구를 스레드 풀에서 실행 → SQLite 스레드 오류 (Phase 3)
+- **증상**: `ToolNode([find_definition, ...])` 로 도구를 돌리면 호출이 하나뿐이어도 `sqlite3.ProgrammingError: SQLite objects created in a thread can only be used in that same thread`. 기본 설정은 이 예외를 문자열로 바꾸지 않고 다시 던져 그래프가 죽는다.
+- **원인**: `ToolNode` 는 내부에서 `ContextThreadPoolExecutor.map` 으로 도구를 실행한다(병렬 도구 호출 지원). 도구가 닫힌 SymbolDB 연결은 만든 스레드에서만 쓸 수 있다(04번과 같은 뿌리).
+- **해결**: `tools_node` 를 직접 짜서 호출 스레드에서 `tool.invoke(tool_call)` 로 하나씩 실행. 덤으로 상한 초과·없는 도구·인자 오류를 각각 ToolMessage 로 돌려주기 쉬워졌다. ToolNode 를 꼭 쓰려면 도구용 읽기 전용 연결(`check_same_thread=False`, `mode=ro`)을 따로 열어야 한다.
+- **교훈**: 프레임워크의 편의 노드는 실행 모델(스레드)을 숨긴다. 외부 자원 핸들을 쥔 도구는 어디서 실행되는지 먼저 확인한다.
+
+## 16. 도구 호출 상한에서 멈추면 답 없는 tool_call 이 대화에 남음 (Phase 3)
+- **증상**: 상한(15회) 도달 시 마지막 AIMessage 의 tool_calls 에 대응하는 ToolMessage 가 없다. 실제 OpenAI API 는 이런 대화를 400 으로 거부하고, 체크포인터로 이어 가는 후속 질문도 깨진다.
+- **해결**: finalize 가 미실행 호출마다 "실행 안 함: 도구 호출 상한" ToolMessage 를 붙이고, 프롬프트 앞에 상한 도달 안내(`LIMIT_NOTE`)를 넣는다. 또 langgraph 기본 `recursion_limit=25` 로는 도구 15회를 다 못 돌아 `RECURSION_LIMIT=42` 로 올렸다.
+- **교훈**: 루프를 강제로 끊을 때는 대화 형식의 불변 조건(모든 tool_call 에 ToolMessage)을 지켜야 한다. 가짜 LLM 테스트에서는 안 보이는 문제라 실제 API 규칙을 알고 있어야 한다.
+
+## 17. 체크포인트에서 복원하면 tuple 이 list 로 바뀜 (Phase 3)
+- **증상**: `read_ranges` 에 `("app/main.py", 1, 5)` 를 넣었는데 SqliteSaver 에서 되살린 상태에서는 `["app/main.py", 1, 5]`. 같은 thread 의 두 번째 질문부터 tuple 과 list 가 섞인다.
+- **원인**: LangGraph 의 JsonPlusSerializer(msgpack) 는 tuple 을 list 로 직렬화한다. pydantic 모델(`WalkthroughAnswer`)은 `allowed_msgpack_modules` 에 등록해야 복원되고, 등록하지 않으면 경고 후 dict 로 돌아온다.
+- **해결**: 소비하는 코드는 `for f, s, e in ranges` 처럼 언패킹만 하므로 동작은 같다. 비교가 필요한 테스트는 `tuple(r)` 로 맞췄다. 답 타입은 `CHECKPOINT_TYPES` 로 등록해 경고 0건.
+- **교훈**: 체크포인터를 넣는 순간 상태는 "직렬화 왕복이 가능한 것"만 담아야 한다. tuple·set·dataclass 는 돌아올 때 모양이 바뀔 수 있으니 상태 스키마는 list·dict·str·int 와 등록된 pydantic 모델로 제한한다.
