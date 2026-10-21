@@ -7,6 +7,7 @@ import pytest
 
 from repoute.graphs.deps import Deps
 from repoute.graphs.reading_guide import (
+    MAX_TARGETS,
     ModuleSummary,
     ReadingGuide,
     ReadingStep,
@@ -14,6 +15,8 @@ from repoute.graphs.reading_guide import (
     run_reading_guide,
     select_targets,
 )
+from repoute.indexing.entrypoints import find_entrypoints
+from repoute.indexing.imports import modules_of, rank_modules_v2
 from repoute.indexing.index import build_index
 from repoute.prompts import reading_guide_v2, reading_guide_v3
 from repoute.validation.citations import CodeRef
@@ -93,6 +96,17 @@ def test_select_targets(index):
     assert len(set(targets)) == len(targets)
     assert set(targets) <= set(index.graph.nodes)
     assert "app.main" in targets  # 진입점 run() 이 있는 모듈
+
+
+def test_select_targets_follows_rank_v2(index):
+    """targets 앞부분은 진입점 시드 rank_modules_v2 순서 그대로이고, 진입점 모듈도 들어 있다."""
+    graph = index.graph
+    seeds = modules_of(graph, [s.file for s in find_entrypoints(index.db, index.info.path)])
+    expected = [m for m, _ in rank_modules_v2(graph, seeds)[:MAX_TARGETS]]
+    targets = select_targets({}, Deps(None, None, index))["targets"]
+    assert targets[: len(expected)] == expected
+    assert set(seeds) <= set(targets)
+    assert "app.main" in seeds
 
 
 def test_happy_path(index):
