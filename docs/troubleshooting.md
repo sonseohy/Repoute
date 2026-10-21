@@ -104,3 +104,9 @@
 - **원인**: LangGraph 의 JsonPlusSerializer(msgpack) 는 tuple 을 list 로 직렬화한다. pydantic 모델(`WalkthroughAnswer`)은 `allowed_msgpack_modules` 에 등록해야 복원되고, 등록하지 않으면 경고 후 dict 로 돌아온다.
 - **해결**: 소비하는 코드는 `for f, s, e in ranges` 처럼 언패킹만 하므로 동작은 같다. 비교가 필요한 테스트는 `tuple(r)` 로 맞췄다. 답 타입은 `CHECKPOINT_TYPES` 로 등록해 경고 0건.
 - **교훈**: 체크포인터를 넣는 순간 상태는 "직렬화 왕복이 가능한 것"만 담아야 한다. tuple·set·dataclass 는 돌아올 때 모양이 바뀔 수 있으니 상태 스키마는 list·dict·str·int 와 등록된 pydantic 모델로 제한한다.
+
+## 18. 따라가기 에이전트가 도구 예산 15회를 10회 낭비하고 상한에 걸림 (Phase 3, 기록 07)
+- **증상**: `requests.get()` 질문에 도구 15회를 다 쓰고 `Session.request` 에서 멈춤. 답은 근거가 전부 맞지만 흐름의 절반(`prepare_request` → `send` → adapter)이 빠짐. $0.080.
+- **원인**: (a) 모델이 `find_definition("requests.get")` 처럼 모듈 경로를 붙여 물었고, 심볼 DB 는 `get`/`Session.request` 형태만 알아 실패 → `search_code` 로 우회(왕복 2회씩). (b) `read_code` 를 20줄 창으로 잘라 함수 하나에 4~5회. 도구 설명에 "정의 범위를 한 번에(200줄까지) 읽어라" 가 없었다.
+- **해결(진행 중)**: `find_definition` 이 점 붙은 이름은 마지막 조각(또는 `Class.method`)으로 재시도, 도구 설명·프롬프트 v2 에 읽기 전략 명시. 기록 08 로 비교.
+- **교훈**: ReAct 의 비용은 턴 수에 비례한다(턴마다 대화 전체 재전송). 도구는 "무엇을 하는지" 뿐 아니라 "어떻게 써야 효율적인지" 를 설명에 담아야 한다. 상한은 안전장치지, 정상 경로가 되면 안 된다.
