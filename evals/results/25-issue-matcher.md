@@ -22,15 +22,26 @@
 - **심볼 적중이 모듈보다 낮다(0.75)**: httpx 는 모듈은 다 맞고 심볼은 2/5. 메서드가 많은 모듈에서 상위 5 심볼이 같은 클래스의 이웃 메서드(`Client.options`, `AsyncClient.options`)로 채워진다. 동기/비동기 쌍(`Client`/`AsyncClient`)이 자리를 절반 먹는다 — 같은 이름의 Async 쌍을 하나로 접으면 k 가 두 배로 쓰인다.
 - 표시 문제: 예측 모듈 이름이 `src.requests.models` 처럼 `src.` 를 달고 나온다(import 그래프 노드 이름). 지표는 끝 두 조각 비교라 영향 없지만 UI 에는 `src.` 를 떼야 한다.
 
-## B. MCP 도구 설명 토큰 (LLM 0)
+## B. MCP 도구 설명 토큰 (LLM 0, MCP 연결만)
 
-`evals/experiments/mcp_tool_tokens.py` — 사용자가 실행, 결과 표 붙이기 (아래 채움).
+`evals/experiments/mcp_tool_tokens.py`, tiktoken `o200k_base`, 원격 github-mcp-server(2026-10-21).
 
-(결과 대기)
+| 엔드포인트 | 도구 수 | 설명 토큰 | 필터 뒤 도구 | 필터 뒤 토큰 |
+|---|---:|---:|---:|---:|
+| `/mcp/` 전체 | 46 | **12,804** | 2 | 1,160 |
+| `/mcp/x/issues/readonly` | 6 | 1,922 | 2 | **1,160** |
+| `/mcp/x/pull_requests/readonly` | 3 | 1,553 | 0 | 0 |
 
-## C. 실제 흐름 1회 (CLI `repoute issues`)
+- 전체 서버를 그대로 `bind_tools` 하면 **턴마다 12.8k 토큰**이 도구 설명으로 들어간다(gpt-4o-mini 기준 턴당 약 $0.002, ReAct 10턴이면 $0.02 — 따라가기 질문 하나 비용의 절반). 읽기 전용 toolset + 이름 필터로 **1.2k(−91%)**. "필요한 것만 필터" 가 비용 장치다.
+- 필터 뒤 도구가 2개인 이유: `issues/readonly` toolset 에 `search_issues` 가 없다(이름이 다르거나 `search` toolset 에 있음). 지금 그래프는 `list_issues` 만 쓰므로 영향 없음.
+- Issue Matcher 는 도구를 LLM 에 바인딩하지 않고 `fetch_issues` 노드가 결정론적으로 1회 호출한다 — LLM 컨텍스트에 도구 설명이 0 토큰. PR Coach(Phase 7)에서 agent 에 바인딩할 때 이 표가 기준이 된다.
 
-(결과 대기)
+## C. 실제 흐름 1회 (CLI `repoute issues psf/requests --interests "HTTP 인증" --level beginner`)
+
+- **1차 실행 실패**: `list_issues 실패 — KeyError: 'number'`. LangSmith 트레이스로 도구 출력을 읽어 원인 확인(troubleshooting 26): github-mcp-server 는 결과를 MCP 콘텐츠 블록 `[{"type":"text","text":"{\"issues\":[...],\"totalCount\":…,\"pageInfo\":…}"}]` 로 주고, 이슈 객체에는 **`labels`·`html_url` 이 없다**(GraphQL 응답: number, title, body, state, user, assignees, comments, created_at, updated_at). 블록을 풀지 않아 블록 dict 에서 `number` 를 찾았던 것.
+- **수정**: `_to_text` 가 콘텐츠 블록을 이어 붙임, `parse_issues(raw, repo)` 가 URL 을 번호로 만듦, 라벨 없음은 빈 목록(→ `good_first_filter` 는 본문 길이·댓글 수 기준으로). 실제 응답 앞 3개를 `tests/fixtures/mcp_list_issues_sample.json` 에 저장해 테스트.
+- `state="OPEN"` 은 그대로 통함(도구 호출 ok, totalCount 포함 응답). 임베딩·랭킹 노드는 후보 0개로 LLM 호출 없이 끝나 **비용 $0**.
+- 2차 실행 결과는 아래에 (사용자 재실행 후 채움).
 
 ## 비용 누적
 프로젝트 API 비용 약 $4.6 → 약 $4.7 (기록 23·24 포함).

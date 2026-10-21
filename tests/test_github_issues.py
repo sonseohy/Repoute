@@ -93,3 +93,22 @@ def test_good_first_filter_without_label_needs_body_and_few_comments():
     ]
     assert [i.number for i in good_first_filter(issues)] == [1]
     assert [i.number for i in good_first_filter(issues, min_body=1)] == [1, 2]
+
+
+def test_parse_real_mcp_blocks_fixture():
+    """실서버 응답(콘텐츠 블록 목록, labels·html_url 없음)을 _to_text → parse_issues 로 읽는다.
+
+    tests/fixtures/mcp_list_issues_sample.json 은 2026-10-21 psf/requests list_issues 응답 앞 3개
+    (본문 200자로 절단). 라벨은 빈 목록, URL 은 repo 와 번호로 만들어진다.
+    """
+    import json
+    from pathlib import Path
+
+    from repoute.github.mcp import _to_text
+
+    blocks = json.loads(Path("tests/fixtures/mcp_list_issues_sample.json").read_text())
+    issues = parse_issues(_to_text(blocks), repo="psf/requests")
+    assert [i.number for i in issues][:1] == [7634] and len(issues) == 3
+    assert issues[0].labels == [] and issues[0].comments == 9
+    assert issues[0].url == "https://github.com/psf/requests/issues/7634"
+    assert "AttributeError" in issues[0].title

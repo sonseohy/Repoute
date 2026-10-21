@@ -85,8 +85,20 @@ def tool_schema_tokens(tools: Iterable[BaseTool]) -> int:
 
 
 def _to_text(result: Any) -> str:
-    """도구 결과를 문자열로. 문자열이 아니면 JSON 으로 (한글 그대로)."""
-    return result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
+    """도구 결과를 문자열로.
+
+    github-mcp-server 는 결과를 MCP 콘텐츠 블록 목록 `[{"type": "text", "text": "..."}]` 로 준다
+    (실서버 확인, 기록 25). 그 경우 text 들을 이어 붙인다. 문자열이 아니면 JSON 으로.
+    """
+    if isinstance(result, str):
+        return result
+    if (
+        isinstance(result, list)
+        and result
+        and all(isinstance(b, dict) and b.get("type") == "text" for b in result)
+    ):
+        return "\n".join(str(b.get("text", "")) for b in result)
+    return json.dumps(result, ensure_ascii=False)
 
 
 def call_tool_sync(tool: BaseTool, args: dict) -> str:

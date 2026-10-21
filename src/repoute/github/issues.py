@@ -51,19 +51,25 @@ def _comment_count(value: Any) -> int:
     return int(value or 0)
 
 
-def parse_issues(raw: str | list | dict) -> list[Issue]:
-    """MCP list_issues/search_issues 결과 → Issue 목록. pull_request 키가 있는 항목(PR)은 뺀다."""
+def parse_issues(raw: str | list | dict, repo: str = "") -> list[Issue]:
+    """MCP list_issues/search_issues 결과 → Issue 목록. pull_request 키가 있는 항목(PR)은 뺀다.
+
+    github-mcp-server 의 list_issues(GraphQL) 응답에는 labels·html_url 이 없다(기록 25 에서 확인).
+    그래서 라벨은 빈 목록이 될 수 있고, URL 은 repo("owner/name") 와 번호로 만든다.
+    """
     issues = []
     for item in _items(raw):
         if "pull_request" in item:  # GitHub API 는 PR 도 이슈 목록에 섞어 준다
             continue
+        number = item["number"]
+        fallback_url = f"https://github.com/{repo}/issues/{number}" if repo else ""
         issues.append(
             Issue(
-                number=item["number"],
+                number=number,
                 title=item.get("title") or "",
                 body=item.get("body"),
                 labels=_label_names(item.get("labels")),
-                url=item.get("html_url") or item.get("url") or "",
+                url=item.get("html_url") or item.get("url") or fallback_url,
                 comments=_comment_count(item.get("comments")),
                 created_at=item.get("created_at") or "",
             )

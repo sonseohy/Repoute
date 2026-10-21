@@ -111,7 +111,7 @@ def fetch_issues(state: IssueState, deps: IssueDeps) -> dict:
         return {"candidates": [], "errors": ["list_issues 도구가 없음"]}
     args = {"owner": owner, "repo": name, "state": ISSUE_STATE, "perPage": PER_PAGE}
     try:
-        issues = parse_issues(call_tool_sync(tool, args))
+        issues = parse_issues(call_tool_sync(tool, args), repo=state["repo"])
     except Exception as e:  # 네트워크·인증·결과 형식 오류는 한 줄로 남기고 빈 후보로 끝낸다
         return {"candidates": [], "errors": [f"list_issues 실패 — {_one_line(e)}"]}
     return {"candidates": good_first_filter(issues)}
