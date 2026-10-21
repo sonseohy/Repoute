@@ -2,6 +2,7 @@
 
 v2: 라이브러리형 레포는 `main` 이 아니라 공개 API 가 진입점이다. 그래서 최상위 패키지
 `__init__.py` 가 내보내는 이름과, 내보낸 클래스의 핵심 메서드를 후보에 더한다.
+v3: export 가 많으면(라이브러리 신호) scripts 가산을 +1 로 낮추고 CLI 경로를 −3 한다.
 """
 
 import ast
@@ -19,7 +20,12 @@ PUBLIC_METHOD_NAMES = {
     *("invoke", "call", "__call__", "handle", "execute", "main"),
 }
 # 경로 조각(앞 "_" 와 ".py" 를 뗀 것)이 이 중 하나면 감점. "_compat" → "compat"
-PENALTY_PARTS = {"help", "debug", "compat", "testing", "test", "internal", "utils", "cli"}
+PENALTY_PARTS = {"help", "debug", "compat", "testing", "test", "internal", "utils"}
+# CLI 경로 조각(".py" 만 뗀 것). 라이브러리면 `_main`·`__main__` 도 편의 CLI 로 본다
+CLI_PARTS = {"cli", "_cli"}
+LIBRARY_CLI_PARTS = CLI_PARTS | {"_main", "__main__"}
+# 최상위 __init__ 이 이만큼 이상 export 하면 라이브러리 (gold 5개 레포는 8~70개)
+LIBRARY_EXPORTS_MIN = 5
 MAX_ENTRYPOINTS = 10
 
 
@@ -91,10 +97,16 @@ def _short(symbol: Symbol) -> str:
     return symbol.name.rsplit(".", 1)[-1]
 
 
-def _penalty(symbol: Symbol) -> int:
-    """디버그·호환·도우미 경로 −2, `_` 로 시작하는 비공개 이름 −2 (`__call__` 등 dunder 제외)."""
-    parts = [p.removesuffix(".py").lstrip("_") for p in symbol.file.split("/")]
-    score = -2 if any(p in PENALTY_PARTS for p in parts) else 0
+def _penalty(symbol: Symbol, library: bool) -> int:
+    """디버그·호환·도우미 경로 −2, CLI 경로 −2(라이브러리면 −3), `_` 비공개 이름 −2.
+
+    라이브러리의 CLI(httpx/_main.py, fastapi/cli.py)는 편의 기능이라 더 깎는다 (기록 18 관찰 3).
+    `__call__` 같은 dunder 는 비공개로 보지 않는다.
+    """
+    stems = [p.removesuffix(".py") for p in symbol.file.split("/")]
+    score = -2 if any(p.lstrip("_") in PENALTY_PARTS for p in stems) else 0
+    if any(p in (LIBRARY_CLI_PARTS if library else CLI_PARTS) for p in stems):
+        score -= 3 if library else 2
     name = _short(symbol)
     if name.startswith("_") and not (name.startswith("__") and name.endswith("__")):
         score -= 2
@@ -126,23 +138,28 @@ def find_entrypoints_scored(db: SymbolDB, root: Path) -> list[tuple[Symbol, int]
         scores.update({(s.file, s.name): points for s in symbols})  # dict 라 한 규칙에 한 번
 
     # (1) 패키지 공개 API +3, 그중 클래스의 핵심 메서드 +2
+    export_count = 0  # 최상위 패키지 중 가장 많이 export 하는 것의 이름 수 = 라이브러리 신호
     for pkg in top_packages(root):
         prefix = pkg.relative_to(root).as_posix() + "/"
-        for name, source in _exports(pkg / "__init__.py").items():
+        exports = _exports(pkg / "__init__.py")
+        export_count = max(export_count, len(exports))
+        for name, source in exports.items():
             defs = _export_defs(db, prefix, name, source)
             add(defs, 3)
             add([m for c in defs if c.kind == "class" for m in _methods(db, c)], 2)
-    # (2) pyproject scripts +3: 모듈 경로("pkg/mod.py")로 끝나는 파일의 그 함수
+    # (2) pyproject scripts +3 (라이브러리면 +1): 모듈 경로("pkg/mod.py")로 끝나는 파일의 그 함수
+    library = export_count >= LIBRARY_EXPORTS_MIN
     for module, func in scripts_from_pyproject(root):
         suffix = module.replace(".", "/") + ".py"
         hits = db.find_definition(func)  # "xpkg/mod.py" 는 제외
-        add([s for s in hits if s.file == suffix or s.file.endswith("/" + suffix)], 3)
+        hits = [s for s in hits if s.file == suffix or s.file.endswith("/" + suffix)]
+        add(hits, 1 if library else 3)  # 라이브러리의 scripts 는 편의 CLI (httpx, fastapi)
     # (3) 이름이 ENTRY_NAMES 인 함수·메서드 +1, 진입점다운 파일 안이면 +2 더 (클래스 제외)
     for name in ENTRY_NAMES:
         named = [s for s in db.find_definition(name) if s.kind != "class" and _short(s) == name]
         add(named, 1)
         add([s for s in named if Path(s.file).name in ENTRY_FILES], 2)
-    ranked = [(first[k], n + _penalty(first[k])) for k, n in scores.items()]
+    ranked = [(first[k], n + _penalty(first[k], library)) for k, n in scores.items()]
     ranked = [(s, n) for s, n in ranked if n > 0 and _short(s) != "__init__"]
     ranked.sort(key=lambda p: (-p[1], p[0].file, p[0].line_start))
     return ranked[:MAX_ENTRYPOINTS]

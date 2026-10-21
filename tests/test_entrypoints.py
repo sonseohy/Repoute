@@ -131,3 +131,36 @@ def test_drops_non_positive(tmp_path):
     scored = find_entrypoints_scored(db, root)
     assert ("pkg/help.py", "main") not in names(s for s, _ in scored)
     assert all(n > 0 for _, n in scored)
+
+
+# 라이브러리 신호(export 5개 이상)가 있는 가짜 레포: 공개 함수 5개 + 편의 CLI 두 곳
+BIG_LIB_FILES = {
+    "pkg/__init__.py": "from .api import a, b, c, d, e\nfrom ._main import main\n",
+    "pkg/api.py": "".join(f"def {n}():\n    pass\n\n\n" for n in "abcde"),
+    "pkg/_main.py": "def main():\n    pass\n",
+    "pkg/cli.py": "def main():\n    pass\n",
+}
+CLI_SCRIPT = '[project]\nname = "lib"\n\n[project.scripts]\nlib = "pkg.cli:main"\n'
+
+
+def test_library_lowers_scripts(tmp_path):
+    """export 가 5개 이상이면 scripts 가산이 +3 → +1, cli 경로 감점이 −2 → −3.
+
+    cli.py:main = scripts 1 + 이름 1 + 진입점 파일 2 − cli 3 = 1 로 공개 함수(3)보다 아래.
+    export 가 적은 앱형 레포(FILES)에서는 같은 main 이 3+1+2−2=4 로 1위 (test_priority_order).
+    """
+    db, root = make_repo(tmp_path, pyproject=CLI_SCRIPT, files=BIG_LIB_FILES)
+    scored = {(s.file, s.name): n for s, n in find_entrypoints_scored(db, root)}
+    assert scored[("pkg/cli.py", "main")] == 1
+    assert all(scored[("pkg/api.py", n)] == 3 for n in "abcde")
+
+
+def test_library_private_main_penalty(tmp_path):
+    """라이브러리가 export 하는 `_main.py:main`(httpx 형태)은 3+1−3=1 로 공개 API 뒤.
+
+    앱형 레포에서는 `_main` 경로를 감점하지 않는다 (라이브러리일 때만 편의 CLI 로 본다).
+    """
+    db, root = make_repo(tmp_path, pyproject=None, files=BIG_LIB_FILES)
+    scored = find_entrypoints_scored(db, root)
+    assert [s.name for s, _ in scored[:5]] == list("abcde")
+    assert (scored[5][0].file, scored[5][1]) == ("pkg/_main.py", 1)
