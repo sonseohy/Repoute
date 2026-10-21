@@ -57,9 +57,14 @@ def _open_symbol_db(cache_dir, owner: str, name: str) -> tuple[SymbolDB, str] | 
     """index/<owner>__<name>@*.sqlite 중 가장 최근 파일을 연다. 반환 (DB, repo_id), 없으면 None.
 
     URL 을 몰라 build_index 를 못 부르므로 이미 만든 인덱스 파일을 읽는다. 쓴 뒤 닫을 것.
+    같은 glob 에 걸리는 심볼 임베딩 파일(@<commit>.emb.sqlite)은 뺀다 (troubleshooting 28).
     """
     found = sorted(
-        (Path(cache_dir) / "index").glob(f"{owner}__{name}@*.sqlite"),
+        (
+            p
+            for p in (Path(cache_dir) / "index").glob(f"{owner}__{name}@*.sqlite")
+            if not p.name.endswith(".emb.sqlite")
+        ),
         key=lambda p: p.stat().st_mtime,
     )
     if not found:
