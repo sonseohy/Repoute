@@ -233,6 +233,29 @@ def test_next_walks_reading_order_without_llm(tmp_path, repo_url):
     assert done["cursor"] == 2
 
 
+def test_next_after_seen_step_moves_cursor(tmp_path, repo_url):
+    """ "N번 다음" 은 N단계까지 본 것으로 치고 그 다음을 준다 (지도를 다 읽은 뒤 1단계로 안 돌아감).
+
+    지도(2단계) 뒤 "2번 다음에 뭐 봐야 해?" 는 LLM 이 map 이라 해도 게이트가 next 로 고치고,
+    cursor 가 2 로 옮겨져 바로 끝 안내가 나온다. "1번까지 봤어" 는 2단계를 준다.
+    """
+    quality = FakeLLM({ReadingGuide: [_guide()]})
+    intents = [
+        Intent(kind="map", reason="구조"),
+        Intent(kind="map", reason="오판"),  # 게이트가 next 로 고친다
+        Intent(kind="next", reason="다음 단계"),
+    ]
+    deps = _deps(tmp_path, intents, quality)
+    run_supervisor(deps, repo_url, "어디서부터 읽어?", "t1")
+    done = run_supervisor(deps, repo_url, "2번 다음에 뭐 봐야 해?", "t1")
+    back = run_supervisor(deps, repo_url, "1번까지 봤어, 다음은?", "t1")
+    deps.close()
+    assert done["next"] is None and done["reply"] == supervisor_v2.NEXT_DONE
+    assert done["events"][2]["from"] == "map" and done["events"][2]["to"] == "next"
+    assert done["cursor"] == 2
+    assert back["next"]["order"] == 2 and back["next"]["remaining"] == 0 and back["cursor"] == 2
+
+
 def test_next_without_guide_falls_back_to_map(tmp_path, repo_url):
     """지도가 없는 thread 에서 next 로 분류되면 코드 게이트가 map 으로 내려 지도를 만든다."""
     quality = FakeLLM({ReadingGuide: [_guide()]})

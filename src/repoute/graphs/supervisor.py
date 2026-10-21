@@ -30,7 +30,16 @@ SYMBOL_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)
 # "다음" 류로 시작하는 메시지. 지도가 있으면 LLM 판단과 무관하게 next 로 고정한다.
 # 정규식이라 비용 0 이고, 이 말로 시작하면서 다른 기능을 원하는 경우가 드물어 오탐이 거의 없다.
 # 반대 방향(지도 없는 next → map)은 아래 classify 가 따로 막으므로 잘못 고정될 일도 없다.
-NEXT_PATTERN = re.compile(r"^\s*(?:다음|그다음|이어서|next\b)", re.IGNORECASE)
+# "8번 다음", "3단계까지 봤어", "5번 읽었어" — 사용자가 이미 본 단계 번호. next_step 이 cursor 를
+# 그 번호로 옮기므로 지도 카드에서 8단계를 다 읽고 "8번 다음" 이라 해도 1단계부터 다시 시작하지
+# 않는다.
+# "3번 보여줘" 처럼 그 단계 자체를 묻는 말은 뒤에 다음/이후/봤/읽었 이 없어 걸리지 않는다.
+SEEN_STEP_PATTERN = re.compile(
+    r"(\d+)\s*(?:번|단계)(?:\s*까지)?\s*(?:은|는|을|를|이|가)?\s*(?:다음|이후|뒤|끝|다\s*봤|봤|읽었)"
+)
+NEXT_PATTERN = re.compile(
+    r"^\s*(?:다음|그다음|이어서|next\b)|^\s*" + SEEN_STEP_PATTERN.pattern, re.IGNORECASE
+)
 HISTORY_IN_PROMPT = 4  # 분류 프롬프트에 넣는 최근 대화 수
 HISTORY_TEXT_LIMIT = 200  # 기억 한 줄의 최대 글자 수 (프롬프트가 커지지 않게)
 
@@ -188,13 +197,16 @@ def next_step(state: SupervisorState) -> dict:
     "다음" 의 정의: 지도 카드는 전체 순서를 한 번에 보여 주므로, "다음" 은 그 단계를
     하나씩 짚어 주는 기능이다. run_map 이 cursor=0 으로 두므로 첫 "다음" 은 1단계를
     이유·인용·따라가기 힌트와 함께 보여 주고, 그 뒤로 한 단계씩 나아간다.
+    메시지에 "N번 다음" 처럼 본 단계 번호가 있으면 cursor 를 N 으로 옮긴 뒤 다음을 고른다.
     마지막 단계를 넘기면 고정 안내(reply)를 준다.
     """
     order = state["guide"].reading_order
     cursor = state.get("cursor", 0)
+    if m := SEEN_STEP_PATTERN.search(state["message"]):  # "8번 다음" → 8단계까지는 본 것으로
+        cursor = min(int(m.group(1)), len(order))
     if cursor >= len(order):
         event = {"type": "NextStep", "order": None, "remaining": 0}
-        return {"reply": supervisor_v2.NEXT_DONE, "events": [event]}
+        return {"reply": supervisor_v2.NEXT_DONE, "cursor": cursor, "events": [event]}
     step = order[cursor]
     target = step.ref.symbol or step.file
     nxt = {

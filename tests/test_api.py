@@ -15,7 +15,9 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from repoute.api.app import create_app
 from repoute.graphs.reading_guide import ModuleSummary, ReadingGuide, ReadingStep
 from repoute.graphs.supervisor import Intent, SupervisorDeps
-from repoute.graphs.walkthrough import CHECKPOINT_TYPES, Step, WalkthroughAnswer
+from repoute.graphs.walkthrough import Step, WalkthroughAnswer
+from repoute.indexing.explain import Explanation
+from repoute.memory.checkpointer import CHECKPOINT_TYPES
 from repoute.validation.citations import CodeRef
 
 FILES = {
@@ -78,10 +80,10 @@ def repo_url(tmp_path):
     return f"file://{origin}"
 
 
-def _client(tmp_path, intents=(), quality=None, feedback=None) -> TestClient:
-    """가짜 LLM·메모리 체크포인터를 꽂은 앱의 TestClient."""
+def _client(tmp_path, intents=(), quality=None, feedback=None, explains=()) -> TestClient:
+    """가짜 LLM·메모리 체크포인터를 꽂은 앱의 TestClient. explains 는 fast 의 Explanation 큐."""
     summaries = [ModuleSummary(module="m", file="f.py", summary="요약", role="core")] * 5
-    fast = FakeLLM({Intent: list(intents), ModuleSummary: summaries})
+    fast = FakeLLM({Intent: list(intents), ModuleSummary: summaries, Explanation: list(explains)})
     saver = InMemorySaver(serde=JsonPlusSerializer(allowed_msgpack_modules=CHECKPOINT_TYPES))
     deps = SupervisorDeps(fast, quality or FakeLLM(), tmp_path / "cache", saver)
     return TestClient(create_app(deps, feedback_client=feedback))
@@ -188,3 +190,78 @@ def test_feedback(tmp_path):
     assert fake.calls[0] == ("r1", {"key": "citation_error", "score": 0, "comment": "줄이 틀림"})
     assert fake.calls[1] == ("r2", {"key": "user", "score": 1, "comment": None})
     assert missing.status_code == 400
+
+
+def test_read_file_reversed_range_is_400(tmp_path, repo_url):
+    """start 가 end 보다 크면 500 이 아니라 400 으로 거부한다 (code-reading 23 에서 발견)."""
+    with _client(tmp_path) as client:
+        client.post("/repos", json={"url": repo_url})
+        r = client.get("/repos/owner/name/files?path=app/main.py&start=10&end=5")
+    assert r.status_code == 400
+
+
+def test_same_thread_second_run_gets_next(tmp_path, repo_url):
+    """같은 thread 로 두 번 실행하면 두 번째(다음)는 저장된 지도로 result.next 를 준다.
+
+    두 번째 실행은 지도를 다시 만들지 않으므로 result.guide 는 None 이고 GuideReady 도 없다.
+    """
+    steps = [
+        ReadingStep(order=1, file="app/util.py", reason="의존성 없음", ref=HELPER),
+        ReadingStep(order=2, file="app/main.py", reason="진입점", ref=RUN),
+    ]
+    guide = ReadingGuide(overview="작은 앱", entrypoints=[RUN], reading_order=steps)
+    quality = FakeLLM({ReadingGuide: [guide]})
+    intents = [Intent(kind="map", reason="구조"), Intent(kind="next", reason="다음")]
+    with _client(tmp_path, intents, quality) as client:
+        body = {"repo_url": repo_url, "message": "어디부터?"}
+        client.post("/threads/t1/runs", json=body)
+        res = client.post("/threads/t1/runs", json={**body, "message": "다음 파일"})
+    events = _sse(res.text)
+    result = dict(events)["result"]
+    assert _update_types(events) == ["IndexReady", "IntentDecided", "NextStep"]
+    assert result["next"]["order"] == 1 and result["next"]["file"] == "app/util.py"
+    assert result["next"]["remaining"] == 1
+    assert result["intent"]["kind"] == "next" and result["guide"] is None
+
+
+def test_symbol(tmp_path, repo_url):
+    """/symbol 은 줄을 감싸는 함수 전체 범위를 주고, 심볼 밖 줄·인덱스 없는 레포는 404."""
+    with _client(tmp_path) as client:
+        before = client.get("/repos/owner/name/symbol?file=app/main.py&line=5")
+        client.post("/repos", json={"url": repo_url})
+        body = client.get("/repos/owner/name/symbol?file=app/main.py&line=5").json()
+        outside = client.get("/repos/owner/name/symbol?file=app/main.py&line=2")
+    assert before.status_code == 404  # 레포 클론 전
+    assert body == {
+        "name": "run",
+        "kind": "function",
+        "file": "app/main.py",
+        "line_start": 4,
+        "line_end": 5,
+        "docstring": None,
+    }
+    assert outside.status_code == 404
+
+
+def test_explain_cached(tmp_path, repo_url):
+    """/explain 은 가짜 fast LLM 의 설명을 주고, 같은 심볼 두 번째 호출은 cached=True (LLM 1회)."""
+    expl = Explanation(
+        what="helper 결과를 돌려준다.",
+        watch=["helper() 호출 (줄 5)"],
+        docstring_ko="helper 를 불러 결과를 돌려준다.",
+    )
+    with _client(tmp_path, explains=[expl]) as client:
+        client.post("/repos", json={"url": repo_url})
+        first = client.get("/repos/owner/name/explain?file=app/main.py&line=5").json()
+        second = client.get("/repos/owner/name/explain?file=app/main.py&line=4").json()
+    assert first == {
+        "name": "run",
+        "kind": "function",
+        "line_start": 4,
+        "line_end": 5,
+        "what": "helper 결과를 돌려준다.",
+        "watch": ["helper() 호출 (줄 5)"],
+        "docstring_ko": "",  # run 에는 docstring 이 없어 LLM 이 준 값을 버린다
+        "cached": False,
+    }
+    assert second == {**first, "cached": True}  # 큐가 비었으니 LLM 을 또 불렀다면 IndexError
