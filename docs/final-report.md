@@ -22,20 +22,19 @@
 
 | 기능 | 한 줄 설명 |
 |---|---|
-| **읽기 지도** | 진입점과 추천 읽기 순서. 핵심 모듈은 import 그래프 랭킹으로 고른다 |
-| **따라가기** | 질문 하나로 호출 체인을 따라가며 **실제로 읽은 코드만** 근거로 든다. 함수 이름을 몰라도 동작 설명으로 찾는다 |
-| **다음 단계** | "다음", "3단계까지 봤어" 로 지도를 한 단계씩 짚는다 (LLM 없음, 비용 0) |
-| **Issue Matcher** | 관심 영역·수준에 맞는 열린 이슈와 읽을 코드 위치. 프로필이 없으면 멈추고 묻는다 |
-| **PR Coach** | PR 의 변경 심볼 → 호출자(영향 범위) → 관련 테스트 → 리뷰 체크포인트 |
-| **코드 뷰어 · 설명 패널** | 답에 붙은 근거 위치(`파일:줄`)를 누르면 그 코드와 한국어 요약을 보여 준다 |
+| **읽기 지도** (파일 읽는 순서 추천) | 레포에서 어떤 파일부터 읽을지 순서를 알려 준다. 프로그램이 시작되는 곳과 다른 파일을 많이 가져다 쓰는 중심 파일을 먼저 보여 준다 |
+| **따라가기** (함수 호출 순서 추적) | 질문한 동작이 어떤 함수들을 거쳐 실행되는지 순서대로 설명한다. AI 가 기억에 의존하지 않고 레포의 실제 코드 파일을 열어 본 뒤, **열어 본 줄만** 근거로 답한다. 함수 이름을 몰라도 된다 |
+| **Issue Matcher** | 관심 분야·실력에 맞는 열린 이슈를 추천하고, 풀려면 읽어야 할 코드 위치도 알려 준다. 관심 분야를 모르면 먼저 물어본다 |
+| **PR Coach** | PR 이 바꾼 함수, 그 함수를 쓰는 다른 코드(영향 범위), 관련 테스트, 리뷰할 때 확인할 점을 정리한다 |
+| **코드 뷰어 · 설명 패널** | 답에 붙은 근거 위치(`파일:줄`)를 누르면 그 코드와 docstring 한국어 요약을 보여 준다 |
 
 ### 주요 task
 
 | # | task | 결과 |
 |---|---|---|
 | 1 | 정적 분석 인덱스 — `ast` 로 함수·호출·import 를 LLM 없이 추출 | `repo@commit` 캐시, requests 0.83s |
-| 2 | 읽기 지도 — 진입점과 읽기 순서 (Send 병렬 요약 → 합성) | 핵심 모듈 p@5 0.32 → 0.72 |
-| 3 | 따라가기 — ReAct 에이전트 + 인용 검증 | 인용 엄격 통과 65% → 100% |
+| 2 | 파일 읽는 순서 추천 — Send 병렬 요약 → 합성 | 핵심 모듈 p@5 0.32 → 0.72 |
+| 3 | 함수 호출 순서 추적 — ReAct 에이전트 + 인용 검증 | 인용 엄격 통과 65% → 100% |
 | 4 | 함수 이름 없는 질문 — 심볼 임베딩 RAG | 0/10 → 6/10 |
 | 5 | Issue Matcher · PR Coach — GitHub MCP | MCP 토큰 −91%, 이슈 매칭 p@3 0.85 |
 | 6 | 평가 · 운영 — LangSmith Experiment, CI 회귀 게이트 | 같은 입력 전/후 비교 (4절) |
@@ -346,64 +345,66 @@ def test_gate_demotes_ask_without_symbol(tmp_path, repo_url):
 
 > A = fast(개선 전), B = quality(개선 후). 정답 도달 0.20 → **0.60**, 호출 체인 정확도 0.10 → **0.43**, 인용 엄격 통과 0.80 → **1.00**. 지연은 거의 같고(20.3s → 19.2s), 비용은 5개 합 $0.10 → $0.39 로 약 4배.
 
-### 개선안이 실제로 동작하는가
+### 개선한 기능이 실제로 작동하는지 확인
 
-각 개선은 **단위 테스트(가짜 LLM, 과금 0)** 와 **실제 실행(LangSmith 트레이스)** 두 가지로 확인했다.
+모든 개선은 두 가지로 확인했다. **자동 테스트**(가짜 LLM 으로 돌려 비용 0)와 **실제 실행 기록**이다.
 
-| 개선 | 단위 테스트로 확인 | 실제 실행으로 확인 |
+| 개선 | 자동 테스트로 확인한 것 | 실제 실행에서 확인한 것 |
 |---|---|---|
-| 랭킹 v2 (역방향 PageRank) | `test_rank_modules_v2_lifts_flow_over_compat` — 부품(compat)보다 흐름 모듈이 위 | `repoute index psf/requests` → sessions · api · models 순 |
-| 읽기 전 탐색 상한 | `test_explore_without_read_blocked_then_read`, `test_unread_code_rejected` | 기록 12: 상한이 10/20 에서 발동, 발동한 건은 전부 직후 `read_code` |
-| 무한 루프 방지 | `test_tool_call_limit`, `test_reread_inside_read_range_blocked` | 기록 10: 도구 상한(15회)에 걸린 10/20 건도 무한 루프 없이 모두 종료 |
-| 코드 게이트 · `search_symbols` | `test_gate_relaxed_only_when_search_available`, `test_search_symbols_added_with_store_and_embedder` | 위 GIF (함수 이름 없이 `merge_cookies` 도달) |
-| MCP 읽기 전용 + 필터 | `test_connection_uses_readonly_toolset_url_and_bearer`, `test_filter_tools_keeps_only_named_tools_in_order` | PR Coach 트레이스: `pull_request_read` 2회 (3-2절) |
-| PR 변경 심볼 (hunk 함수 이름 우선) | `test_context_name_beats_shifted_lines` | 기록 26: 변경 재현 28% → 56% |
-| interrupt 재개 | `test_issues_asks_profile_then_resumes`, `test_issues_ask_profile_then_resume`(API) | 3-1절 트레이스 (Turn 5 멈춤 → Turn 6 재개) |
+| 핵심 파일 순위 매기기 | 여러 파일이 가져다 쓰는 부품 파일보다, 부품을 조립하는 파일이 위에 온다 | requests 에서 sessions · api · models 순으로 나옴 |
+| 코드를 안 읽고 답하기 막기 | 코드를 안 열고 탐색만 6번 하면 막히고, 코드를 열어 본 뒤에는 다시 풀린다 | 질문 20개 중 10개에서 작동했고, 작동 직후 모두 코드를 열어 봄 |
+| 무한 반복 방지 | 도구 호출이 15번에 닿으면 반드시 멈춘다 | 상한에 걸린 질문 10개도 모두 정상 종료 |
+| 함수 이름 없이 질문하기 | 검색 도구가 있을 때만, 함수 이름 없는 질문을 따라가기로 보낸다 | 시연 GIF: 이름 없이 `merge_cookies` 까지 도달 |
+| GitHub MCP 읽기 전용 연결 | 읽기 전용 주소로 연결하고, 필요한 도구만 남긴다 | PR 리뷰에서 GitHub 호출 2번만 발생 (3-2절 트레이스) |
+| PR 에서 바뀐 함수 찾기 | 줄 번호가 어긋나도, 변경 위치에 적힌 함수 이름으로 찾는다 | PR 8개에서 바뀐 함수 찾기 28% → 56% |
+| 프로필 질문 후 이어 가기 | 프로필이 없으면 멈추고, 답을 받으면 멈춘 곳부터 이어 간다 | 3-1절 트레이스: 멈춤 → 재개 |
 
-### ① precision@5 0.32 → 0.72 — "부품"이 아니라 "조립하는 모듈"을 올린다
+### 개선 1. 핵심 파일 고르기 — 정확도 0.32 → 0.72
 
-- **문제**: 기본 PageRank 는 많이 import 되는 `compat`·`_types` 같은 하부 부품을 1등으로 올렸다 (정답 모듈은 13~31위).
-- **해결**: 화살표를 뒤집고(`reverse`), 허브인 `__init__.py` 를 감쇠했다. 정적 랭킹만 보면 0.24 → 0.52(방향) → **0.60**(`__init__` 감쇠), 이 랭킹을 넣은 읽기 지도 출력은 0.32 → **0.72**.
+- **문제**: 처음 방식은 여러 파일이 가져다 쓰는 `compat`·`_types` 같은 **작은 부품 파일**을 가장 중요하다고 골랐다. 정답 파일은 13~31위로 밀렸다.
+- **해결**: 순위 계산 방향을 뒤집어 **부품을 가져다 조립하는 파일**이 위로 오게 했다. 하위 파일을 모아 내보내기만 하는 `__init__.py` 는 점수를 낮췄다.
+- **결과**: 상위 5개 중 정답 비율이 순위 계산만으로 0.24 → 0.52(방향 뒤집기) → **0.60**(`__init__` 점수 낮추기). 이 순위를 넣은 읽기 지도는 0.32 → **0.72**. 프롬프트는 바꾸지 않았다.
 
 [`indexing/imports.py` `rank_modules_v2`](../src/repoute/indexing/imports.py#L57)
 
 ```python
 scores = nx.pagerank(
-    graph.reverse(),                              # ① A→B 를 뒤집어 상위 흐름 모듈로 점수가 흐르게
-    personalization={m: 1 for m in seeds},        #    진입점 모듈 기준
+    graph.reverse(),                              # ① 방향 뒤집기: 부품을 조립하는 파일로 점수가 모이게
+    personalization={m: 1 for m in seeds},        #    프로그램이 시작되는 파일 기준
 )
 for module, data in graph.nodes(data=True):
     if data["file"].endswith("__init__.py"):
-        scores[module] *= INIT_DAMPING            # ② 0.2 — 재수출 허브 점수 감쇠
+        scores[module] *= INIT_DAMPING            # ② 내보내기만 하는 __init__.py 는 점수 × 0.2
 ```
 
 실행 결과 (`repoute index psf/requests`): `sessions` → `api` → `models` → `exceptions` → `adapters` 순.
 
-### ② 인용 엄격 통과 65% → 100% — 읽지 않으면 답할 수 없게
+### 개선 2. 코드를 안 읽고 답하지 못하게 — 근거 정확도 65% → 100%
 
-- **문제**: 20개 중 7개 답이 코드를 한 번도 `read_code` 하지 않고 기억으로 답했다.
-- **해결**: 프롬프트로 부탁하지 않고 **도구 층에서 거부** + "읽은 범위 안" 검증 + 실패 시 재작성 (최대 2회).
+- **문제**: 따라가기 답 20개 중 7개가 코드 파일을 한 번도 열어 보지 않고 **기억으로** 답했다.
+- **해결**: 프롬프트로 부탁하는 대신 **코드로 막았다**. ① 코드를 안 열고 탐색만 6번 하면 탐색 도구를 더 못 쓰게 하고, ② 답의 근거가 실제로 열어 본 줄 안에 있는지 검사해서, 틀리면 다시 쓰게 했다 (최대 2번).
 
 [`graphs/walkthrough.py`](../src/repoute/graphs/walkthrough.py#L155)
 
 ```python
-# 도구 층: 코드를 한 줄도 안 읽고 탐색만 6번 → 더 이상 탐색 도구 실행 거부
+# ① 코드를 한 줄도 안 열고 탐색만 6번 했으면 → 탐색 도구 실행 거부
 if not ranges and used >= MAX_EXPLORE_WITHOUT_READ and call["name"] != "read_code":
     results.append(ToolMessage(block.format(used=used), tool_call_id=call_id))
 
-# 검증: 인용이 (a) 실제로 존재하고 (b) read_code 로 읽은 범위 안인지
+# ② 근거로 든 줄이 실제로 열어 본 범위 안에 있는지 검사
 if not found and not any(a <= ref.line <= b for a, b in _spans(ranges, file)):
     found = [f"{ref.file}:{ref.line} — 읽지 않은 코드"]
 ```
 
-### ③ 함수 이름을 모르는 질문 0/10 → 6/10 — 도구보다 "게이트를 열 수 있게 된 것"
+### 개선 3. 함수 이름 없이 질문하기 — 정답 도달 0/10 → 6/10
 
-- **문제**: "리디렉트를 너무 많이 따라가면 어디서 예외가 나?" 처럼 함수 이름 없이 동작만 설명한 질문은 이름 기반 도구가 못 쓰므로 게이트가 따라가기를 막았다 (UI 경로 0/10).
-- **해결**: `search_symbols` 가 생기면서 `can_search=True` 일 때 게이트를 열었다. 도구 자체의 효과는 5 → 6/10, **게이트 개방 효과가 0 → 6/10** 으로 더 컸다.
+- **문제**: "리디렉트를 너무 많이 따라가면 어디서 예외가 나?" 처럼 함수 이름이 없는 질문은 이름으로 찾는 도구를 쓸 수 없어서, 시스템이 따라가기 대신 읽기 지도로 돌려보냈다 (10개 중 0개).
+- **해결**: 설명만으로 비슷한 함수를 찾는 검색 도구(`search_symbols`, RAG)를 추가하고, 이 도구가 있으면 이름 없는 질문도 따라가기로 보내게 했다.
+- **결과**: 검색 도구 자체의 효과는 5 → 6개였고, **돌려보내던 규칙을 풀 수 있게 된 효과(0 → 6개)** 가 더 컸다.
 
 ```python
 if kind == "ask" and not can_search and not SYMBOL_PATTERN.search(message):
-    return "map", "..."   # can_search 가 True 면 이 규칙을 건너뛴다
+    return "map", "..."   # 검색 도구가 있으면(can_search) 이 돌려보내기 규칙을 건너뛴다
 ```
 
 ---
@@ -442,7 +443,7 @@ if kind == "ask" and not can_search and not SYMBOL_PATTERN.search(message):
 
 ## 6. 한계 · 트레이드오프 · 개선 방향
 
-### 개선이 새로 만든 약점과 대응
+### 개선하면서 생긴 문제와 대응
 
 | 개선 | 새로 생긴 약점 | 대응 |
 |---|---|---|
