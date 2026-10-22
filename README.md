@@ -2,7 +2,7 @@
 
 **Repoute = Repo + Route.** GitHub URL 을 넣으면 어디서부터 읽을지(읽기 지도), 코드가 어떻게 흐르는지(따라가기), 어떤 이슈·PR 부터 보면 좋을지를 `파일:줄` 근거와 함께 안내하는, 오픈소스 기여를 처음 시작하는 개발자를 위한 AI Agent.
 
-> v2. FastAPI(SSE) + Vite/React 단일 채팅 화면. Python 레포만 지원한다.
+> v2. FastAPI(SSE) + Vite/React 단일 채팅 화면. Python 레포만 지원.
 
 ## 주요 기능
 
@@ -17,20 +17,20 @@
 
 ## 화면
 
-**레포 불러오기 → 읽기 지도 → 인용 칩을 눌러 코드와 설명 보기**
+**레포 불러오기 → 읽기 지도 → 근거 위치(`파일:줄`)를 눌러 코드와 설명 보기**
 
-<img src="docs/images/demo-reading-guide.gif" width="720" alt="psf/requests 를 불러와 읽기 지도를 받고, Session 인용 칩을 눌러 코드 드로어와 설명 패널을 여는 화면">
+<img src="docs/images/demo-reading-guide.gif" width="720" alt="psf/requests 를 불러와 읽기 지도를 받고, Session 근거 위치를 눌러 코드 드로어와 설명 패널을 여는 화면">
 
 **함수 이름 없이 묻기 — 질문 문장만으로 `merge_cookies` 까지 따라간다**
 
 <img src="docs/images/demo-nosymbol.gif" width="720" alt="'세션 쿠키와 요청 쿠키는 어디서 합쳐져?' 질문에 merge_cookies 를 따라가며 답하는 화면">
 
-GIF 는 실제 실행을 녹화했고 LLM 응답 대기 구간만 약 7배 빨리 감았다(녹화 길이 각 약 25s, 읽기 지도 $0.018 · 이름 없는 질문 $0.020, LangSmith 집계). 이 녹화에서 agent 는 `search_symbols` 를 부르지 않고 `merge_cookies` 이름을 바로 `find_definition` 으로 찾았다(아래 트레이스) — requests 처럼 잘 알려진 레포는 모델이 이름을 이미 안다. `search_symbols` 의 효과는 이름 없는 질문 10개로 따로 쟀다(0/10 → 6/10, 기록 24). 아래 캡처는 `psf/requests` 를 불러와 한 대화에서 돌린 결과다(2026-10-22, 한 바퀴 $0.23). 칩 하나하나가 인용 검증을 통과한 `파일:줄` 이다.
+**함수 이름을 몰라도 질문할 수 있다.** "세션 쿠키와 요청 쿠키는 어디서 합쳐져?" 처럼 동작만 설명하면, 함수마다 의미를 벡터로 저장해 둔 심볼 임베딩에서 가장 비슷한 함수를 찾아 거기서부터 코드를 따라간다. 답의 근거는 모두 실제로 읽은 `파일:줄` 이다. 함수 이름 없는 질문 10개 중 6개에서 정답 코드까지 도달했다(이전 0개).
 
 | 읽기 지도 | 따라가기 |
 |---|---|
 | <img src="docs/images/reading-guide.png" width="420" alt="읽기 지도: 진입점과 읽기 순서 6단계"> | <img src="docs/images/walkthrough.png" width="420" alt="따라가기: requests.get() 에서 HTTPAdapter 까지 6단계"> |
-| 진입점과 읽기 순서. $0.018 · 9.9s | `requests.get()` → `Session.send` → `HTTPAdapter`. quality 모델, $0.169 · 28.5s |
+| 진입점과 읽기 순서. 평균 7.6s · $0.022 (레포 5개)<br/> | `requests.get()` → `Session.send` → `HTTPAdapter`. quality 모델, 평균 14.4s (질문 20개)<br/> |
 | **Issue Matcher** | **PR Coach** |
 | <img src="docs/images/issue-matcher.png" width="420" alt="이슈 추천: 프로필 질문(interrupt) 뒤 이슈 3개"> | <img src="docs/images/pr-coach.png" width="420" alt="PR 리뷰: 바뀐 곳, 호출자 영향 범위, 체크포인트"> |
 | 프로필이 없으면 그래프가 멈추고 묻는다(interrupt). GitHub MCP + 임베딩 매칭, $0.0003 | PR #6767 의 바뀐 심볼 → 호출자 → 체크포인트. $0.0004 |
@@ -39,15 +39,13 @@ GIF 는 실제 실행을 녹화했고 LLM 응답 대기 구간만 약 7배 빨�
 
 | 지표 | 전 → 후 | n |
 |---|---|---|
-| 읽기 지도 핵심 모듈 precision@5 | 0.24 → **0.72** | 레포 5 |
+| 읽기 지도 핵심 모듈 precision@5 | 0.32 → **0.72** | 레포 5 |
 | 따라가기 인용 엄격 통과 (존재 + 실제로 읽은 범위 안) | 65% → **100%** | 질문 20 |
 | 함수 이름 없는 질문 따라가기 도달 | 0/10 → **6/10** | 질문 10 |
 | 이슈 → 모듈 매칭 p@3 | **0.85** | 이슈 20 |
 | PR 영향 범위 재현 | 36% → **64%** | PR 8 |
 | MCP 도구 설명 토큰 | 12.8k → **1.2k** (−91%) | — |
 | 비용 | 읽기 지도 레포당 **$0.022**, 따라가기 질문당 **$0.083** (quality) | 5 · 20 |
-
-모든 수치는 `evals/results/` 의 측정 기록이다. n 이 작고 정답 라벨 대부분이 에이전트가 만든 것이라는 한계가 있다. 전체 수치·방법·실패 사례는 [docs/evaluation.md](docs/evaluation.md).
 
 <img src="docs/images/langsmith-experiments.png" width="720" alt="LangSmith reading-guide-gold 데이터셋의 실험 2개: #1(기록 18) citation 1.00 · core p@5 0.68 · entrypoint recall 0.32, #2(기록 20) 1.00 · 0.72 · 0.53">
 
@@ -267,16 +265,12 @@ sequenceDiagram
     S-->>U: 변경 심볼 → 영향 범위 → 테스트 힌트 → 체크포인트
 ```
 
-다음 단계(next)와 코드 뷰어 흐름은 [docs/architecture.md](docs/architecture.md).
-
 ## 설계 판단
 
 - **개선은 프롬프트가 아니라 정적 입력에**: 같은 프롬프트에서 모듈 랭킹만 바꿔 p@5 0.32 → 0.68. LLM 은 입력 순서를 거의 바꾸지 않았다.
 - **제약은 지시가 아니라 입력 · 도구 층으로**: 문장으로 지시한 규칙은 지켜지지 않았고, 같은 제약을 입력 데이터나 도구 거부로 주면 지켜졌다(7회 확인).
 - **과정 강제**: 읽지 않고 탐색만 6회 하면 도구 층에서 거부해 인용 엄격 통과 65% → 100%. 대가는 답의 깊이였다.
 - **지표는 나눠 잰다**: 인용 유효성만 고치자 인용이 `파일:1` 로 쏠렸다(유효성 100%, 구체성 43%). 유효성 · 구체성 · 완결성을 따로 잰다.
-
-근거와 실험 기록은 [docs/design-decisions.md](docs/design-decisions.md).
 
 ## 한계
 
