@@ -1,16 +1,11 @@
 # AI Mini Project : Repoute 최종 보고서
 
-> GitHub URL 하나로 *어디서부터 읽을지*, *코드가 어떻게 흐르는지*, *어떤 이슈·PR 부터 보면 좋을지*를 `파일:줄` 근거와 함께 안내하는, 오픈소스 기여를 처음 시작하는 개발자를 위한 AI Agent.
+<p align="right">광주 3반 G082 손서현</p>
 
-| 항목 | 내용 |
-|---|---|
-| 기준일 | 2026-10-22 (v2, Phase 7) |
-| 지원 범위 | Python 레포 |
-| 스택 | LangGraph · LangChain · LangSmith · FastAPI(SSE) · Vite/React · GitHub MCP |
-| 동작 확인 | `repoute index psf/requests` 0.83s (파일 20 · 심볼 320 · 호출 988) |
+**기술 스택** · LangGraph · LangChain · LangSmith · GitHub MCP · FastAPI(SSE) · Vite/React
 
 **목차**
-1. [핵심 기능](#1-핵심-기능)
+1. [과제 주제 및 주요 task](#1-과제-주제-및-주요-task)
 2. [아키텍처](#2-아키텍처)
 3. [핵심 기술](#3-핵심-기술) — Multi-agent · MCP · RAG · 의존성 주입 · 모듈화 · 단위 테스트
 4. [Before / After 수치](#4-before--after-수치)
@@ -19,7 +14,11 @@
 
 ---
 
-## 1. 핵심 기능
+## 1. 과제 주제 및 주요 task
+
+**주제**: 오픈소스에 처음 기여하는 개발자가 처음 보는 레포 앞에서 막히는 세 가지 — "어디서부터 읽지?", "코드가 어떻게 흐르지?", "무엇을 기여하지?" — 에 `파일:줄` 근거와 함께 답하는 AI Agent.
+
+### 핵심 기능
 
 | 기능 | 한 줄 설명 |
 |---|---|
@@ -29,6 +28,19 @@
 | **Issue Matcher** | 관심 영역·수준에 맞는 열린 이슈와 읽을 코드 위치. 프로필이 없으면 멈추고 묻는다 |
 | **PR Coach** | PR 의 변경 심볼 → 호출자(영향 범위) → 관련 테스트 → 리뷰 체크포인트 |
 | **코드 뷰어 · 설명 패널** | 답에 붙은 근거 위치(`파일:줄`)를 누르면 그 코드와 한국어 요약을 보여 준다 |
+
+### 주요 task
+
+| # | task | 결과 |
+|---|---|---|
+| 1 | 정적 분석 인덱스 — `ast` 로 함수·호출·import 를 LLM 없이 추출 | `repo@commit` 캐시, requests 0.83s |
+| 2 | 읽기 지도 — 진입점과 읽기 순서 (Send 병렬 요약 → 합성) | 핵심 모듈 p@5 0.32 → 0.72 |
+| 3 | 따라가기 — ReAct 에이전트 + 인용 검증 | 인용 엄격 통과 65% → 100% |
+| 4 | 함수 이름 없는 질문 — 심볼 임베딩 RAG | 0/10 → 6/10 |
+| 5 | Issue Matcher · PR Coach — GitHub MCP | MCP 토큰 −91%, 이슈 매칭 p@3 0.85 |
+| 6 | 평가 · 운영 — LangSmith Experiment, CI 회귀 게이트 | 같은 입력 전/후 비교 (4절) |
+
+### 실행 화면
 
 **레포 불러오기 → 읽기 지도 → 근거 위치(`파일:줄`)를 눌러 코드와 설명 보기**
 
@@ -41,10 +53,10 @@
 | 읽기 지도 | 따라가기 |
 |---|---|
 | <img src="images/reading-guide.png" width="420" alt="읽기 지도: 진입점과 읽기 순서 6단계"> | <img src="images/walkthrough.png" width="420" alt="따라가기: requests.get() 에서 HTTPAdapter 까지 6단계"> |
-| 진입점 + 읽기 순서 · 평균 **7.6s · $0.022** (레포 5개)<br/> | `requests.get()` → `Session.send` → `HTTPAdapter` · 평균 **14.4s** (질문 20개)<br/> |
+| 진입점 + 읽기 순서 · 평균 **7.6s · $0.022** (레포 5개) | `requests.get()` → `Session.send` → `HTTPAdapter` · 평균 **14.4s** (질문 20개) |
 | **Issue Matcher** | **PR Coach** |
 | <img src="images/issue-matcher.png" width="420" alt="이슈 추천: 프로필 질문 뒤 이슈 3개"> | <img src="images/pr-coach.png" width="420" alt="PR 리뷰: 바뀐 곳, 호출자 영향 범위, 체크포인트"> |
-| 프로필 질문(interrupt) 후 추천 · **$0.0003** | PR #6767 변경 → 호출자 → 체크포인트 · **$0.0004** |
+| 프로필 질문(interrupt) 후 추천 · **$0.0003** (1회) | PR #6767 변경 → 호출자 → 체크포인트 · **$0.0004** (1회) |
 
 ---
 
@@ -100,22 +112,7 @@ def build_supervisor_graph(deps, checkpointer=None):
     return builder.compile(checkpointer=checkpointer)                    # thread 상태 저장
 ```
 
-### 핵심 코드 — LLM 판단을 코드로 보정 (코드 게이트)
-
-[`supervisor.py` `_gate`](../src/repoute/graphs/supervisor.py#L175) — 위에서부터 처음 맞는 규칙 하나만 적용, 비용 0
-
-```python
-if PR_PATTERN.search(message):                       # PR URL·"PR #7" → 무조건 pr
-    return "pr", "..."
-if NEXT_PATTERN.match(message) and has_guide:        # "다음..." + 지도 있음 → next (LLM 재호출 방지)
-    return "next", "..."
-if kind == "next" and not has_guide:                 # 지도 없는 next → map
-    return "map", "..."
-if kind == "ask" and not can_search and not SYMBOL_PATTERN.search(message):
-    return "map", "..."                              # 함수 이름 없는 질문 + 검색 도구 없음 → map
-if kind in ("map", "chat") and ISSUE_PATTERN.search(message):
-    return "issues", "..."
-```
+`classify` 의 LLM 판단은 정규식 **코드 게이트**([`_gate`](../src/repoute/graphs/supervisor.py#L175))가 한 번 더 보정한다. 예: PR URL 이 있으면 `pr`, "다음" + 지도가 있으면 `next` (비용 0).
 
 ---
 
@@ -133,12 +130,26 @@ if kind in ("map", "chat") and ISSUE_PATTERN.search(message):
 | Issue Matcher | MCP → 임베딩 매칭 → 랭킹 | fast 1회 |
 | PR Coach | MCP → 정적 분석 4단계 → 설명 | fast 1회 |
 
-**`Send` 병렬** — [`reading_guide.py` `fan_out`](../src/repoute/graphs/reading_guide.py#L95)
+**읽기 지도 — `Send` 병렬 그래프** — [`reading_guide.py` `build_reading_guide_graph`](../src/repoute/graphs/reading_guide.py#L184) (`fan_out` 이 모듈마다 `Send` 하나를 만든다)
 
 ```python
-def fan_out(state, deps) -> list[Send]:
-    """모듈마다 summarize_module 을 하나씩 병렬 실행"""
-    return [Send("summarize_module", {"module": m, "symbols": ...}) for m in state["targets"]]
+builder.add_edge(START, "select_targets")                                       # 핵심 모듈 고르기 (랭킹 v2)
+builder.add_conditional_edges("select_targets", fan_out, ["summarize_module"])  # Send × N 병렬 요약
+builder.add_edge("summarize_module", "synthesize")                              # 모두 끝나면 합성 1회
+builder.add_edge("synthesize", "validate")                                      # 파일:줄 인용 검증
+builder.add_conditional_edges("validate", after_validate, ["synthesize", END])  # 오류면 다시 합성 (최대 2회)
+```
+
+**따라가기 — ReAct 에이전트 그래프** — [`walkthrough.py` `build_walkthrough_graph`](../src/repoute/graphs/walkthrough.py#L258)
+
+```python
+tools = make_code_tools(...)  # find_definition · find_callers · find_callees · read_code · search_code (+ search_symbols)
+builder.add_edge(START, "agent")
+builder.add_conditional_edges("agent", route_after_agent, ["tools", "nudge", "finalize"])
+builder.add_edge("tools", "agent")         # ReAct 루프: 생각(agent) → 도구 실행(tools) → 다시 생각
+builder.add_edge("nudge", "agent")         # 코드를 안 읽고 답하려 하면 한 번 되돌려 보냄
+builder.add_edge("finalize", "validate")   # 단계별 구조화 답 → 인용 검증
+builder.add_conditional_edges("validate", after_validate, ["finalize", END])  # 오류면 다시 작성 (최대 2회)
 ```
 
 **Human-in-the-loop (`interrupt`)** — [`supervisor.py` `run_issues`](../src/repoute/graphs/supervisor.py#L393)
@@ -197,6 +208,22 @@ issues = parse_issues(call_tool_sync(tool, args), repo=state["repo"])
 | 저장 | SQLite (`.emb.sqlite`) | 레포 하나 심볼 수천 개 → 벡터 DB 불필요 |
 | 검색 | numpy 행렬 곱 1회 (코사인) | 수 ms, 근사 없이 정확한 top-k |
 
+**색인 — 무엇을 어떤 단위로 임베딩하나** — [`embeddings.py` `symbol_text`](../src/repoute/indexing/embeddings.py#L53) · [`build`](../src/repoute/indexing/embeddings.py#L102)
+
+```python
+def symbol_text(sym_row, source_lines) -> str:
+    """심볼 하나 = 임베딩 한 건. 본문 전체가 아니라 이름·시그니처·docstring 만 넣어 비용을 심볼 수에 비례하게"""
+    return f"{kind} {name}\n{def 줄}\n{docstring}\n{file}"
+    # 예) "function merge_cookies\ndef merge_cookies(\nAdd cookies to cookiejar and returns a merged ...\nsrc/requests/cookies.py"
+
+# 캐시: 같은 커밋 파일에 같은 모델·같은 건수가 이미 있으면 임베딩 API 를 다시 부르지 않는다
+if meta.get("model") == model_name and meta.get("count") == str(len(rows)):
+    self.cached = True
+    return True
+```
+
+**검색 — LLM 이 부르는 도구**
+
 [`embeddings.py` `search`](../src/repoute/indexing/embeddings.py#L185) · [`code_tools.py` `search_symbols`](../src/repoute/tools/code_tools.py#L122)
 
 ```python
@@ -212,13 +239,13 @@ def search_symbols(query: str) -> str:
         ...  # → "function merge_cookies — src/requests/cookies.py:604~625 → read_code(...)"
 ```
 
-같은 임베딩을 **Issue Matcher** 에서도 쓴다: 이슈 제목+본문 → 관련 심볼 검색 → 읽을 모듈 추천 (p@3 0.85).
+같은 임베딩을 **Issue Matcher** 에서도 쓴다 ([`match_symbols`](../src/repoute/graphs/issue_matcher.py#L127)): 이슈 제목+본문으로 비슷한 심볼을 찾아 읽을 모듈과 `파일:줄` 을 LLM 없이 붙인다 (p@3 0.85).
 
 ### 3-4. 의존성 주입 (DI)
 
 LLM·인덱스·임베딩·MCP 도구를 **노드 안에서 만들지 않고 `Deps` 로 주입**한다. 그래서 테스트에서는 가짜, 실서버에서는 진짜를 주입한다.
 
-[`graphs/deps.py`](../src/repoute/graphs/deps.py) · [`api/app.py` `lifespan`](../src/repoute/api/app.py#L166)
+[`graphs/deps.py`](../src/repoute/graphs/deps.py) · [`api/app.py` `lifespan`](../src/repoute/api/app.py#L161)
 
 ```python
 @dataclass
@@ -262,7 +289,7 @@ src/repoute/
 
 | 항목 | 내용 |
 |---|---|
-| 규모 | 테스트 파일 37개 통과 (11.3s) |
+| 규모 | 테스트 파일 37개, 전부 통과 (11.3s) |
 | 원칙 | **실제 LLM·임베딩·MCP 호출 0** — 과금 없음 |
 | 가짜 객체 | `FakeLLM`(구조화 출력 큐), `FakeEmbedder`(해시 기반 결정론 벡터), `FakeListIssues`(MCP 도구), `FakeFeedbackClient` |
 | 실데이터 픽스처 | 실제 MCP 서버 응답을 저장해 테스트에 사용 (실서버 응답 모양까지 검증) |
@@ -306,6 +333,18 @@ def test_gate_demotes_ask_without_symbol(tmp_path, repo_url):
 | `search_symbols` 추가 (질문 10개, 23 → 24) | 도달 5/10 → **6/10** (UI 경로 0 → 6) | 13.5s → **10.3s** | 질문당 $0.060 → **$0.045** (−25%) | 도구 호출 7.0 → **5.3**회, 첫 `read_code` 까지 3.2 → **2.0**회 |
 | 랭킹 v2 · 진입점 v3 (레포 5개, 18 → 20) | p@5 0.68 → **0.72**, recall 0.32 → **0.53** | 거의 같음 | 거의 같음 | 프롬프트 변경 없음 (LangSmith Compare, 5절) |
 | 따라가기 agent fast → quality (질문 20개, 12 → 13) | 도달 4/20 → **13/20** | 17.2s → **14.4s** | 질문당 $0.018 → **$0.083** | 턴 수 11.9 → **9.9** (더 비싸지만 더 빨리 끝남) |
+
+**읽기 전 탐색 상한 — 같은 질문 20개 측정 기록** ([evals/results/12](../evals/results/12-walkthrough-batch-explore-limit.md))
+
+<img src="images/eval-explore-limit.png" width="720" alt="측정 기록 12: 같은 질문 20개에서 기록 10(상한 전) → 12(탐색 상한) 엄격 통과 13/20 → 20/20, read_code 0회 7 → 0, 재작성 7건 → 0건, 비용 합 $0.442 → $0.365">
+
+> 10 = 상한 전, 11 = 안 읽고 답하려 하면 "먼저 읽어라" 메시지로 되돌려 보냄(넛지), 12 = 도구 층에서 탐색 상한. 메시지 지시(11)는 결과를 바꾸지 못했고, 코드로 막자(12) 엄격 통과 20/20 · 재작성 0건 · 비용 −17%.
+
+**따라가기 agent fast → quality — 같은 질문 5개, LangSmith Compare**
+
+<img src="images/langsmith-compare-agent-model.png" width="720" alt="LangSmith Compare: walkthrough-qa 같은 질문 5개, A=fast, B=quality 의 점수·지연·토큰·비용">
+
+> A = fast(개선 전), B = quality(개선 후). 정답 도달 0.20 → **0.60**, 호출 체인 정확도 0.10 → **0.43**, 인용 엄격 통과 0.80 → **1.00**. 지연은 거의 같고(20.3s → 19.2s), 비용은 5개 합 $0.10 → $0.39 로 약 4배.
 
 ### 개선안이 실제로 동작하는가
 
@@ -424,21 +463,20 @@ RECURSION_LIMIT = 1 + 2 * MAX_TOOL_CALLS + 2 * MAX_NUDGES + 2 * (MAX_RETRIES + 1
 # → 그래프 전체 단계 수도 LangGraph recursion_limit 으로 한 번 더 막는다
 ```
 
-### 트레이드오프 (선택과 대가)
+### 트레이드오프
 
-| 선택 | 얻은 것 | 잃은 것 |
+| 선택 | 효과 | 대가 |
 |---|---|---|
 | 따라가기 agent 를 quality 모델로 | 도달 4/20 → **13/20** | 질문당 비용 $0.018 → **$0.083** (4.6배) |
 | 인용 유효성 지표만 최적화 | 유효성 100% | 인용이 `파일:1` 로 쏠림 (구체성 43%) → **지표를 유효성·구체성으로 나눠 측정**하고 구체성 100% 로 회복 |
 | MCP 를 노드가 직접 호출 | 호출 횟수·비용 예측 가능, 토큰 −91% | LLM 이 상황에 맞게 도구를 고르는 유연성 |
 | 벡터 DB 없이 numpy | 의존성·운영 단순 | 수십만 심볼급 대형 레포에는 부적합 |
-| ReAct 도구 호출 수 감소 | — | 15 → 13회로 줄여도 비용은 +23% (읽은 코드가 매 턴 재전송: 비용은 턴 수가 아니라 **컨텍스트 총량**) |
 
 ### 한계
 
 - **표본이 작다**: gold 레포 5 · 질문 20+10 · 이슈 20 · PR 8.
-- **Python 만**, 호출은 **이름 기준**이라 `a.save()` 와 `b.save()` 를 구분하지 못한다.
-- **랭킹 가정의 반례**: rich 처럼 핵심이 하부 렌더링 부품인 레포는 p@5 0.20.
+- **Python 만** 지원한다. 또 호출 관계를 **함수 이름만으로** 찾아서, `a.save()` 와 `b.save()` 처럼 이름이 같으면 서로 다른 클래스의 함수인지 구분하지 못한다.
+- **핵심 모듈 랭킹이 안 맞는 레포가 있다**: 랭킹은 "다른 모듈을 많이 가져다 쓰는(조립하는) 모듈이 핵심" 이라고 가정한다. 터미널 출력 라이브러리 rich 는 반대로 맨 아래에서 실제로 화면을 그리는 모듈이 핵심이라, 상위 5개 중 1개만 맞았다 (p@5 0.20).
 - **PR 체크포인트 문장이 일반적**이고, 테스트 힌트는 이름 텍스트 검색이다.
 - 최종 답이 구조화 출력이라 **토큰 스트리밍 미지원** (노드 진행 이벤트만 SSE).
 
@@ -446,9 +484,9 @@ RECURSION_LIMIT = 1 + 2 * MAX_TOOL_CALLS + 2 * MAX_NUDGES + 2 * (MAX_RETRIES + 1
 
 | 우선순위 | 개선 | 해결하는 한계 |
 |---|---|---|
-| 1 | 평가 데이터 확대 (레포·질문 수, 앱형 레포 추가) | 작은 표본 |
-| 2 | 타입 정보(import 해석·`self` 추적)로 호출 대상 구분 | 이름 기준 호출 그래프 |
-| 3 | PR Coach 가 변경 코드를 직접 읽고 체크포인트 작성 | 일반적인 체크포인트 문장 |
+| 1 | 평가 데이터 확대 (레포·질문 수) | 작은 표본 |
+| 2 | 이름이 같은 함수 구분: `a.save()` 의 `a` 가 어떤 클래스인지 따라가서 정확히 어느 `save` 인지 찾는다 | 함수 이름만으로 호출 관계를 찾아 이름이 같은 함수끼리 구분하지 못함 |
+| 3 | PR Coach 가 변경 코드를 직접 읽고 체크포인트 작성 | 지금은 함수 이름만 보고 써서 무엇을 확인해야 하는지 구체적으로 알려 주지 못함 |
 | 4 | tree-sitter 로 파서 교체 → 다른 언어 지원 | Python 전용 |
-| 5 | 레포 유형별 랭킹 (라이브러리/앱/렌더링형) | rich 반례 |
+| 5 | 레포마다 "먼저 읽을 파일" 고르는 규칙을 다르게 적용 | 지금 규칙은 rich 처럼 실제 작업 파일이 중요한 레포에서는 틀림 |
 | 6 | 신규 기여자 대상 사용성 테스트 (첫 PR 까지 걸린 시간) | 지표 중심 평가를 실사용으로 확장 |
