@@ -116,6 +116,33 @@ a:hover { text-decoration: underline; }
 .next .step-file { font-size: 13px; }
 .hint { margin-top: 12px !important; font-size: 12px; color: var(--muted); }
 
+/* 이슈 추천 카드: 이슈마다 구분선, 번호·제목·난이도 한 줄 */
+.issues { list-style: none; margin: -16px; padding: 0; }
+.issue { padding: 16px; }
+.issue + .issue { border-top: 1px solid var(--border); }
+.issue-head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.issue-num { font-weight: 600; }
+.issue-title { font-weight: 600; }
+.badge { display: inline-flex; align-items: center; padding: 0 7px; border: 1px solid var(--border); border-radius: 999px; font-size: 12px; line-height: 18px; }
+.badge-easy { border-color: var(--success); color: var(--success); }
+.badge-medium { border-color: #bf8700; color: #7d4e00; background: var(--hit); }
+.badge-hard { border-color: var(--bad-border); color: var(--bad); background: var(--bad-soft); }
+.chips-label { font-size: 12px; color: var(--muted); align-self: center; }
+.modules { font: 12px/1.5 var(--mono); color: var(--muted); margin-top: 6px !important; overflow-wrap: anywhere; }
+.issues + .feedback { margin-top: 32px; }
+
+/* PR 리뷰 카드 */
+.pr-num { font-weight: 600; }
+.chips-col { flex-direction: column; align-items: flex-start; }
+.sub-label { display: block; font-size: 13px; margin: 4px 0 6px; }
+.impact-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+.via { font: 12px/1.5 var(--mono); color: var(--muted); }
+.test-files { margin: 0; padding-left: 18px; font: 12px/1.7 var(--mono); }
+.checkpoint + .checkpoint { margin-top: 10px; }
+
+/* 질문 카드 (interrupt): 질문을 회색 상자에 */
+.ask-box { margin: 0 !important; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); white-space: pre-wrap; }
+
 /* 인용 칩: 모노스페이스 pill, hover 시 코드 링크처럼 파랑 */
 .chip { display: inline-flex; gap: 6px; align-items: baseline; border: 1px solid var(--border); background: var(--bg); border-radius: 999px; padding: 0 8px; font: 12px/20px var(--mono); color: var(--ink); }
 .chip:hover { border-color: var(--link); color: var(--link); }
