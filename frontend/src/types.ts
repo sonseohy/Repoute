@@ -44,8 +44,59 @@ export interface NextStep {
   hint: string | null
 }
 
+// issue_matcher.py — 기여할 이슈 추천 결과
+export interface IssueMatch {
+  number: number
+  title: string
+  url: string
+  labels: string[]
+  why: string
+  modules: string[]
+  refs: CodeRef[]
+  difficulty: 'easy' | 'medium' | 'hard'
+}
+
+export interface IssueMatches {
+  repo: string
+  profile: { interests: string; level: 'beginner' | 'intermediate' | 'advanced' }
+  matches: IssueMatch[]
+  considered: number
+  errors: string[]
+}
+
+// pr_coach.py — PR 리뷰 안내 결과
+export interface SymbolRef {
+  name: string
+  file: string
+  line: number
+}
+
+export interface ImpactRef extends SymbolRef {
+  relation: 'caller' | 'callee'
+  via: string // 어느 변경 심볼 때문에 영향을 받는지
+}
+
+export interface CheckPoint {
+  text: string
+  refs: CodeRef[]
+}
+
+export interface PRReview {
+  repo: string
+  number: number
+  title: string
+  url: string
+  summary: string
+  changed_symbols: SymbolRef[]
+  impact: ImpactRef[]
+  test_files: string[]
+  check_points: CheckPoint[]
+  errors: string[]
+  notes: string[]
+}
+
 export interface Intent {
-  kind: 'map' | 'ask' | 'next' | 'chat'
+  kind: 'map' | 'ask' | 'next' | 'chat' | 'issues' | 'pr'
   reason: string
 }
 
@@ -57,6 +108,10 @@ export type SupervisorEvent =
   | { type: 'AnswerReady'; steps: number; errors: number }
   | { type: 'NextStep'; order: number; remaining: number }
   | { type: 'Replied' }
+  | { type: 'EmbeddingsReady'; count: number; cached: boolean }
+  | { type: 'ProfileRequested'; question: string }
+  | { type: 'IssuesReady'; count: number; considered: number }
+  | { type: 'PRReviewReady'; number: number; changed: number; impact: number }
 
 // api/app.py — SSE 이벤트 data
 export interface UpdateData {
@@ -70,6 +125,9 @@ export interface RunResult {
   answer: WalkthroughAnswer | null
   next?: NextStep | null // 백엔드가 아직 안 보낼 수 있다
   reply: string | null
+  issues?: IssueMatches | null
+  pr_review?: PRReview | null
+  ask_user?: boolean // true 면 reply 가 질문이고, 다음 메시지가 그 답이 된다
   validation_errors: string[]
   thread_id: string
   run_id: string | null
